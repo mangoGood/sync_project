@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
@@ -240,7 +241,7 @@ public class IncrementExecutor {
             int bytesRead;
             
             while ((bytesRead = raf.read(buffer)) != -1) {
-                content.append(new String(buffer, 0, bytesRead));
+                content.append(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8));
             }
             
             // 记录当前读取位置

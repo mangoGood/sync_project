@@ -208,6 +208,7 @@ public class WorkflowService {
         
         workflow.setStatus(WorkflowStatus.COMPLETED);
         workflow.setCompletedAt(LocalDateTime.now());
+        workflow.setIsBilling(false);
         workflowRepository.save(workflow);
         addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务已结束，状态: 已完成");
     }
@@ -224,6 +225,61 @@ public class WorkflowService {
         workflow.setIsDeleted(true);
         workflowRepository.save(workflow);
         addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务已删除（软删除）");
+    }
+
+    @Transactional
+    public void retryWorkflow(String id, Long userId) {
+        Workflow workflow = getWorkflowById(id, userId);
+        
+        if (workflow.getStatus() != WorkflowStatus.FAILED) {
+            throw new RuntimeException("只能重试失败的任务，当前状态: " + workflow.getStatus().name());
+        }
+        
+        workflow.setStatus(WorkflowStatus.PENDING);
+        workflow.setProgress(0);
+        workflow.setIsBilling(true);
+        workflow.setErrorMessage(null);
+        workflow.setCompletedAt(null);
+        workflow.setTotalTables(null);
+        workflow.setCompletedTables(null);
+        workflow.setCurrentTable(null);
+        workflow.setCurrentTableProgress(null);
+        workflow.setCurrentTableRows(null);
+        workflow.setCurrentTableTotalRows(null);
+        workflowRepository.save(workflow);
+        
+        addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试中，状态重置为 PENDING");
+        
+        TaskCreatedMessage message = new TaskCreatedMessage();
+        message.setTaskId(workflow.getId());
+        message.setTaskName(workflow.getName());
+        message.setUserId(workflow.getUserId());
+        message.setSourceConnection(workflow.getSourceConnection());
+        message.setTargetConnection(workflow.getTargetConnection());
+        message.setMigrationMode(workflow.getMigrationMode());
+        message.setSyncObjects(parseSyncObjects(workflow.getSyncObjects()));
+        message.setSourceDbName(workflow.getSourceDbName());
+        message.setCreatedAt(workflow.getCreatedAt());
+        message.setMessageType("TASK_CREATED");
+        
+        try {
+            kafkaProducerService.sendTaskCreatedMessage(workflow);
+            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试消息已发送到 Kafka，等待任务执行服务处理");
+        } catch (Exception e) {
+            addLog(workflow.getId(), WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+        }
+    }
+    
+    private Map<String, Object> parseSyncObjects(String syncObjects) {
+        if (syncObjects == null || syncObjects.isEmpty()) {
+            return null;
+        }
+        try {
+            Type type = new TypeToken<Map<String, Object>>() {}.getType();
+            return gson.fromJson(syncObjects, type);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void addLog(String workflowId, WorkflowLog.LogLevel level, String message) {

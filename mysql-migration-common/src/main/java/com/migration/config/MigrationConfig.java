@@ -18,6 +18,7 @@ public class MigrationConfig {
     private boolean continueOnError;
     private boolean enableResume;
     private boolean enableIncremental;
+    private boolean recordCheckpoint;
     private Set<String> includedDatabases;
     private Set<String> includedTables;
     private String checkpointDbPath;
@@ -64,6 +65,7 @@ public class MigrationConfig {
         continueOnError = Boolean.parseBoolean(props.getProperty("migration.continue.on.error", "false"));
         enableResume = Boolean.parseBoolean(props.getProperty("migration.enable.resume", "true"));
         enableIncremental = Boolean.parseBoolean(props.getProperty("migration.enable.incremental", "false"));
+        recordCheckpoint = Boolean.parseBoolean(props.getProperty("migration.record.checkpoint", "true"));
         
         // 加载增量迁移配置
         includedDatabases = parseStringSet(props.getProperty("migration.included.databases", ""));
@@ -126,6 +128,10 @@ public class MigrationConfig {
     
     public boolean isEnableIncremental() {
         return enableIncremental;
+    }
+    
+    public boolean isRecordCheckpoint() {
+        return recordCheckpoint;
     }
     
     public Set<String> getIncludedDatabases() {

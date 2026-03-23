@@ -469,6 +469,14 @@
             border: 1px solid #91d5ff;
         }
 
+        .status-full-migrating .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #1890ff;
+            border-radius: 50%;
+            animation: blink 1s ease-in-out infinite;
+        }
+
         .status-full-completed {
             background-color: #f6ffed;
             color: #52c41a;
@@ -499,12 +507,25 @@
             border: 1px solid #b7eb8f;
         }
 
+        .status-full-completed {
+            background-color: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
         .status-increment-running .status-dot {
             width: 8px;
             height: 8px;
             background-color: #52c41a;
             border-radius: 50%;
             animation: blink 1s ease-in-out infinite;
+        }
+
+        .status-full-completed .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #52c41a;
+            border-radius: 50%;
         }
 
         @keyframes blink {
@@ -519,18 +540,13 @@
             background-color: #f5f5f5;
             border-radius: 3px;
             overflow: hidden;
-            display: inline-block;
-            vertical-align: middle;
-            box-sizing: border-box;
         }
 
         .progress-fill {
             height: 100%;
             background-color: #1890ff;
             border-radius: 3px;
-            transition: width 0.3s ease;
-            display: block;
-            box-sizing: border-box;
+            transition: width 0.3s;
         }
 
         /* 操作按钮 */
@@ -1203,12 +1219,6 @@
                     <span class="help-icon">?</span>
                 </div>
                 <div class="header-right">
-                    <span class="header-link">
-                        <span>满意度评价</span>
-                    </span>
-                    <span class="header-link">
-                        <span>使用指南</span>
-                    </span>
                     <div class="user-info" id="userInfo" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666;">
                         <span id="usernameDisplay"></span>
                         <button class="btn-logout" onclick="logout()" style="padding: 4px 12px; background: #f5f5f5; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; font-size: 12px;">退出</button>
@@ -1555,6 +1565,16 @@
     <div class="notification" id="notification"></div>
 
     <script>
+        // Global error handler
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Global error:', message, 'at', source, ':', lineno, ':', colno, error);
+            return false;
+        };
+        
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+        
         // API基础URL
         const API_BASE_URL = 'http://localhost:8082/api';
         
@@ -1584,8 +1604,8 @@
         const statusMap = {
             'PENDING': { text: '等待中', class: 'status-pending' },
             'STARTING': { text: '启动中', class: 'status-starting' },
-            'FULL_MIGRATING': { text: '全量同步中', class: 'status-full-migrating' },
-            'FULL_COMPLETED': { text: '全量同步完成', class: 'status-full-completed' },
+            'FULL_MIGRATING': { text: '全量同步中', class: 'status-full-migrating', dot: true },
+            'FULL_COMPLETED': { text: '全量同步完成', class: 'status-full-completed', dot: true },
             'INCREMENT_RUNNING': { text: '增量同步中', class: 'status-increment-running', dot: true },
             'COMPLETED': { text: '已完成', class: 'status-completed' },
             'FAILED': { text: '失败', class: 'status-failed' },
@@ -1662,13 +1682,22 @@
         function handleStatusUpdate(data) {
             console.log('处理状态更新:', data);
             
-            const row = document.querySelector(`.table-row[data-id="${data.taskId}"]`);
+            const taskId = data.task_id || data.taskId;
+            const row = document.querySelector(`.table-row[data-id="${taskId}"]`);
             if (!row) {
-                console.log('未找到对应的任务行:', data.taskId);
+                console.log('未找到对应的任务行:', taskId);
                 return;
             }
             
-            const statusInfo = statusMap[data.status] || statusMap['PENDING'];
+            let statusInfo = statusMap[data.status] || statusMap['PENDING'];
+            const migrationMode = data.migration_mode;
+            const isFullAndIncre = migrationMode === 'fullAndIncre';
+            
+            // 全量+增量模式下，FULL_COMPLETED 状态显示为"增量同步中"
+            if (data.status === 'FULL_COMPLETED' && isFullAndIncre) {
+                statusInfo = { text: '增量同步中', class: 'status-increment-running', dot: true };
+            }
+            
             const statusCell = row.querySelector('.col-status .status-tag');
             
             if (statusCell) {
@@ -1681,26 +1710,30 @@
             
             const progressCell = row.querySelector('.col-more');
             if (progressCell) {
-                let progressHtml = `
-                    <div style="display: flex; align-items: center; width: 100%;">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${data.progress || 0}%"></div>
-                        </div>
-                        <span style="margin-left: 8px; font-size: 11px; color: #666; white-space: nowrap;">${data.progress || 0}%</span>
-                    </div>
-                `;
-                
                 const totalTables = data.total_tables !== undefined ? data.total_tables : data.totalTables;
                 const completedTables = data.completed_tables !== undefined ? data.completed_tables : data.completedTables;
                 const currentTable = data.current_table !== undefined ? data.current_table : data.currentTable;
                 const currentTableProgress = data.current_table_progress !== undefined ? data.current_table_progress : data.currentTableProgress;
                 
-                if (data.status === 'FULL_MIGRATING' && totalTables !== undefined && totalTables !== null) {
-                    progressHtml += `
-                        <div style="margin-top: 4px; font-size: 10px; color: #999;">
-                            表: ${completedTables || 0}/${totalTables}
-                            ${currentTable ? `<br>当前: ${currentTable} (${currentTableProgress || 0}%)` : ''}
+                let progressHtml = '';
+                if (data.status === 'FULL_MIGRATING') {
+                    if (totalTables === undefined || totalTables === null || totalTables === 0) {
+                        progressHtml = `<div style="font-size: 14px; font-weight: 500; color: #999;">同步进度计算中...</div>`;
+                    } else {
+                        progressHtml = `
+                            <div style="font-size: 14px; font-weight: 500; color: #333;">${completedTables || 0}/${totalTables}</div>
+                            ${currentTable ? 
+                                `<div style="margin-top: 4px; font-size: 10px; color: #999;">
+                                    ${currentTable} (${currentTableProgress || 0}%)
+                                </div>` : ''}
+                        `;
+                    }
+                } else {
+                    progressHtml = `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${data.progress || 0}%"></div>
                         </div>
+                        <span style="margin-left: 8px; font-size: 11px; color: #666;">${data.progress || 0}%</span>
                     `;
                 }
                 
@@ -1712,26 +1745,26 @@
                 const isStarting = data.status === 'STARTING' || data.status === 'FULL_MIGRATING';
                 const isIncrementRunning = data.status === 'INCREMENT_RUNNING';
                 const isPaused = data.status === 'PAUSED';
-                const isCompleted = data.status === 'COMPLETED' || data.status === 'FAILED' || data.status === 'FULL_COMPLETED';
+                const isFailed = data.status === 'FAILED';
+                const isCompleted = data.status === 'COMPLETED' || data.status === 'FULL_COMPLETED';
+                
+                const rowDataset = row.dataset;
+                const taskName = rowDataset.name || '';
                 
                 let actionHtml = '';
-                if (isStarting) {
-                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${data.taskId}')">暂停</button>`;
-                    if (data.status === 'FULL_MIGRATING') {
-                        actionHtml += `<button class="action-btn stop" onclick="stopWorkflow('${data.taskId}')">结束</button>`;
-                    }
+                if (isFailed) {
+                    actionHtml = `<button class="action-btn" onclick="retryWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                } else if (isStarting) {
+                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isIncrementRunning) {
-                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${data.taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${data.taskId}')">结束</button>`;
+                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isPaused) {
-                    actionHtml = `<button class="action-btn" onclick="resumeWorkflow('${data.taskId}')">恢复</button>`;
-                }
-                if (isCompleted) {
-                    actionHtml += `<button class="action-btn delete" onclick="deleteWorkflow('${data.taskId}')">删除</button>`;
+                    actionHtml = `<button class="action-btn" onclick="resumeWorkflow('${taskId}')">恢复</button>`;
+                } else if (isCompleted) {
+                    actionHtml = `<button class="action-btn delete" onclick="deleteWorkflow('${taskId}', '${taskName.replace(/'/g, "\\'")}')">删除</button>`;
                 }
                 actionCell.innerHTML = actionHtml;
             }
-            
-            showNotification(`任务状态更新: ${statusInfo.text}`, 'success');
         }
         
         // 退出登录
@@ -1929,7 +1962,15 @@
             row.className = 'table-row';
             row.dataset.id = workflow.id;
             
-            const statusInfo = statusMap[workflow.status] || statusMap['pending'];
+            let statusInfo = statusMap[workflow.status] || statusMap['pending'];
+            const isFullAndIncre = workflow.migration_mode === 'fullAndIncre';
+            
+            // 全量+增量模式下，FULL_COMPLETED 状态显示为"增量同步中"
+            if (workflow.status === 'FULL_COMPLETED' && isFullAndIncre) {
+                statusInfo = { text: '增量同步中', class: 'status-increment-running', dot: true };
+            }
+            
+            row.dataset.name = workflow.name;
             
             row.innerHTML = `
                 <div class="table-cell col-checkbox">
@@ -1943,7 +1984,7 @@
                 </div>
                 <div class="table-cell col-status">
                     <span class="status-tag ${statusInfo.class}">
-                        ${statusInfo.dot ? '<span class="status-dot"></span>' : '<span style="width: 6px; height: 6px; border-radius: 50%; background-color: currentColor;"></span>'}
+                        ${statusInfo.dot ? '<span class="status-dot"></span>' : ''}
                         ${statusInfo.text}
                     </span>
                 </div>
@@ -1957,29 +1998,31 @@
                     ${workflow.is_billing ? '<span style="color: #52c41a;">是</span>' : '<span style="color: #999;">否</span>'}
                 </div>
                 <div class="table-cell col-more">
-                    <div style="display: flex; align-items: center; width: 100%;">
-                        <div class="progress-bar">
+                    ${workflow.status === 'FULL_MIGRATING' ? 
+                        (workflow.total_tables && workflow.total_tables > 0 ?
+                            `<div style="font-size: 14px; font-weight: 500; color: #333;">${workflow.completed_tables || 0}/${workflow.total_tables}</div>
+                            ${workflow.current_table ? 
+                                `<div style="margin-top: 4px; font-size: 10px; color: #999;">
+                                    ${workflow.current_table} (${workflow.current_table_progress || 0}%)
+                                </div>` : ''}` :
+                            `<div style="font-size: 14px; font-weight: 500; color: #999;">同步进度计算中...</div>`) :
+                        `<div class="progress-bar">
                             <div class="progress-fill" style="width: ${workflow.progress || 0}%"></div>
                         </div>
-                        <span style="margin-left: 8px; font-size: 11px; color: #666; white-space: nowrap;">${workflow.progress || 0}%</span>
-                    </div>
-                    ${workflow.status === 'FULL_MIGRATING' && workflow.total_tables ? 
-                        `<div style="margin-top: 4px; font-size: 10px; color: #999;">
-                            表: ${workflow.completed_tables || 0}/${workflow.total_tables}
-                            ${workflow.current_table ? `<br>当前: ${workflow.current_table} (${workflow.current_table_progress || 0}%)` : ''}
-                        </div>` : ''}
+                        <span style="margin-left: 8px; font-size: 11px; color: #666;">${workflow.progress || 0}%</span>`}
                 </div>
                 <div class="table-cell col-action">
                     <div class="action-btns">
-                        ${(workflow.status === 'STARTING' || workflow.status === 'FULL_MIGRATING') ? 
-                            `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button>${workflow.status === 'FULL_MIGRATING' ? `<button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : ''}` : 
+                        ${workflow.status === 'FAILED' ? 
+                            `<button class="action-btn" onclick="retryWorkflow('${workflow.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
+                            (workflow.status === 'STARTING' || workflow.status === 'FULL_MIGRATING') ? 
+                            `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
                             workflow.status === 'INCREMENT_RUNNING' ?
                             `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` :
                             workflow.status === 'PAUSED' ?
                             `<button class="action-btn" onclick="resumeWorkflow('${workflow.id}')">恢复</button>` :
-                            ''}
-                        ${(workflow.status === 'COMPLETED' || workflow.status === 'FAILED' || workflow.status === 'FULL_COMPLETED') ? 
-                            `<button class="action-btn delete" onclick="deleteWorkflow('${workflow.id}')">删除</button>` : ''}
+                            (workflow.status === 'COMPLETED' || workflow.status === 'FULL_COMPLETED') ? 
+                            `<button class="action-btn delete" onclick="deleteWorkflow('${workflow.id}', '${workflow.name.replace(/'/g, "\\'")}')">删除</button>` : ''}
                     </div>
                 </div>
             `;
@@ -2611,7 +2654,7 @@
         }
         
         // 暂停工作流
-        async function pauseWorkflow(id) {
+        window.pauseWorkflow = async function(id) {
             if (!checkAuth()) return;
             
             try {
@@ -2640,7 +2683,7 @@
         }
         
         // 恢复工作流
-        async function resumeWorkflow(id) {
+        window.resumeWorkflow = async function(id) {
             if (!checkAuth()) return;
             
             try {
@@ -2669,12 +2712,19 @@
         }
         
         // 结束任务
-        async function stopWorkflow(id) {
+        window.stopWorkflow = async function(id) {
+            console.log('stopWorkflow called with id:', id);
+            console.log('typeof stopWorkflow:', typeof stopWorkflow);
+            console.log('checkAuth result:', checkAuth());
             if (!checkAuth()) return;
             
+            console.log('Showing confirm dialog...');
             if (!confirm('确定要结束这个任务吗？结束后任务将标记为已完成。')) {
+                console.log('User cancelled');
                 return;
             }
+            
+            console.log('Sending request to:', `${API_BASE_URL}/workflows/${id}/stop`);
             
             try {
                 const response = await fetch(`${API_BASE_URL}/workflows/${id}/stop`, {
@@ -2719,7 +2769,44 @@
                 
                 if (result.success) {
                     const task = result.data;
-                    const statusInfo = statusMap[task.status] || statusMap['pending'];
+                    let statusInfo = statusMap[task.status] || statusMap['pending'];
+                    const isFullAndIncre = task.migration_mode === 'fullAndIncre';
+                    
+                    // 全量+增量模式下，FULL_COMPLETED 状态显示为"增量同步中"
+                    if (task.status === 'FULL_COMPLETED' && isFullAndIncre) {
+                        statusInfo = { text: '增量同步中', class: 'status-increment-running', dot: true };
+                    }
+                    
+                    // 解析同步对象
+                    let syncObjectsHtml = '-';
+                    if (task.sync_objects) {
+                        try {
+                            const syncObjects = JSON.parse(task.sync_objects);
+                            if (syncObjects && Object.keys(syncObjects).length > 0) {
+                                const tableList = [];
+                                for (const [db, dbValue] of Object.entries(syncObjects)) {
+                                    let tables = null;
+                                    if (Array.isArray(dbValue)) {
+                                        tables = dbValue;
+                                    } else if (dbValue && dbValue.tables && Array.isArray(dbValue.tables)) {
+                                        tables = dbValue.tables;
+                                    }
+                                    if (tables) {
+                                        tables.forEach(table => {
+                                            tableList.push(`${db}.${table}`);
+                                        });
+                                    }
+                                }
+                                if (tableList.length > 0) {
+                                    syncObjectsHtml = `<div style="max-height: 120px; overflow-y: auto; border: 1px solid #e8e8e8; border-radius: 4px; padding: 8px;">
+                                        ${tableList.map(t => `<div style="font-size: 12px; padding: 2px 0;">${t}</div>`).join('')}
+                                    </div>`;
+                                }
+                            }
+                        } catch (e) {
+                            syncObjectsHtml = task.sync_objects;
+                        }
+                    }
                     
                     let logsHtml = '';
                     if (task.logs && task.logs.length > 0) {
@@ -2748,24 +2835,30 @@
                             <div style="font-size: 13px; color: #666;">任务ID:</div>
                             <div style="font-size: 13px; font-family: monospace;">${task.id}</div>
                             
+                            <div style="font-size: 13px; color: #666;">同步模式:</div>
+                            <div style="font-size: 13px;">${task.migration_mode === 'fullAndIncre' ? '全量+增量' : '仅全量'}</div>
+                            
                             <div style="font-size: 13px; color: #666;">当前状态:</div>
                             <div>
                                 <span class="status-tag ${statusInfo.class}">
-                                    ${statusInfo.dot ? '<span class="status-dot"></span>' : '<span style="width: 6px; height: 6px; border-radius: 50%; background-color: currentColor;"></span>'}
+                                    ${statusInfo.dot ? '<span class="status-dot"></span>' : ''}
                                     ${statusInfo.text}
                                 </span>
                             </div>
                             
                             <div style="font-size: 13px; color: #666;">执行进度:</div>
-                            <div style="display: flex; align-items: center;">
+                            <div>
                                 <div class="progress-bar" style="width: 200px;">
                                     <div class="progress-fill" style="width: ${task.progress || 0}%"></div>
                                 </div>
-                                <span style="margin-left: 8px; font-size: 11px; color: #666; white-space: nowrap;">${task.progress || 0}%</span>
+                                <span style="margin-left: 8px; font-size: 11px; color: #666;">${task.progress || 0}%</span>
                             </div>
                             
                             <div style="font-size: 13px; color: #666;">是否计费中:</div>
                             <div>${task.is_billing ? '<span style="color: #52c41a;">是</span>' : '<span style="color: #999;">否</span>'}</div>
+                            
+                            <div style="font-size: 13px; color: #666;">同步表:</div>
+                            <div style="font-size: 13px;">${syncObjectsHtml}</div>
                             
                             <div style="font-size: 13px; color: #666;">源连接:</div>
                             <div style="font-size: 13px; word-break: break-all;">${task.source_connection}</div>
@@ -2805,10 +2898,11 @@
         }
         
         // 删除工作流
-        async function deleteWorkflow(id) {
+        window.deleteWorkflow = async function(id, name) {
+            console.log('deleteWorkflow called with id:', id, 'name:', name);
             if (!checkAuth()) return;
             
-            if (!confirm('确定要删除这个任务吗？')) {
+            if (!confirm(`确定要删除任务【${name || id}】吗？`)) {
                 return;
             }
             
@@ -2834,6 +2928,36 @@
             } catch (error) {
                 console.error('删除任务失败:', error);
                 showNotification('删除任务失败', 'error');
+            }
+        }
+        
+        // 重试失败的任务
+        window.retryWorkflow = async function(id) {
+            console.log('retryWorkflow called with id:', id);
+            if (!checkAuth()) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/workflows/${id}/retry`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('任务重试已启动', 'success');
+                    fetchWorkflows();
+                } else {
+                    showNotification(result.message || '重试失败', 'error');
+                }
+            } catch (error) {
+                console.error('重试任务失败:', error);
+                showNotification('重试任务失败', 'error');
             }
         }
         
@@ -3408,6 +3532,13 @@
                     fetchWorkflows();
                 }
             }, 5000);
+            
+            // Debug: verify functions are accessible
+            console.log('Functions check:');
+            console.log('stopWorkflow:', typeof window.stopWorkflow, typeof stopWorkflow);
+            console.log('deleteWorkflow:', typeof window.deleteWorkflow, typeof deleteWorkflow);
+            console.log('pauseWorkflow:', typeof window.pauseWorkflow, typeof pauseWorkflow);
+            console.log('resumeWorkflow:', typeof window.resumeWorkflow, typeof resumeWorkflow);
         });
     </script>
 </body>

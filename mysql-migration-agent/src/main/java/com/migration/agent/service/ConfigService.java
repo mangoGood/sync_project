@@ -113,24 +113,32 @@ public class ConfigService {
             StringBuilder includedDatabases = new StringBuilder();
             StringBuilder includedTables = new StringBuilder();
             
-            for (Map.Entry<String, Map<String, Object>> dbEntry : taskMessage.getSyncObjects().entrySet()) {
+            for (Map.Entry<String, Object> dbEntry : taskMessage.getSyncObjects().entrySet()) {
                 String dbName = dbEntry.getKey();
                 if (includedDatabases.length() > 0) {
                     includedDatabases.append(",");
                 }
                 includedDatabases.append(dbName);
                 
-                Map<String, Object> dbValue = dbEntry.getValue();
-                if (dbValue != null && dbValue.containsKey("tables")) {
+                Object value = dbEntry.getValue();
+                if (value instanceof List) {
+                    List<?> tables = (List<?>) value;
+                    for (Object table : tables) {
+                        if (includedTables.length() > 0) {
+                            includedTables.append(",");
+                        }
+                        includedTables.append(dbName).append(".").append(table.toString());
+                    }
+                } else if (value instanceof Map) {
+                    Map<?, ?> dbValue = (Map<?, ?>) value;
                     Object tablesObj = dbValue.get("tables");
                     if (tablesObj instanceof List) {
-                        @SuppressWarnings("unchecked")
-                        List<String> tables = (List<String>) tablesObj;
-                        for (String table : tables) {
+                        List<?> tables = (List<?>) tablesObj;
+                        for (Object table : tables) {
                             if (includedTables.length() > 0) {
                                 includedTables.append(",");
                             }
-                            includedTables.append(dbName).append(".").append(table);
+                            includedTables.append(dbName).append(".").append(table.toString());
                         }
                     }
                 }
@@ -150,6 +158,10 @@ public class ConfigService {
             props.setProperty("source.db.name", taskMessage.getSourceDbName());
             logger.info("Source database name: {}", taskMessage.getSourceDbName());
         }
+        
+        // 设置不记录 checkpoint，因为 agent 已经在启动前记录了
+        props.setProperty("migration.record.checkpoint", "false");
+        logger.info("Checkpoint recording disabled (already recorded by agent before startup)");
         
         try (OutputStream output = new FileOutputStream(configFile)) {
             props.store(output, "Updated by Migration Agent for task: " + taskId);

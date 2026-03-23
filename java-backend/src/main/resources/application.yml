@@ -54,5 +54,5 @@ app:
 
 logging:
   level:
-    com.synctask: DEBUG
-    org.springframework.security: DEBUG
+    com.synctask: INFO
+    org.springframework.security: INFO

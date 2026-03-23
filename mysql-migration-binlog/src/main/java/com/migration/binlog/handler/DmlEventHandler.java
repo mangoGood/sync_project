@@ -6,6 +6,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Timestamp;
+import java.sql.Date;
+import java.sql.Time;
+import java.text.SimpleDateFormat;
+import java.time.*;
 import java.util.List;
 import java.util.Map;
 
@@ -175,19 +182,92 @@ public class DmlEventHandler implements BinlogEventHandler {
     }
 
     /**
-     * 格式化值
+     * 格式化值 - 支持 MySQL 所有数据类型
      */
     private String formatValue(Serializable value) {
         if (value == null) {
             return "NULL";
         }
         
+        // 数值类型
         if (value instanceof Number) {
+            if (value instanceof BigDecimal) {
+                return ((BigDecimal) value).toPlainString();
+            } else if (value instanceof BigInteger) {
+                return value.toString();
+            } else if (value instanceof Double || value instanceof Float) {
+                // 处理浮点数精度问题
+                return new BigDecimal(value.toString()).toPlainString();
+            }
             return value.toString();
         }
         
+        // 布尔类型
         if (value instanceof Boolean) {
             return ((Boolean) value) ? "1" : "0";
+        }
+        
+        // 时间类型 - 关键修复
+        if (value instanceof java.sql.Timestamp) {
+            java.sql.Timestamp ts = (java.sql.Timestamp) value;
+            // 格式化为 MySQL 兼容格式，去掉末尾的 .0
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String formatted = sdf.format(ts);
+            int nanos = ts.getNanos();
+            if (nanos > 0) {
+                // 有微秒/纳秒，添加小数部分
+                String nanosStr = String.format("%09d", nanos);
+                // 去掉末尾的 0
+                nanosStr = nanosStr.replaceAll("0+$", "");
+                formatted += "." + nanosStr;
+            }
+            return "'" + formatted + "'";
+        }
+        
+        if (value instanceof java.sql.Date) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            return "'" + sdf.format((java.sql.Date) value) + "'";
+        }
+        
+        if (value instanceof java.sql.Time) {
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+            return "'" + sdf.format((java.sql.Time) value) + "'";
+        }
+        
+        // Java 8+ 时间类型
+        if (value instanceof LocalDateTime) {
+            LocalDateTime ldt = (LocalDateTime) value;
+            String formatted = ldt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            int nano = ldt.getNano();
+            if (nano > 0) {
+                String nanosStr = String.format("%09d", nano).replaceAll("0+$", "");
+                formatted += "." + nanosStr;
+            }
+            return "'" + formatted + "'";
+        }
+        
+        if (value instanceof LocalDate) {
+            return "'" + ((LocalDate) value).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + "'";
+        }
+        
+        if (value instanceof LocalTime) {
+            return "'" + ((LocalTime) value).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "'";
+        }
+        
+        if (value instanceof ZonedDateTime) {
+            ZonedDateTime zdt = (ZonedDateTime) value;
+            String formatted = zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            return "'" + formatted + "'";
+        }
+        
+        // 字节数组 - BINARY, VARBINARY, BLOB
+        if (value instanceof byte[]) {
+            byte[] bytes = (byte[]) value;
+            StringBuilder hex = new StringBuilder("0x");
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
         }
         
         // 字符串类型，需要转义
@@ -196,7 +276,8 @@ public class DmlEventHandler implements BinlogEventHandler {
                            .replace("'", "\\'")
                            .replace("\n", "\\n")
                            .replace("\r", "\\r")
-                           .replace("\t", "\\t");
+                           .replace("\t", "\\t")
+                           .replace("\0", "\\0");
         return "'" + strValue + "'";
     }
 

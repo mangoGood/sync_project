@@ -66,14 +66,17 @@ public class Main {
             }
 
             // 记录源数据库快照位点（用于增量同步）
+            // 只有在配置允许时才记录，agent 已经在启动前记录了 checkpoint
             String checkpointDbPath = config.getCheckpointDbPath();
-            if (checkpointDbPath != null && !checkpointDbPath.isEmpty()) {
+            if (checkpointDbPath != null && !checkpointDbPath.isEmpty() && config.isRecordCheckpoint()) {
                 CheckpointRecorder checkpointRecorder = new CheckpointRecorder(checkpointDbPath);
                 try {
                     checkpointRecorder.recordSnapshot(sourceConn);
                 } finally {
                     checkpointRecorder.close();
                 }
+            } else {
+                logger.info("跳过 checkpoint 记录（已由 agent 在启动前记录）");
             }
 
             // 读取源数据库元数据

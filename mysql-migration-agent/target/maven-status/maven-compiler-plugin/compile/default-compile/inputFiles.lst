@@ -3,6 +3,7 @@
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/service/RecoveryService.java
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/model/TaskMessage.java
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/model/TaskStatusMessage.java
+/Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/checkpoint/CheckpointManager.java
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/service/TaskStateService.java
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/AgentMain.java
 /Users/finn/Documents/git_projects/test_git/mysql-migration-agent/src/main/java/com/migration/agent/service/ConfigService.java

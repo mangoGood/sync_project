@@ -3,10 +3,15 @@ package com.synctask.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TaskStatusUpdate {
+    @JsonProperty("task_id")
     private String taskId;
+    
     private String status;
     private Integer progress;
     private Long userId;
+    
+    @JsonProperty("migration_mode")
+    private String migrationMode;
     
     @JsonProperty("total_tables")
     private Integer totalTables;
@@ -56,6 +61,14 @@ public class TaskStatusUpdate {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getMigrationMode() {
+        return migrationMode;
+    }
+
+    public void setMigrationMode(String migrationMode) {
+        this.migrationMode = migrationMode;
     }
 
     public Integer getTotalTables() {

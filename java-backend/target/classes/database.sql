@@ -1,7 +1,7 @@
 -- 创建数据库
-CREATE DATABASE IF NOT EXISTS myapp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS sync_task_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE myapp_db;
+USE sync_task_db;
 
 -- 创建用户表
 CREATE TABLE IF NOT EXISTS users (
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS workflows (
     user_id BIGINT NOT NULL COMMENT '用户ID',
     migration_mode ENUM('full', 'fullAndIncre') DEFAULT 'full' COMMENT '迁移模式：full-全量同步，fullAndIncre-全量+增量同步',
     is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否软删除',
-    sync_objects TEXT COMMENT '同步对象JSON，格式: {"db1":{"tables":["t1","t2"]}}',
+    sync_objects TEXT COMMENT '同步对象JSON，格式: {"db1":["t1","t2"]}',
     source_db_name VARCHAR(255) COMMENT '源数据库名',
     total_tables INT DEFAULT NULL COMMENT '全量同步总表数',
     completed_tables INT DEFAULT 0 COMMENT '全量同步已完成表数',

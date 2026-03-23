@@ -175,6 +175,19 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/{id}/retry")
+    public ResponseEntity<?> retryWorkflow(
+            @PathVariable String id,
+            Authentication authentication) {
+        try {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            workflowService.retryWorkflow(id, userPrincipal.getId());
+            return ResponseEntity.ok(new ApiResponse(true, "任务重试已启动"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
     private Map<String, Object> convertToMap(Workflow workflow) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", workflow.getId());
@@ -185,6 +198,7 @@ public class WorkflowController {
         map.put("progress", workflow.getProgress());
         map.put("is_billing", workflow.getIsBilling());
         map.put("migration_mode", workflow.getMigrationMode());
+        map.put("sync_objects", workflow.getSyncObjects());
         map.put("is_deleted", workflow.getIsDeleted());
         map.put("created_at", workflow.getCreatedAt());
         map.put("updated_at", workflow.getUpdatedAt());

@@ -18,7 +18,7 @@ public class TaskMessage implements Serializable {
     private String targetConnection;
     private LocalDateTime createdAt;
     private String currentStatus;
-    private Map<String, Map<String, Object>> syncObjects;
+    private Map<String, Object> syncObjects;
     private String sourceDbName;
 
     public static class DatabaseConfig {
@@ -157,11 +157,11 @@ public class TaskMessage implements Serializable {
         this.currentStatus = currentStatus;
     }
 
-    public Map<String, Map<String, Object>> getSyncObjects() {
+    public Map<String, Object> getSyncObjects() {
         return syncObjects;
     }
 
-    public void setSyncObjects(Map<String, Map<String, Object>> syncObjects) {
+    public void setSyncObjects(Map<String, Object> syncObjects) {
         this.syncObjects = syncObjects;
     }
 

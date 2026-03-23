@@ -31,5 +31,5 @@
         <appender-ref ref="FILE"/>
     </root>
 
-    <logger name="com.migration" level="DEBUG"/>
+    <logger name="com.migration" level="INFO"/>
 </configuration>

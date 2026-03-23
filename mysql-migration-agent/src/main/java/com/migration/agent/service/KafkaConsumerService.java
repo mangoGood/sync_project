@@ -47,7 +47,7 @@ public class KafkaConsumerService {
                     int day = arr.get(2).getAsInt();
                     int hour = arr.get(3).getAsInt();
                     int minute = arr.get(4).getAsInt();
-                    int second = arr.get(5).getAsInt();
+                    int second = arr.size() > 5 ? arr.get(5).getAsInt() : 0;
                     return LocalDateTime.of(year, month, day, hour, minute, second);
                 } else if (json.isJsonPrimitive()) {
                     return LocalDateTime.parse(json.getAsString(), formatter);

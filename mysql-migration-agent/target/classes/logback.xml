@@ -22,5 +22,5 @@
         <appender-ref ref="FILE" />
     </root>
 
-    <logger name="com.migration.agent" level="DEBUG" />
+    <logger name="com.migration.agent" level="INFO" />
 </configuration>

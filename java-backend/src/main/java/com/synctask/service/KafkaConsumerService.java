@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -30,6 +31,14 @@ public class KafkaConsumerService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+    
+    private long serviceStartTime;
+
+    @PostConstruct
+    public void init() {
+        serviceStartTime = System.currentTimeMillis();
+        logger.info("KafkaConsumerService 初始化，启动时间戳: {}", serviceStartTime);
+    }
 
     @KafkaListener(topics = "${spring.kafka.topics.task-status}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -37,6 +46,12 @@ public class KafkaConsumerService {
         logger.info("收到任务状态消息: {}", messageMap);
 
         try {
+            Long messageTimestamp = getLongValue(messageMap, "timestamp");
+            if (messageTimestamp != null && messageTimestamp < serviceStartTime) {
+                logger.info("忽略旧消息: 消息时间戳 {} 早于服务启动时间 {}", messageTimestamp, serviceStartTime);
+                return;
+            }
+            
             String taskId = getStringValue(messageMap, "taskId");
             String status = getStringValue(messageMap, "status");
             Integer progress = getIntegerValue(messageMap, "progress");
@@ -62,8 +77,7 @@ public class KafkaConsumerService {
             WorkflowStatus oldStatus = workflow.getStatus();
             
             if (oldStatus == WorkflowStatus.COMPLETED || oldStatus == WorkflowStatus.FAILED) {
-                logger.info("任务已处于终态({}), 忽略状态更新: taskId={}, newStatus={}", 
-                    oldStatus, taskId, newStatus);
+                logger.info("任务已处于终态 {}，忽略状态更新消息: newStatus={}", oldStatus, newStatus);
                 return;
             }
             
@@ -100,8 +114,23 @@ public class KafkaConsumerService {
                 workflow.setCurrentTableTotalRows(currentTableTotalRows);
             }
 
+            String migrationMode = workflow.getMigrationMode();
+            boolean isFullAndIncre = "fullAndIncre".equals(migrationMode);
+            
             if (newStatus == WorkflowStatus.COMPLETED || newStatus == WorkflowStatus.FAILED) {
                 workflow.setCompletedAt(LocalDateTime.now());
+                workflow.setIsBilling(false);
+            } else if (newStatus == WorkflowStatus.FULL_COMPLETED) {
+                if (isFullAndIncre) {
+                    // 全量+增量模式：全量完成后继续增量同步，保持计费
+                    workflow.setIsBilling(true);
+                } else {
+                    // 仅全量模式：全量完成后任务结束，停止计费
+                    workflow.setCompletedAt(LocalDateTime.now());
+                    workflow.setIsBilling(false);
+                }
+            } else if (newStatus == WorkflowStatus.INCREMENT_RUNNING) {
+                workflow.setIsBilling(true);
             }
 
             workflowRepository.save(workflow);
@@ -118,6 +147,7 @@ public class KafkaConsumerService {
             update.setStatus(workflow.getStatus().name());
             update.setProgress(workflow.getProgress());
             update.setUserId(workflow.getUserId());
+            update.setMigrationMode(workflow.getMigrationMode());
             update.setTotalTables(workflow.getTotalTables());
             update.setCompletedTables(workflow.getCompletedTables());
             update.setCurrentTable(workflow.getCurrentTable());

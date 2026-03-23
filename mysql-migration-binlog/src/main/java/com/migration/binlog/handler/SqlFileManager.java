@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -99,7 +101,8 @@ public class SqlFileManager {
         
         // 创建新文件
         File file = new File(fullPath);
-        currentWriter = new BufferedWriter(new FileWriter(file, true));
+        currentWriter = new BufferedWriter(new OutputStreamWriter(
+            new FileOutputStream(file, true), StandardCharsets.UTF_8));
         currentFileSqlCount = 0;
         
         // 写入文件头

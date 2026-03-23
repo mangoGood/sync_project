@@ -1,3 +1,4 @@
+com/migration/agent/checkpoint/CheckpointManager.class
 com/migration/agent/service/KafkaConsumerService.class
 com/migration/agent/AgentMain.class
 com/migration/agent/model/TaskStateInfo.class
@@ -15,4 +16,5 @@ com/migration/agent/util/ConnectionStringParser$ConnectionInfo.class
 com/migration/agent/model/TaskStatusMessage.class
 com/migration/agent/manager/ProcessManager.class
 com/migration/agent/thread/MigrationAgentThread.class
+com/migration/agent/checkpoint/CheckpointManager$BinlogPositionInfo.class
 com/migration/agent/model/RecoveryTask.class

@@ -41,8 +41,8 @@ public class KafkaProducerService {
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {
-                Type type = new TypeToken<Map<String, Map<String, Object>>>(){}.getType();
-                Map<String, Map<String, Object>> syncObjects = gson.fromJson(workflow.getSyncObjects(), type);
+                Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                Map<String, Object> syncObjects = gson.fromJson(workflow.getSyncObjects(), type);
                 message.setSyncObjects(syncObjects);
             } catch (Exception e) {
                 logger.warn("解析 syncObjects 失败: {}", e.getMessage());
@@ -77,8 +77,8 @@ public class KafkaProducerService {
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {
-                Type type = new TypeToken<Map<String, Map<String, Object>>>(){}.getType();
-                Map<String, Map<String, Object>> syncObjects = gson.fromJson(workflow.getSyncObjects(), type);
+                Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                Map<String, Object> syncObjects = gson.fromJson(workflow.getSyncObjects(), type);
                 message.setSyncObjects(syncObjects);
             } catch (Exception e) {
                 logger.warn("解析 syncObjects 失败: {}", e.getMessage());

@@ -35,7 +35,7 @@ public class PositionComparator {
         
         if (entryGtid != null && !entryGtid.isEmpty() && 
             checkpointGtid != null && !checkpointGtid.isEmpty()) {
-            return compareByGtid(entryGtid, checkpointGtid);
+            return compareByGtid(entryGtid, checkpointGtid, entry, checkpoint);
         }
         
         // 使用 file position 比较
@@ -46,7 +46,7 @@ public class PositionComparator {
      * 通过 GTID 比较
      * GTID 格式: UUID:transaction_id 或 UUID:1-5
      */
-    private static boolean compareByGtid(String entryGtid, String checkpointGtid) {
+    private static boolean compareByGtid(String entryGtid, String checkpointGtid, SqlFileParser.SqlEntry entry, BinlogPosition checkpoint) {
         try {
             // 解析 entry GTID
             String[] entryParts = entryGtid.split(":");
@@ -54,7 +54,7 @@ public class PositionComparator {
             
             if (entryParts.length != 2 || checkpointParts.length != 2) {
                 logger.warn("GTID 格式不正确: entry={}, checkpoint={}", entryGtid, checkpointGtid);
-                return false;
+                return compareByFilePosition(entry, checkpoint);
             }
             
             // 比较 UUID
@@ -68,11 +68,19 @@ public class PositionComparator {
             long entryTxId = parseTransactionId(entryParts[1]);
             long checkpointTxId = parseTransactionId(checkpointParts[1]);
             
-            return entryTxId > checkpointTxId;
+            if (entryTxId > checkpointTxId) {
+                return true;
+            } else if (entryTxId < checkpointTxId) {
+                return false;
+            }
+            
+            // GTID 相同时，继续比较 position
+            // 同一个 GTID 事务可能包含多个 SQL，每个 SQL 有不同的 position
+            return compareByFilePosition(entry, checkpoint);
             
         } catch (Exception e) {
             logger.error("GTID 比较失败: entry={}, checkpoint={}", entryGtid, checkpointGtid, e);
-            return false;
+            return compareByFilePosition(entry, checkpoint);
         }
     }
     

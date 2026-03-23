@@ -13,7 +13,7 @@ public class TaskCreatedMessage {
     private LocalDateTime createdAt;
     private String messageType;
     private String currentStatus;
-    private Map<String, Map<String, Object>> syncObjects;
+    private Map<String, Object> syncObjects;
     private String sourceDbName;
 
     public TaskCreatedMessage() {
@@ -92,11 +92,11 @@ public class TaskCreatedMessage {
         this.currentStatus = currentStatus;
     }
 
-    public Map<String, Map<String, Object>> getSyncObjects() {
+    public Map<String, Object> getSyncObjects() {
         return syncObjects;
     }
 
-    public void setSyncObjects(Map<String, Map<String, Object>> syncObjects) {
+    public void setSyncObjects(Map<String, Object> syncObjects) {
         this.syncObjects = syncObjects;
     }
 

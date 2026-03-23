@@ -55,6 +55,7 @@ com/synctask/dto/SyncObjects$DatabaseTables.class
 com/synctask/entity/ValidationTaskLog$LogLevel.class
 com/synctask/security/JwtAuthenticationFilter.class
 com/synctask/entity/ValidationTask$ValidationStatus.class
+com/synctask/service/WorkflowService$1.class
 com/synctask/service/AuthService.class
 com/synctask/entity/WorkflowLog.class
 com/synctask/service/MetadataService$ParsedConnection.class
