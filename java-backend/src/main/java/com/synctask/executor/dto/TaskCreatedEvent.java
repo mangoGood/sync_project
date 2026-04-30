@@ -10,6 +10,8 @@ public class TaskCreatedEvent {
     private String targetConnection;
     private LocalDateTime createdAt;
     private String messageType;
+    private String sourceDbType;
+    private String targetDbType;
 
     public TaskCreatedEvent() {
         this.messageType = "TASK_CREATED";
@@ -69,5 +71,21 @@ public class TaskCreatedEvent {
 
     public void setMessageType(String messageType) {
         this.messageType = messageType;
+    }
+
+    public String getSourceDbType() {
+        return sourceDbType;
+    }
+
+    public void setSourceDbType(String sourceDbType) {
+        this.sourceDbType = sourceDbType;
+    }
+
+    public String getTargetDbType() {
+        return targetDbType;
+    }
+
+    public void setTargetDbType(String targetDbType) {
+        this.targetDbType = targetDbType;
     }
 }

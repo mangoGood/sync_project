@@ -1,11 +1,11 @@
 com/synctask/service/KafkaProducerService$2.class
 com/synctask/entity/ValidationTaskLog.class
+com/synctask/entity/SyncErrorCode.class
 com/synctask/dto/DatabaseInfo.class
 com/synctask/service/MetadataService.class
 com/synctask/repository/ValidationTaskRepository.class
 com/synctask/controller/AuthController$ApiResponse.class
 com/synctask/executor/service/TaskExecutorService.class
-com/synctask/service/ValidationTaskService$1.class
 com/synctask/repository/UserRepository.class
 com/synctask/controller/WorkflowController$CreateWorkflowRequest.class
 com/synctask/service/KafkaConsumerService.class
@@ -16,15 +16,20 @@ com/synctask/config/AsyncConfig.class
 com/synctask/service/WorkflowService.class
 com/synctask/entity/ValidationTask.class
 com/synctask/entity/WorkflowStatus.class
+com/synctask/dto/ContentCompareSession$TableCompareTask.class
 com/synctask/service/KafkaProducerService.class
+com/synctask/service/ContentCompareService.class
 com/synctask/dto/RegisterRequest.class
 com/synctask/security/UserPrincipal.class
 com/synctask/dto/TaskCreatedMessage.class
 com/synctask/dto/TaskStatusMessage.class
 com/synctask/config/WebSocketConfig.class
+com/synctask/service/ContentCompareService$ParsedConn.class
 com/synctask/dto/ValidationResult$CheckItem.class
+com/synctask/service/MetadataService$ConnectionTestResult.class
 com/synctask/dto/TaskStatusUpdate.class
 com/synctask/entity/WorkflowStatusConverter.class
+com/synctask/dto/ContentCompareSession.class
 com/synctask/repository/WorkflowRepository.class
 com/synctask/security/JwtTokenProvider.class
 com/synctask/entity/Workflow.class
@@ -32,6 +37,7 @@ com/synctask/controller/MetadataController.class
 com/synctask/service/KafkaConsumerService$1.class
 com/synctask/security/CustomUserDetailsService.class
 com/synctask/entity/WorkflowLog$LogLevel.class
+com/synctask/dto/ContentCompareSession$CompareCursor.class
 com/synctask/dto/SyncObjects.class
 com/synctask/service/ValidationTaskService$TableDiffResult.class
 com/synctask/executor/dto/TaskCreatedEvent.class
@@ -45,6 +51,7 @@ com/synctask/controller/ValidationTaskController.class
 com/synctask/service/ValidationTaskService$ParsedConnection.class
 com/synctask/controller/AuthController.class
 com/synctask/config/WebMvcConfig.class
+com/synctask/dto/ContentCompareSession$ColumnMeta.class
 com/synctask/config/SecurityConfig.class
 com/synctask/controller/HealthController.class
 com/synctask/service/KafkaProducerService$1.class
@@ -52,6 +59,7 @@ com/synctask/dto/JwtResponse.class
 com/synctask/entity/User.class
 com/synctask/service/ValidationTaskService.class
 com/synctask/dto/SyncObjects$DatabaseTables.class
+com/synctask/controller/WorkflowController$UpdateConfigRequest.class
 com/synctask/entity/ValidationTaskLog$LogLevel.class
 com/synctask/security/JwtAuthenticationFilter.class
 com/synctask/entity/ValidationTask$ValidationStatus.class
@@ -61,5 +69,6 @@ com/synctask/entity/WorkflowLog.class
 com/synctask/service/MetadataService$ParsedConnection.class
 com/synctask/dto/TableInfo.class
 com/synctask/dto/ValidationResult.class
+com/synctask/dto/ContentCompareSession$DataDiff.class
 com/synctask/config/KafkaConfig.class
 com/synctask/repository/WorkflowLogRepository.class

@@ -23,13 +23,15 @@ CREATE TABLE IF NOT EXISTS workflows (
     name VARCHAR(255) NOT NULL COMMENT '任务名称',
     source_connection VARCHAR(255) COMMENT '源连接信息',
     target_connection VARCHAR(255) COMMENT '目标连接信息',
-    status ENUM('PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'PENDING' COMMENT '任务状态',
+    status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态',
     progress INT DEFAULT 0 COMMENT '进度百分比',
     user_id BIGINT NOT NULL COMMENT '用户ID',
     migration_mode ENUM('full', 'fullAndIncre') DEFAULT 'full' COMMENT '迁移模式：full-全量同步，fullAndIncre-全量+增量同步',
     is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否软删除',
     sync_objects TEXT COMMENT '同步对象JSON，格式: {"db1":["t1","t2"]}',
     source_db_name VARCHAR(255) COMMENT '源数据库名',
+    source_type VARCHAR(20) DEFAULT 'mysql' COMMENT '源数据库类型：mysql/postgresql',
+    target_type VARCHAR(20) DEFAULT 'mysql' COMMENT '目标数据库类型：mysql/postgresql',
     total_tables INT DEFAULT NULL COMMENT '全量同步总表数',
     completed_tables INT DEFAULT 0 COMMENT '全量同步已完成表数',
     current_table VARCHAR(255) DEFAULT NULL COMMENT '当前正在同步的表名',
@@ -62,17 +64,19 @@ CREATE TABLE IF NOT EXISTS workflow_logs (
 -- 创建校验任务表
 CREATE TABLE IF NOT EXISTS validation_tasks (
     id VARCHAR(36) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL COMMENT '校验任务名称',
+    name VARCHAR(255) NOT NULL COMMENT '对比任务名称',
     workflow_id VARCHAR(36) NOT NULL COMMENT '关联的同步任务ID',
     workflow_name VARCHAR(255) COMMENT '关联的同步任务名称',
     user_id BIGINT NOT NULL COMMENT '用户ID',
     source_connection TEXT COMMENT '源数据库连接',
     target_connection TEXT COMMENT '目标数据库连接',
     sync_objects TEXT COMMENT '同步对象JSON',
-    status ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED') DEFAULT 'PENDING' COMMENT '校验状态',
+    compare_type VARCHAR(20) DEFAULT 'ROW_COUNT' COMMENT '对比类型: ROW_COUNT-行数对比, CONTENT-内容对比',
+    compare_result LONGTEXT COMMENT '对比结果JSON',
+    status ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED') DEFAULT 'PENDING' COMMENT '对比状态',
     total_tables INT DEFAULT 0 COMMENT '总表数',
-    passed_tables INT DEFAULT 0 COMMENT '通过校验的表数',
-    failed_tables INT DEFAULT 0 COMMENT '校验失败的表数',
+    passed_tables INT DEFAULT 0 COMMENT '通过对比的表数',
+    failed_tables INT DEFAULT 0 COMMENT '对比失败的表数',
     total_rows BIGINT DEFAULT 0 COMMENT '总行数',
     mismatched_rows BIGINT DEFAULT 0 COMMENT '不一致的行数',
     error_message TEXT COMMENT '错误信息',
@@ -86,7 +90,7 @@ CREATE TABLE IF NOT EXISTS validation_tasks (
     INDEX idx_created_at (created_at),
     INDEX idx_is_deleted (is_deleted),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据校验任务表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据对比任务表';
 
 -- 创建校验任务日志表
 CREATE TABLE IF NOT EXISTS validation_task_logs (
@@ -112,3 +116,6 @@ ON DUPLICATE KEY UPDATE username=username;
 INSERT INTO users (username, password, email, role, enabled) 
 VALUES ('user2', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'user2@example.com', 'USER', 1)
 ON DUPLICATE KEY UPDATE username=username;
+
+-- 迁移：为现有数据库添加 CONFIGURING 状态
+ALTER TABLE workflows MODIFY COLUMN status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态';

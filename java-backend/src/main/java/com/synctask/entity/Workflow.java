@@ -20,7 +20,7 @@ public class Workflow {
     private String targetConnection;
 
     @Enumerated(EnumType.STRING)
-    private WorkflowStatus status = WorkflowStatus.PENDING;
+    private WorkflowStatus status = WorkflowStatus.CONFIGURING;
 
     private Integer progress = 0;
 
@@ -39,6 +39,9 @@ public class Workflow {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "error_code", length = 10)
+    private String errorCode;
+
     @Column(name = "is_billing")
     private Boolean isBilling = false;
 
@@ -53,6 +56,15 @@ public class Workflow {
 
     @Column(name = "source_db_name")
     private String sourceDbName;
+
+    @Column(name = "target_db_name")
+    private String targetDbName;
+
+    @Column(name = "source_type")
+    private String sourceType = "mysql";
+
+    @Column(name = "target_type")
+    private String targetType = "mysql";
 
     @Column(name = "total_tables")
     private Integer totalTables;
@@ -71,6 +83,12 @@ public class Workflow {
 
     @Column(name = "current_table_total_rows")
     private Long currentTableTotalRows;
+
+    @Column(name = "rpo_ms")
+    private Long rpoMs;
+
+    @Column(name = "rto_ms")
+    private Long rtoMs;
 
     @PrePersist
     protected void onCreate() {
@@ -171,6 +189,14 @@ public class Workflow {
         this.errorMessage = errorMessage;
     }
 
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
     public Boolean getIsBilling() {
         return isBilling;
     }
@@ -209,6 +235,30 @@ public class Workflow {
 
     public void setSourceDbName(String sourceDbName) {
         this.sourceDbName = sourceDbName;
+    }
+
+    public String getTargetDbName() {
+        return targetDbName;
+    }
+
+    public void setTargetDbName(String targetDbName) {
+        this.targetDbName = targetDbName;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public String getTargetType() {
+        return targetType;
+    }
+
+    public void setTargetType(String targetType) {
+        this.targetType = targetType;
     }
 
     public Integer getTotalTables() {
@@ -257,5 +307,21 @@ public class Workflow {
 
     public void setCurrentTableTotalRows(Long currentTableTotalRows) {
         this.currentTableTotalRows = currentTableTotalRows;
+    }
+
+    public Long getRpoMs() {
+        return rpoMs;
+    }
+
+    public void setRpoMs(Long rpoMs) {
+        this.rpoMs = rpoMs;
+    }
+
+    public Long getRtoMs() {
+        return rtoMs;
+    }
+
+    public void setRtoMs(Long rtoMs) {
+        this.rtoMs = rtoMs;
     }
 }

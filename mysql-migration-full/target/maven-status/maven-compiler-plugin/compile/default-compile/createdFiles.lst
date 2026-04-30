@@ -1,9 +1,0 @@
-com/migration/full/migration/SchemaMigration.class
-com/migration/full/progress/MigrationProgress.class
-com/migration/full/checkpoint/CheckpointRecorder.class
-com/migration/full/progress/ProgressManager.class
-com/migration/full/progress/ProgressDatabase.class
-com/migration/full/migration/DataMigration.class
-com/migration/full/checkpoint/CheckpointRecorder$BinlogPositionInfo.class
-com/migration/full/Main.class
-com/migration/full/metadata/MetadataReader.class

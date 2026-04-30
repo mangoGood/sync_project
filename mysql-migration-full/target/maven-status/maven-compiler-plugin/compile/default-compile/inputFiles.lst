@@ -1,8 +1,0 @@
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/progress/ProgressManager.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/Main.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/metadata/MetadataReader.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/progress/MigrationProgress.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/progress/ProgressDatabase.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/migration/SchemaMigration.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/migration/DataMigration.java
-/Users/finn/Documents/git_projects/test_git/mysql-migration-full/src/main/java/com/migration/full/checkpoint/CheckpointRecorder.java

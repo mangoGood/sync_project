@@ -75,6 +75,16 @@ public class TaskExecutorService {
         if (map.get("messageType") != null) {
             event.setMessageType(String.valueOf(map.get("messageType")));
         }
+        if (map.get("sourceDbType") != null) {
+            event.setSourceDbType(String.valueOf(map.get("sourceDbType")));
+        } else if (map.get("sourceType") != null) {
+            event.setSourceDbType(String.valueOf(map.get("sourceType")));
+        }
+        if (map.get("targetDbType") != null) {
+            event.setTargetDbType(String.valueOf(map.get("targetDbType")));
+        } else if (map.get("targetType") != null) {
+            event.setTargetDbType(String.valueOf(map.get("targetType")));
+        }
         
         return event;
     }
@@ -132,6 +142,8 @@ public class TaskExecutorService {
         configBuilder.append("# 数据库连接信息\n");
         configBuilder.append("source.connection=").append(event.getSourceConnection() != null ? event.getSourceConnection() : "").append("\n");
         configBuilder.append("target.connection=").append(event.getTargetConnection() != null ? event.getTargetConnection() : "").append("\n");
+        configBuilder.append("source.db.type=").append(event.getSourceDbType() != null ? event.getSourceDbType() : "mysql").append("\n");
+        configBuilder.append("target.db.type=").append(event.getTargetDbType() != null ? event.getTargetDbType() : "mysql").append("\n");
         
         try (FileWriter writer = new FileWriter(configFilePath.toFile())) {
             writer.write(configBuilder.toString());

@@ -1,266 +1,479 @@
-2026-03-05 09:05:21.803 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:05:21.805 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
-2026-03-05 09:05:21.806 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:05:21.806 [main] INFO  com.migration.full.Main - 使用配置文件: config.properties
-2026-03-05 09:05:21.808 [main] INFO  com.migration.full.Main - 源数据库: myapp_db
-2026-03-05 09:05:21.809 [main] INFO  com.migration.full.Main - 目标数据库: myapp_db
-2026-03-05 09:05:21.982 [main] DEBUG c.m.full.progress.ProgressDatabase - 进度表创建成功
-2026-03-05 09:05:21.982 [main] INFO  c.m.full.progress.ProgressDatabase - 进度数据库初始化成功
-2026-03-05 09:05:21.982 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已启用
-2026-03-05 09:05:21.986 [main] INFO  com.migration.full.Main - 
+2026-04-24 14:38:25.285 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:25.288 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
+2026-04-24 14:38:25.288 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:25.288 [main] INFO  com.migration.full.Main - 任务 ID: test_full
+2026-04-24 14:38:25.288 [main] INFO  com.migration.full.Main - 使用配置文件: files/test_full/config.properties
+2026-04-24 14:38:25.289 [main] INFO  com.migration.full.Main - 源数据库: test_db1
+2026-04-24 14:38:25.289 [main] INFO  com.migration.full.Main - 目标数据库: test_db1
+2026-04-24 14:38:25.290 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已禁用
+2026-04-24 14:38:25.395 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.400 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.400 [main] INFO  com.migration.full.Main - 跳过 checkpoint 记录（已由 agent 在启动前记录）
+2026-04-24 14:38:25.414 [main] INFO  c.m.full.metadata.MetadataReader - 找到 6 个表
+2026-04-24 14:38:25.454 [main] INFO  com.migration.full.Main - 找到 6 个表需要迁移
+2026-04-24 14:38:25.455 [main] INFO  com.migration.full.Main -   - orders: 10 行
+2026-04-24 14:38:25.456 [main] INFO  com.migration.full.Main -   - products: 6 行
+2026-04-24 14:38:25.457 [main] INFO  com.migration.full.Main -   - t5: 6 行
+2026-04-24 14:38:25.460 [main] INFO  com.migration.full.Main -   - test_all_types: 5 行
+2026-04-24 14:38:25.461 [main] INFO  com.migration.full.Main -   - test_sync: 12 行
+2026-04-24 14:38:25.462 [main] INFO  com.migration.full.Main -   - users: 18 行
+2026-04-24 14:38:25.462 [main] INFO  com.migration.full.Main - 
 ========================================
-2026-03-05 09:05:21.986 [main] INFO  com.migration.full.Main - 检测到未完成的迁移
-2026-03-05 09:05:21.986 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - ========== 迁移进度摘要 ==========
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - 总表数: 1
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - 表: chinese_person_info, 状态: FAILED, 进度: 1998/5000 ({:.2f}%)
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - ----------------------------------
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - 已完成: 0, 进行中: 0, 失败: 1, 待处理: 0
-2026-03-05 09:05:21.989 [main] INFO  c.m.full.progress.ProgressManager - ==================================
-2026-03-05 09:05:21.989 [main] INFO  com.migration.full.Main - 将从上次中断的位置继续迁移
-
-2026-03-05 09:05:22.052 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:05:22.063 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:05:22.066 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - Checkpoint 数据库初始化成功: ./checkpoint/checkpoint
-2026-03-05 09:05:22.067 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:05:22.067 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 开始记录源数据库快照位点
-2026-03-05 09:05:22.067 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:05:22.073 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 当前 binlog 位置: binlog.000012:10928
-2026-03-05 09:05:22.074 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 当前 GTID: a890051c-eb78-11f0-a60f-dafc9531d26a:1-34
-2026-03-05 09:05:22.077 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 保存 Checkpoint 成功: BinlogPositionInfo{filename='binlog.000012', position=10928, gtid='a890051c-eb78-11f0-a60f-dafc9531d26a:1-34', timestamp=1772672722076}
-2026-03-05 09:05:22.077 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:05:22.077 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 源数据库快照位点记录完成
-2026-03-05 09:05:22.077 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:05:22.129 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - Checkpoint 数据库连接已关闭
-2026-03-05 09:05:22.137 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:05:22.150 [main] INFO  c.m.full.metadata.MetadataReader - 找到 2 个表
-2026-03-05 09:05:22.161 [main] DEBUG c.m.full.metadata.MetadataReader - 表 chinese_person_info 的列信息: 11
-2026-03-05 09:05:22.163 [main] DEBUG c.m.full.metadata.MetadataReader - 表 test1 的列信息: 2
-2026-03-05 09:05:22.163 [main] INFO  com.migration.full.Main - 找到 2 个表需要迁移
-2026-03-05 09:05:22.164 [main] INFO  com.migration.full.Main -   - chinese_person_info: 5000 行
-2026-03-05 09:05:22.166 [main] INFO  com.migration.full.Main -   - test1: 7 行
-2026-03-05 09:05:22.166 [main] INFO  com.migration.full.Main - 
+2026-04-24 14:38:25.462 [main] INFO  com.migration.full.Main - 开始迁移表结构
+2026-04-24 14:38:25.462 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:25.462 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 6 个表
+2026-04-24 14:38:25.504 [main] INFO  c.m.full.migration.SchemaMigration - 表 orders 结构迁移成功
+2026-04-24 14:38:25.524 [main] INFO  c.m.full.migration.SchemaMigration - 表 products 结构迁移成功
+2026-04-24 14:38:25.542 [main] INFO  c.m.full.migration.SchemaMigration - 表 t5 结构迁移成功
+2026-04-24 14:38:25.554 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_all_types 结构迁移成功
+2026-04-24 14:38:25.577 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_sync 结构迁移成功
+2026-04-24 14:38:25.595 [main] INFO  c.m.full.migration.SchemaMigration - 表 users 结构迁移成功
+2026-04-24 14:38:25.596 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:25.596 [main] INFO  com.migration.full.Main - 表结构迁移完成
+2026-04-24 14:38:25.596 [main] INFO  com.migration.full.Main - 
 ========================================
-2026-03-05 09:05:22.166 [main] INFO  com.migration.full.Main - 开始迁移表结构
-2026-03-05 09:05:22.169 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:05:22.169 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 2 个表
-2026-03-05 09:05:22.184 [main] ERROR c.m.full.migration.SchemaMigration - 表 chinese_person_info 结构迁移失败，已忽略该错误继续执行
-java.sql.SQLSyntaxErrorException: Table 'chinese_person_info' already exists
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:763)
-	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:648)
-	at com.migration.db.DatabaseConnection.execute(DatabaseConnection.java:70)
-	at com.migration.full.migration.SchemaMigration.createTable(SchemaMigration.java:89)
-	at com.migration.full.migration.SchemaMigration.migrateTable(SchemaMigration.java:68)
-	at com.migration.full.migration.SchemaMigration.migrateAllTables(SchemaMigration.java:38)
-	at com.migration.full.Main.main(Main.java:100)
-2026-03-05 09:05:22.186 [main] ERROR c.m.full.migration.SchemaMigration - 表 test1 结构迁移失败，已忽略该错误继续执行
-java.sql.SQLSyntaxErrorException: Table 'test1' already exists
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:763)
-	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:648)
-	at com.migration.db.DatabaseConnection.execute(DatabaseConnection.java:70)
-	at com.migration.full.migration.SchemaMigration.createTable(SchemaMigration.java:89)
-	at com.migration.full.migration.SchemaMigration.migrateTable(SchemaMigration.java:68)
-	at com.migration.full.migration.SchemaMigration.migrateAllTables(SchemaMigration.java:38)
-	at com.migration.full.Main.main(Main.java:100)
-2026-03-05 09:05:22.186 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 0, 失败: 2
-2026-03-05 09:05:22.186 [main] INFO  com.migration.full.Main - 表结构迁移完成
-2026-03-05 09:05:22.186 [main] INFO  com.migration.full.Main - 
-========================================
-2026-03-05 09:05:22.186 [main] INFO  com.migration.full.Main - 开始迁移数据
-2026-03-05 09:05:22.186 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:05:22.186 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 2 个表
-2026-03-05 09:05:22.187 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 chinese_person_info 的数据，总行数: 5000
-2026-03-05 09:05:22.189 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='IN_PROGRESS', progress=39.96% (1998/5000)}
-2026-03-05 09:05:22.189 [main] INFO  c.m.full.progress.ProgressManager - 继续迁移: chinese_person_info, 已迁移: 1998/5000, 最后ID: 2000
-2026-03-05 09:05:22.189 [main] INFO  c.m.full.migration.DataMigration - 从上次中断位置继续迁移，已迁移: 1998, 最后ID: 2000
-2026-03-05 09:05:22.333 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: chinese_person_info, 行: 2997
-java.sql.BatchUpdateException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
+2026-04-24 14:38:25.596 [main] INFO  com.migration.full.Main - 开始迁移数据
+2026-04-24 14:38:25.596 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:25.596 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 6 个表
+2026-04-24 14:38:25.597 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 orders 的数据，总行数: 10
+2026-04-24 14:38:25.619 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:38:25.625 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:38:25.629 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.630 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 products 的数据，总行数: 6
+2026-04-24 14:38:25.632 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.644 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:25.644 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:25.647 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.648 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 t5 的数据，总行数: 6
+2026-04-24 14:38:25.651 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.661 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:25.661 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:25.664 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.665 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_all_types 的数据，总行数: 5
+2026-04-24 14:38:25.667 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.674 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: test_all_types, 行: 1
+java.sql.SQLException: The value '-838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:130)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:98)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:90)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:64)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:74)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:99)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getTime(ResultSetImpl.java:921)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getObject(ResultSetImpl.java:1276)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:151)
+	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
+	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.exceptions.DataReadException: The value '-838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:87)
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:51)
+	at com.mysql.cj.result.AbstractDateTimeValueFactory.createFromTime(AbstractDateTimeValueFactory.java:74)
+	at com.mysql.cj.protocol.a.MysqlTextValueDecoder.decodeTime(MysqlTextValueDecoder.java:81)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.decodeAndCreateReturnValue(AbstractResultsetRow.java:95)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.getValueFromBytes(AbstractResultsetRow.java:243)
+	at com.mysql.cj.protocol.a.result.TextBufferRow.getValue(TextBufferRow.java:132)
+	... 6 common frames omitted
+2026-04-24 14:38:25.675 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: test_all_types, 行: 1
+java.sql.SQLException: The value '838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:130)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:98)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:90)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:64)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:74)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:99)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getTime(ResultSetImpl.java:921)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getObject(ResultSetImpl.java:1276)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:151)
+	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
+	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.exceptions.DataReadException: The value '838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:87)
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:51)
+	at com.mysql.cj.result.AbstractDateTimeValueFactory.createFromTime(AbstractDateTimeValueFactory.java:74)
+	at com.mysql.cj.protocol.a.MysqlTextValueDecoder.decodeTime(MysqlTextValueDecoder.java:81)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.decodeAndCreateReturnValue(AbstractResultsetRow.java:95)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.getValueFromBytes(AbstractResultsetRow.java:243)
+	at com.mysql.cj.protocol.a.result.TextBufferRow.getValue(TextBufferRow.java:132)
+	... 6 common frames omitted
+2026-04-24 14:38:25.693 [main] ERROR c.m.full.migration.DataMigration - 执行最后一批数据失败，表: test_all_types
+java.sql.BatchUpdateException: Data truncation: Out of range value for column 'col_bigint_unsigned' at row 1
 	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
 	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:238)
 	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
 	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.jdbc.exceptions.MysqlDataTruncation: Data truncation: Out of range value for column 'col_bigint_unsigned' at row 1
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:104)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
 	... 6 common frames omitted
-2026-03-05 09:05:22.334 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='IN_PROGRESS', progress=59.94% (2997/5000)}
-2026-03-05 09:05:22.335 [main] ERROR c.m.full.migration.DataMigration - 表 chinese_person_info 数据迁移失败
-java.sql.BatchUpdateException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
-	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
-	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
-	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
-	... 6 common frames omitted
-2026-03-05 09:05:22.336 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='FAILED', progress=59.94% (2997/5000)}
-2026-03-05 09:05:22.336 [main] ERROR c.m.full.progress.ProgressManager - 迁移失败: chinese_person_info, 错误: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-2026-03-05 09:05:22.336 [main] ERROR com.migration.full.Main - 数据库全量迁移失败
-java.sql.BatchUpdateException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
-	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
-	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
-	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '3000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
-	... 6 common frames omitted
-2026-03-05 09:10:03.677 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:10:03.677 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
-2026-03-05 09:10:03.677 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:10:03.677 [main] INFO  com.migration.full.Main - 使用配置文件: config.properties
-2026-03-05 09:10:03.678 [main] INFO  com.migration.full.Main - 源数据库: myapp_db
-2026-03-05 09:10:03.679 [main] INFO  com.migration.full.Main - 目标数据库: myapp_db
-2026-03-05 09:10:03.871 [main] DEBUG c.m.full.progress.ProgressDatabase - 进度表创建成功
-2026-03-05 09:10:03.871 [main] INFO  c.m.full.progress.ProgressDatabase - 进度数据库初始化成功
-2026-03-05 09:10:03.871 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已启用
-2026-03-05 09:10:03.875 [main] INFO  com.migration.full.Main - 
+2026-04-24 14:38:25.694 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 0, 失败: 2
+2026-04-24 14:38:25.694 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 0, 失败: 2
+2026-04-24 14:38:25.697 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.697 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_sync 的数据，总行数: 12
+2026-04-24 14:38:25.700 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.721 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:38:25.721 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:38:25.724 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.725 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 users 的数据，总行数: 18
+2026-04-24 14:38:25.727 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:25.756 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:38:25.756 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:38:25.756 [main] INFO  c.m.full.migration.DataMigration - 数据迁移完成，总成功: 52, 总失败: 2
+2026-04-24 14:38:25.756 [main] INFO  com.migration.full.Main - 数据迁移完成
+2026-04-24 14:38:25.757 [main] INFO  com.migration.full.Main - 
 ========================================
-2026-03-05 09:10:03.875 [main] INFO  com.migration.full.Main - 检测到未完成的迁移
-2026-03-05 09:10:03.875 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - ========== 迁移进度摘要 ==========
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - 总表数: 1
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - 表: chinese_person_info, 状态: FAILED, 进度: 2997/5000 ({:.2f}%)
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - ----------------------------------
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - 已完成: 0, 进行中: 0, 失败: 1, 待处理: 0
-2026-03-05 09:10:03.877 [main] INFO  c.m.full.progress.ProgressManager - ==================================
-2026-03-05 09:10:03.877 [main] INFO  com.migration.full.Main - 将从上次中断的位置继续迁移
-
-2026-03-05 09:10:03.935 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:10:03.945 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:10:03.948 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - Checkpoint 数据库初始化成功: ./checkpoint/checkpoint
-2026-03-05 09:10:03.948 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:10:03.948 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 开始记录源数据库快照位点
-2026-03-05 09:10:03.948 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:10:03.954 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 当前 binlog 位置: binlog.000012:10928
-2026-03-05 09:10:03.955 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 当前 GTID: a890051c-eb78-11f0-a60f-dafc9531d26a:1-34
-2026-03-05 09:10:03.959 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 保存 Checkpoint 成功: BinlogPositionInfo{filename='binlog.000012', position=10928, gtid='a890051c-eb78-11f0-a60f-dafc9531d26a:1-34', timestamp=1772673003958}
-2026-03-05 09:10:03.959 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:10:03.959 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - 源数据库快照位点记录完成
-2026-03-05 09:10:03.959 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - ========================================
-2026-03-05 09:10:04.019 [main] INFO  c.m.f.checkpoint.CheckpointRecorder - Checkpoint 数据库连接已关闭
-2026-03-05 09:10:04.023 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: myapp_db
-2026-03-05 09:10:04.031 [main] INFO  c.m.full.metadata.MetadataReader - 找到 2 个表
-2026-03-05 09:10:04.038 [main] DEBUG c.m.full.metadata.MetadataReader - 表 chinese_person_info 的列信息: 11
-2026-03-05 09:10:04.040 [main] DEBUG c.m.full.metadata.MetadataReader - 表 test1 的列信息: 2
-2026-03-05 09:10:04.040 [main] INFO  com.migration.full.Main - 找到 2 个表需要迁移
-2026-03-05 09:10:04.041 [main] INFO  com.migration.full.Main -   - chinese_person_info: 5000 行
-2026-03-05 09:10:04.043 [main] INFO  com.migration.full.Main -   - test1: 7 行
-2026-03-05 09:10:04.043 [main] INFO  com.migration.full.Main - 
+2026-04-24 14:38:25.757 [main] INFO  com.migration.full.Main - 数据库全量迁移成功完成！
+2026-04-24 14:38:25.757 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:42.961 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:42.962 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
+2026-04-24 14:38:42.962 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:42.962 [main] INFO  com.migration.full.Main - 任务 ID: test_full
+2026-04-24 14:38:42.962 [main] INFO  com.migration.full.Main - 使用配置文件: files/test_full/config.properties
+2026-04-24 14:38:42.963 [main] INFO  com.migration.full.Main - 源数据库: test_db1
+2026-04-24 14:38:42.963 [main] INFO  com.migration.full.Main - 目标数据库: test_db1
+2026-04-24 14:38:42.963 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已禁用
+2026-04-24 14:38:43.061 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.065 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.065 [main] INFO  com.migration.full.Main - 跳过 checkpoint 记录（已由 agent 在启动前记录）
+2026-04-24 14:38:43.073 [main] INFO  c.m.full.metadata.MetadataReader - 找到 6 个表
+2026-04-24 14:38:43.094 [main] INFO  com.migration.full.Main - 找到 6 个表需要迁移
+2026-04-24 14:38:43.096 [main] INFO  com.migration.full.Main -   - orders: 10 行
+2026-04-24 14:38:43.097 [main] INFO  com.migration.full.Main -   - products: 6 行
+2026-04-24 14:38:43.098 [main] INFO  com.migration.full.Main -   - t5: 6 行
+2026-04-24 14:38:43.099 [main] INFO  com.migration.full.Main -   - test_all_types: 5 行
+2026-04-24 14:38:43.099 [main] INFO  com.migration.full.Main -   - test_sync: 12 行
+2026-04-24 14:38:43.100 [main] INFO  com.migration.full.Main -   - users: 18 行
+2026-04-24 14:38:43.100 [main] INFO  com.migration.full.Main - 
 ========================================
-2026-03-05 09:10:04.043 [main] INFO  com.migration.full.Main - 开始迁移表结构
-2026-03-05 09:10:04.043 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:10:04.043 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 2 个表
-2026-03-05 09:10:04.060 [main] ERROR c.m.full.migration.SchemaMigration - 表 chinese_person_info 结构迁移失败，已忽略该错误继续执行
-java.sql.SQLSyntaxErrorException: Table 'chinese_person_info' already exists
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:763)
-	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:648)
-	at com.migration.db.DatabaseConnection.execute(DatabaseConnection.java:70)
-	at com.migration.full.migration.SchemaMigration.createTable(SchemaMigration.java:89)
-	at com.migration.full.migration.SchemaMigration.migrateTable(SchemaMigration.java:68)
-	at com.migration.full.migration.SchemaMigration.migrateAllTables(SchemaMigration.java:38)
-	at com.migration.full.Main.main(Main.java:100)
-2026-03-05 09:10:04.063 [main] ERROR c.m.full.migration.SchemaMigration - 表 test1 结构迁移失败，已忽略该错误继续执行
-java.sql.SQLSyntaxErrorException: Table 'test1' already exists
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:763)
-	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:648)
-	at com.migration.db.DatabaseConnection.execute(DatabaseConnection.java:70)
-	at com.migration.full.migration.SchemaMigration.createTable(SchemaMigration.java:89)
-	at com.migration.full.migration.SchemaMigration.migrateTable(SchemaMigration.java:68)
-	at com.migration.full.migration.SchemaMigration.migrateAllTables(SchemaMigration.java:38)
-	at com.migration.full.Main.main(Main.java:100)
-2026-03-05 09:10:04.063 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 0, 失败: 2
-2026-03-05 09:10:04.063 [main] INFO  com.migration.full.Main - 表结构迁移完成
-2026-03-05 09:10:04.063 [main] INFO  com.migration.full.Main - 
+2026-04-24 14:38:43.100 [main] INFO  com.migration.full.Main - 开始迁移表结构
+2026-04-24 14:38:43.100 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:43.101 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 6 个表
+2026-04-24 14:38:43.139 [main] INFO  c.m.full.migration.SchemaMigration - 表 orders 结构迁移成功
+2026-04-24 14:38:43.163 [main] INFO  c.m.full.migration.SchemaMigration - 表 products 结构迁移成功
+2026-04-24 14:38:43.180 [main] INFO  c.m.full.migration.SchemaMigration - 表 t5 结构迁移成功
+2026-04-24 14:38:43.199 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_all_types 结构迁移成功
+2026-04-24 14:38:43.216 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_sync 结构迁移成功
+2026-04-24 14:38:43.230 [main] INFO  c.m.full.migration.SchemaMigration - 表 users 结构迁移成功
+2026-04-24 14:38:43.230 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:43.230 [main] INFO  com.migration.full.Main - 表结构迁移完成
+2026-04-24 14:38:43.230 [main] INFO  com.migration.full.Main - 
 ========================================
-2026-03-05 09:10:04.063 [main] INFO  com.migration.full.Main - 开始迁移数据
-2026-03-05 09:10:04.063 [main] INFO  com.migration.full.Main - ========================================
-2026-03-05 09:10:04.063 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 2 个表
-2026-03-05 09:10:04.065 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 chinese_person_info 的数据，总行数: 5000
-2026-03-05 09:10:04.066 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='IN_PROGRESS', progress=59.94% (2997/5000)}
-2026-03-05 09:10:04.067 [main] INFO  c.m.full.progress.ProgressManager - 继续迁移: chinese_person_info, 已迁移: 2997/5000, 最后ID: 3000
-2026-03-05 09:10:04.067 [main] INFO  c.m.full.migration.DataMigration - 从上次中断位置继续迁移，已迁移: 2997, 最后ID: 3000
-2026-03-05 09:10:04.264 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: chinese_person_info, 行: 3996
-java.sql.BatchUpdateException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
+2026-04-24 14:38:43.230 [main] INFO  com.migration.full.Main - 开始迁移数据
+2026-04-24 14:38:43.230 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:38:43.231 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 6 个表
+2026-04-24 14:38:43.231 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 orders 的数据，总行数: 10
+2026-04-24 14:38:43.253 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:38:43.257 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:38:43.260 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.260 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 products 的数据，总行数: 6
+2026-04-24 14:38:43.262 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.273 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:43.274 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:43.276 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.277 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 t5 的数据，总行数: 6
+2026-04-24 14:38:43.278 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.287 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:43.287 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:38:43.289 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.290 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_all_types 的数据，总行数: 5
+2026-04-24 14:38:43.291 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.295 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: test_all_types, 行: 1
+java.sql.SQLException: The value '-838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:130)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:98)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:90)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:64)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:74)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:99)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getTime(ResultSetImpl.java:921)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getObject(ResultSetImpl.java:1276)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:151)
+	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
+	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.exceptions.DataReadException: The value '-838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:87)
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:51)
+	at com.mysql.cj.result.AbstractDateTimeValueFactory.createFromTime(AbstractDateTimeValueFactory.java:74)
+	at com.mysql.cj.protocol.a.MysqlTextValueDecoder.decodeTime(MysqlTextValueDecoder.java:81)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.decodeAndCreateReturnValue(AbstractResultsetRow.java:95)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.getValueFromBytes(AbstractResultsetRow.java:243)
+	at com.mysql.cj.protocol.a.result.TextBufferRow.getValue(TextBufferRow.java:132)
+	... 6 common frames omitted
+2026-04-24 14:38:43.296 [main] ERROR c.m.full.migration.DataMigration - 插入数据失败，表: test_all_types, 行: 1
+java.sql.SQLException: The value '838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:130)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:98)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:90)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:64)
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:74)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:99)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getTime(ResultSetImpl.java:921)
+	at com.mysql.cj.jdbc.result.ResultSetImpl.getObject(ResultSetImpl.java:1276)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:151)
+	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
+	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.exceptions.DataReadException: The value '838:59:59' is an invalid TIME value. JDBC Time objects represent a wall-clock time and not a duration as MySQL treats them. If you are treating this type as a duration, consider retrieving this value as a string and dealing with it according to your requirements.
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:87)
+	at com.mysql.cj.result.SqlTimeValueFactory.localCreateFromTime(SqlTimeValueFactory.java:51)
+	at com.mysql.cj.result.AbstractDateTimeValueFactory.createFromTime(AbstractDateTimeValueFactory.java:74)
+	at com.mysql.cj.protocol.a.MysqlTextValueDecoder.decodeTime(MysqlTextValueDecoder.java:81)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.decodeAndCreateReturnValue(AbstractResultsetRow.java:95)
+	at com.mysql.cj.protocol.result.AbstractResultsetRow.getValueFromBytes(AbstractResultsetRow.java:243)
+	at com.mysql.cj.protocol.a.result.TextBufferRow.getValue(TextBufferRow.java:132)
+	... 6 common frames omitted
+2026-04-24 14:38:43.313 [main] ERROR c.m.full.migration.DataMigration - 执行最后一批数据失败，表: test_all_types
+java.sql.BatchUpdateException: Data truncation: Out of range value for column 'col_bigint_unsigned' at row 1
 	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
 	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
+	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:238)
 	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
 	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+	at com.migration.full.Main.main(Main.java:131)
+Caused by: com.mysql.cj.jdbc.exceptions.MysqlDataTruncation: Data truncation: Out of range value for column 'col_bigint_unsigned' at row 1
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:104)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
 	... 6 common frames omitted
-2026-03-05 09:10:04.265 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='IN_PROGRESS', progress=79.92% (3996/5000)}
-2026-03-05 09:10:04.265 [main] ERROR c.m.full.migration.DataMigration - 表 chinese_person_info 数据迁移失败
-java.sql.BatchUpdateException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
-	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
-	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
-	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
-	... 6 common frames omitted
-2026-03-05 09:10:04.266 [main] DEBUG c.m.full.progress.ProgressDatabase - 保存进度: MigrationProgress{table='chinese_person_info', status='FAILED', progress=79.92% (3996/5000)}
-2026-03-05 09:10:04.266 [main] ERROR c.m.full.progress.ProgressManager - 迁移失败: chinese_person_info, 错误: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-2026-03-05 09:10:04.266 [main] ERROR com.migration.full.Main - 数据库全量迁移失败
-java.sql.BatchUpdateException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createBatchUpdateException(SQLError.java:224)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:816)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchInternal(ClientPreparedStatement.java:418)
-	at com.mysql.cj.jdbc.StatementImpl.executeBatch(StatementImpl.java:795)
-	at com.migration.full.migration.DataMigration.migrateDataBatch(DataMigration.java:175)
-	at com.migration.full.migration.DataMigration.migrateTableData(DataMigration.java:88)
-	at com.migration.full.migration.DataMigration.migrateAllData(DataMigration.java:46)
-	at com.migration.full.Main.main(Main.java:116)
-Caused by: java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '4000' for key 'chinese_person_info.PRIMARY'
-	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:118)
-	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
-	at com.mysql.cj.jdbc.ClientPreparedStatement.executeBatchSerially(ClientPreparedStatement.java:795)
-	... 6 common frames omitted
+2026-04-24 14:38:43.313 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 0, 失败: 2
+2026-04-24 14:38:43.313 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 0, 失败: 2
+2026-04-24 14:38:43.315 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.316 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_sync 的数据，总行数: 12
+2026-04-24 14:38:43.318 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.339 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:38:43.340 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:38:43.342 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.342 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 users 的数据，总行数: 18
+2026-04-24 14:38:43.344 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:38:43.371 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:38:43.371 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:38:43.371 [main] INFO  c.m.full.migration.DataMigration - 数据迁移完成，总成功: 52, 总失败: 2
+2026-04-24 14:38:43.371 [main] INFO  com.migration.full.Main - 数据迁移完成
+2026-04-24 14:38:43.371 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:38:43.371 [main] INFO  com.migration.full.Main - 数据库全量迁移成功完成！
+2026-04-24 14:38:43.371 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:25.812 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:25.813 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
+2026-04-24 14:42:25.813 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:25.813 [main] INFO  com.migration.full.Main - 任务 ID: test_full
+2026-04-24 14:42:25.813 [main] INFO  com.migration.full.Main - 使用配置文件: files/test_full/config.properties
+2026-04-24 14:42:25.814 [main] INFO  com.migration.full.Main - 源数据库: test_db1
+2026-04-24 14:42:25.814 [main] INFO  com.migration.full.Main - 目标数据库: test_db1
+2026-04-24 14:42:25.814 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已禁用
+2026-04-24 14:42:25.917 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:25.921 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:25.921 [main] INFO  com.migration.full.Main - 跳过 checkpoint 记录（已由 agent 在启动前记录）
+2026-04-24 14:42:25.935 [main] INFO  c.m.full.metadata.MetadataReader - 找到 6 个表
+2026-04-24 14:42:25.960 [main] INFO  com.migration.full.Main - 找到 6 个表需要迁移
+2026-04-24 14:42:25.962 [main] INFO  com.migration.full.Main -   - orders: 10 行
+2026-04-24 14:42:25.964 [main] INFO  com.migration.full.Main -   - products: 6 行
+2026-04-24 14:42:25.964 [main] INFO  com.migration.full.Main -   - t5: 6 行
+2026-04-24 14:42:25.965 [main] INFO  com.migration.full.Main -   - test_all_types: 5 行
+2026-04-24 14:42:25.969 [main] INFO  com.migration.full.Main -   - test_sync: 12 行
+2026-04-24 14:42:25.973 [main] INFO  com.migration.full.Main -   - users: 18 行
+2026-04-24 14:42:25.973 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:25.973 [main] INFO  com.migration.full.Main - 开始迁移表结构
+2026-04-24 14:42:25.973 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:25.973 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 6 个表
+2026-04-24 14:42:26.012 [main] INFO  c.m.full.migration.SchemaMigration - 表 orders 结构迁移成功
+2026-04-24 14:42:26.031 [main] INFO  c.m.full.migration.SchemaMigration - 表 products 结构迁移成功
+2026-04-24 14:42:26.052 [main] INFO  c.m.full.migration.SchemaMigration - 表 t5 结构迁移成功
+2026-04-24 14:42:26.068 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_all_types 结构迁移成功
+2026-04-24 14:42:26.085 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_sync 结构迁移成功
+2026-04-24 14:42:26.101 [main] INFO  c.m.full.migration.SchemaMigration - 表 users 结构迁移成功
+2026-04-24 14:42:26.101 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:26.101 [main] INFO  com.migration.full.Main - 表结构迁移完成
+2026-04-24 14:42:26.102 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:26.102 [main] INFO  com.migration.full.Main - 开始迁移数据
+2026-04-24 14:42:26.102 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:26.102 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 6 个表
+2026-04-24 14:42:26.103 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 orders 的数据，总行数: 10
+2026-04-24 14:42:26.122 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:42:26.127 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:42:26.129 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.130 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 products 的数据，总行数: 6
+2026-04-24 14:42:26.133 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.144 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:26.144 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:26.146 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.150 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 t5 的数据，总行数: 6
+2026-04-24 14:42:26.152 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.161 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:26.161 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:26.164 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.164 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_all_types 的数据，总行数: 5
+2026-04-24 14:42:26.167 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.182 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:42:26.182 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:42:26.184 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.185 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_sync 的数据，总行数: 12
+2026-04-24 14:42:26.187 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.203 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:42:26.203 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:42:26.205 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.206 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 users 的数据，总行数: 18
+2026-04-24 14:42:26.207 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:26.231 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:42:26.231 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:42:26.231 [main] INFO  c.m.full.migration.DataMigration - 数据迁移完成，总成功: 57, 总失败: 0
+2026-04-24 14:42:26.231 [main] INFO  com.migration.full.Main - 数据迁移完成
+2026-04-24 14:42:26.231 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:26.231 [main] INFO  com.migration.full.Main - 数据库全量迁移成功完成！
+2026-04-24 14:42:26.231 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:32.511 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:32.511 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
+2026-04-24 14:42:32.511 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:32.511 [main] INFO  com.migration.full.Main - 任务 ID: test_full
+2026-04-24 14:42:32.511 [main] INFO  com.migration.full.Main - 使用配置文件: files/test_full/config.properties
+2026-04-24 14:42:32.512 [main] INFO  com.migration.full.Main - 源数据库: test_db1
+2026-04-24 14:42:32.512 [main] INFO  com.migration.full.Main - 目标数据库: test_db1
+2026-04-24 14:42:32.512 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已禁用
+2026-04-24 14:42:32.593 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.596 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.596 [main] INFO  com.migration.full.Main - 跳过 checkpoint 记录（已由 agent 在启动前记录）
+2026-04-24 14:42:32.603 [main] INFO  c.m.full.metadata.MetadataReader - 找到 6 个表
+2026-04-24 14:42:32.624 [main] INFO  com.migration.full.Main - 找到 6 个表需要迁移
+2026-04-24 14:42:32.625 [main] INFO  com.migration.full.Main -   - orders: 10 行
+2026-04-24 14:42:32.626 [main] INFO  com.migration.full.Main -   - products: 6 行
+2026-04-24 14:42:32.628 [main] INFO  com.migration.full.Main -   - t5: 6 行
+2026-04-24 14:42:32.629 [main] INFO  com.migration.full.Main -   - test_all_types: 5 行
+2026-04-24 14:42:32.630 [main] INFO  com.migration.full.Main -   - test_sync: 12 行
+2026-04-24 14:42:32.633 [main] INFO  com.migration.full.Main -   - users: 18 行
+2026-04-24 14:42:32.633 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:32.633 [main] INFO  com.migration.full.Main - 开始迁移表结构
+2026-04-24 14:42:32.633 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:32.633 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 6 个表
+2026-04-24 14:42:32.669 [main] INFO  c.m.full.migration.SchemaMigration - 表 orders 结构迁移成功
+2026-04-24 14:42:32.686 [main] INFO  c.m.full.migration.SchemaMigration - 表 products 结构迁移成功
+2026-04-24 14:42:32.701 [main] INFO  c.m.full.migration.SchemaMigration - 表 t5 结构迁移成功
+2026-04-24 14:42:32.717 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_all_types 结构迁移成功
+2026-04-24 14:42:32.731 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_sync 结构迁移成功
+2026-04-24 14:42:32.744 [main] INFO  c.m.full.migration.SchemaMigration - 表 users 结构迁移成功
+2026-04-24 14:42:32.744 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:32.744 [main] INFO  com.migration.full.Main - 表结构迁移完成
+2026-04-24 14:42:32.744 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:32.744 [main] INFO  com.migration.full.Main - 开始迁移数据
+2026-04-24 14:42:32.744 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:42:32.745 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 6 个表
+2026-04-24 14:42:32.746 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 orders 的数据，总行数: 10
+2026-04-24 14:42:32.764 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:42:32.767 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:42:32.769 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.770 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 products 的数据，总行数: 6
+2026-04-24 14:42:32.772 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.781 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:32.781 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:32.783 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.784 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 t5 的数据，总行数: 6
+2026-04-24 14:42:32.786 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.793 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:32.794 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:42:32.796 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.796 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_all_types 的数据，总行数: 5
+2026-04-24 14:42:32.798 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.812 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:42:32.812 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:42:32.815 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.816 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_sync 的数据，总行数: 12
+2026-04-24 14:42:32.817 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.832 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:42:32.833 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:42:32.835 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.835 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 users 的数据，总行数: 18
+2026-04-24 14:42:32.837 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:42:32.860 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:42:32.860 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:42:32.860 [main] INFO  c.m.full.migration.DataMigration - 数据迁移完成，总成功: 57, 总失败: 0
+2026-04-24 14:42:32.860 [main] INFO  com.migration.full.Main - 数据迁移完成
+2026-04-24 14:42:32.860 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:42:32.860 [main] INFO  com.migration.full.Main - 数据库全量迁移成功完成！
+2026-04-24 14:42:32.860 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:44:51.395 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - MySQL 数据库全量迁移工具启动
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - 任务 ID: test_full
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - 使用配置文件: /Users/finn/Documents/git_projects/test_git/files/test_full/config.properties
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - 源数据库: test_db1
+2026-04-24 14:44:51.396 [main] INFO  com.migration.full.Main - 目标数据库: test_db1
+2026-04-24 14:44:51.397 [main] INFO  c.m.full.progress.ProgressManager - 进度管理器已禁用
+2026-04-24 14:44:51.487 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.490 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.490 [main] INFO  com.migration.full.Main - 跳过 checkpoint 记录（已由 agent 在启动前记录）
+2026-04-24 14:44:51.499 [main] INFO  c.m.full.metadata.MetadataReader - 找到 6 个表
+2026-04-24 14:44:51.525 [main] INFO  com.migration.full.Main - 找到 6 个表需要迁移
+2026-04-24 14:44:51.527 [main] INFO  com.migration.full.Main -   - orders: 10 行
+2026-04-24 14:44:51.528 [main] INFO  com.migration.full.Main -   - products: 6 行
+2026-04-24 14:44:51.529 [main] INFO  com.migration.full.Main -   - t5: 6 行
+2026-04-24 14:44:51.530 [main] INFO  com.migration.full.Main -   - test_all_types: 5 行
+2026-04-24 14:44:51.530 [main] INFO  com.migration.full.Main -   - test_sync: 12 行
+2026-04-24 14:44:51.531 [main] INFO  com.migration.full.Main -   - users: 18 行
+2026-04-24 14:44:51.531 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:44:51.531 [main] INFO  com.migration.full.Main - 开始迁移表结构
+2026-04-24 14:44:51.531 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:44:51.531 [main] INFO  c.m.full.migration.SchemaMigration - 开始迁移表结构，共 6 个表
+2026-04-24 14:44:51.568 [main] INFO  c.m.full.migration.SchemaMigration - 表 orders 结构迁移成功
+2026-04-24 14:44:51.598 [main] INFO  c.m.full.migration.SchemaMigration - 表 products 结构迁移成功
+2026-04-24 14:44:51.613 [main] INFO  c.m.full.migration.SchemaMigration - 表 t5 结构迁移成功
+2026-04-24 14:44:51.625 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_all_types 结构迁移成功
+2026-04-24 14:44:51.642 [main] INFO  c.m.full.migration.SchemaMigration - 表 test_sync 结构迁移成功
+2026-04-24 14:44:51.658 [main] INFO  c.m.full.migration.SchemaMigration - 表 users 结构迁移成功
+2026-04-24 14:44:51.658 [main] INFO  c.m.full.migration.SchemaMigration - 表结构迁移完成，成功: 6, 失败: 0
+2026-04-24 14:44:51.658 [main] INFO  com.migration.full.Main - 表结构迁移完成
+2026-04-24 14:44:51.658 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:44:51.658 [main] INFO  com.migration.full.Main - 开始迁移数据
+2026-04-24 14:44:51.658 [main] INFO  com.migration.full.Main - ========================================
+2026-04-24 14:44:51.659 [main] INFO  c.m.full.migration.DataMigration - 开始迁移数据，共 6 个表
+2026-04-24 14:44:51.660 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 orders 的数据，总行数: 10
+2026-04-24 14:44:51.700 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:44:51.706 [main] INFO  c.m.full.migration.DataMigration - 表 orders 数据迁移完成，成功: 10, 失败: 0
+2026-04-24 14:44:51.709 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.710 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 products 的数据，总行数: 6
+2026-04-24 14:44:51.713 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.724 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:44:51.724 [main] INFO  c.m.full.migration.DataMigration - 表 products 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:44:51.727 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.728 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 t5 的数据，总行数: 6
+2026-04-24 14:44:51.731 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.740 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:44:51.740 [main] INFO  c.m.full.migration.DataMigration - 表 t5 数据迁移完成，成功: 6, 失败: 0
+2026-04-24 14:44:51.743 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.743 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_all_types 的数据，总行数: 5
+2026-04-24 14:44:51.746 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.765 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:44:51.765 [main] INFO  c.m.full.migration.DataMigration - 表 test_all_types 数据迁移完成，成功: 5, 失败: 0
+2026-04-24 14:44:51.769 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.769 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 test_sync 的数据，总行数: 12
+2026-04-24 14:44:51.771 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.787 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:44:51.787 [main] INFO  c.m.full.migration.DataMigration - 表 test_sync 数据迁移完成，成功: 12, 失败: 0
+2026-04-24 14:44:51.790 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.791 [main] INFO  c.m.full.migration.DataMigration - 开始迁移表 users 的数据，总行数: 18
+2026-04-24 14:44:51.793 [main] INFO  com.migration.db.DatabaseConnection - 成功连接到数据库: test_db1
+2026-04-24 14:44:51.821 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:44:51.822 [main] INFO  c.m.full.migration.DataMigration - 表 users 数据迁移完成，成功: 18, 失败: 0
+2026-04-24 14:44:51.822 [main] INFO  c.m.full.migration.DataMigration - 数据迁移完成，总成功: 57, 总失败: 0
+2026-04-24 14:44:51.822 [main] INFO  com.migration.full.Main - 数据迁移完成
+2026-04-24 14:44:51.822 [main] INFO  com.migration.full.Main - 
+========================================
+2026-04-24 14:44:51.822 [main] INFO  com.migration.full.Main - 数据库全量迁移成功完成！
+2026-04-24 14:44:51.822 [main] INFO  com.migration.full.Main - ========================================

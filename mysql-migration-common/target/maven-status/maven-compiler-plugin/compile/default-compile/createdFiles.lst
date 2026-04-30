@@ -1,5 +1,0 @@
-com/migration/model/TableInfo.class
-com/migration/model/ColumnInfo.class
-com/migration/db/DatabaseConnection.class
-com/migration/config/MigrationConfig.class
-com/migration/config/DatabaseConfig.class

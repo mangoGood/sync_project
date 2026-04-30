@@ -32,6 +32,12 @@ public class ValidationTask {
     @Column(name = "sync_objects", columnDefinition = "TEXT")
     private String syncObjects;
 
+    @Column(name = "compare_type")
+    private String compareType = "ROW_COUNT";
+
+    @Column(name = "compare_result", columnDefinition = "LONGTEXT")
+    private String compareResult;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ValidationStatus status = ValidationStatus.PENDING;
@@ -134,4 +140,10 @@ public class ValidationTask {
 
     public Boolean getIsDeleted() { return isDeleted; }
     public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
+
+    public String getCompareType() { return compareType; }
+    public void setCompareType(String compareType) { this.compareType = compareType; }
+
+    public String getCompareResult() { return compareResult; }
+    public void setCompareResult(String compareResult) { this.compareResult = compareResult; }
 }

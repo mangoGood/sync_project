@@ -8,11 +8,13 @@
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/service/ValidationTaskService.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/entity/ValidationTask.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/entity/WorkflowLog.java
+/Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/dto/ContentCompareSession.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/executor/service/TaskExecutorService.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/repository/ValidationTaskRepository.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/repository/WorkflowRepository.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/controller/WorkflowController.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/config/CorsConfig.java
+/Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/service/ContentCompareService.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/repository/UserRepository.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/config/WebSocketConfig.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/dto/ConnectionRequest.java
@@ -20,6 +22,7 @@
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/dto/ApiResponse.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/service/KafkaProducerService.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/dto/DatabaseInfo.java
+/Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/entity/SyncErrorCode.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/executor/dto/TaskCreatedEvent.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/config/AsyncConfig.java
 /Users/finn/Documents/git_projects/test_git/java-backend/src/main/java/com/synctask/entity/LogLevelConverter.java

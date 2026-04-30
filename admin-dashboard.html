@@ -443,6 +443,25 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            min-width: 20px;
+        }
+
+        .status-icon {
+            width: 8px;
+            height: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .status-configuring {
+            background-color: #f0f5ff;
+            color: #2f54eb;
+            border: 1px solid #adc6ff;
         }
 
         .status-pending {
@@ -487,6 +506,12 @@
             background-color: #f6ffed;
             color: #52c41a;
             border: 1px solid #b7eb8f;
+        }
+
+        .status-mismatch {
+            background-color: #fff7e6;
+            color: #fa8c16;
+            border: 1px solid #ffd591;
         }
 
         .status-failed {
@@ -665,10 +690,29 @@
         }
 
         /* 页码容器 */
-        #pageNumbers {
+        #pageNumbers, #validationPageNumbers {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
+        }
+
+        .page-ellipsis {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        .page-ellipsis:hover {
+            border-color: #d9d9d9;
+            color: #1890ff;
         }
 
         /* 列宽 */
@@ -805,6 +849,78 @@
 
         .step-content.active {
             display: block;
+        }
+
+        .db-type-section {
+            margin-bottom: 28px;
+        }
+
+        .db-type-section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .db-type-cards {
+            display: flex;
+            gap: 16px;
+        }
+
+        .db-type-card {
+            flex: 1;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            background-color: #fff;
+            position: relative;
+        }
+
+        .db-type-card:hover {
+            border-color: #1890ff;
+            box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+        }
+
+        .db-type-card.selected {
+            border-color: #1890ff;
+            background-color: #e6f7ff;
+        }
+
+        .db-type-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            color: #1890ff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .db-type-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+            background-color: #f5f5f5;
+        }
+
+        .db-type-card-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .db-type-card-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .db-type-card-desc {
+            font-size: 12px;
+            color: #999;
         }
 
         /* 同步对象选择 */
@@ -1155,6 +1271,67 @@
             color: #f5222d;
         }
 
+        .compare-table-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            margin-bottom: 6px;
+            background: #fafafa;
+            border-radius: 4px;
+            border-left: 3px solid #d9d9d9;
+        }
+        .compare-table-item.match {
+            border-left-color: #52c41a;
+            background: #f6ffed;
+        }
+        .compare-table-item.mismatch {
+            border-left-color: #f5222d;
+            background: #fff2f0;
+        }
+        .compare-table-item .table-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .compare-table-item .table-status {
+            margin-left: 12px;
+            font-size: 13px;
+        }
+        .compare-table-item .table-action {
+            margin-left: 12px;
+        }
+        .compare-table-item .table-action button {
+            padding: 2px 10px;
+            font-size: 12px;
+            border: 1px solid #1890ff;
+            color: #1890ff;
+            background: #fff;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .compare-table-item .table-action button:hover {
+            background: #1890ff;
+            color: #fff;
+        }
+        .diff-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .diff-type-badge.content-diff {
+            background: #fff7e6;
+            color: #d48806;
+        }
+        .diff-type-badge.source-only {
+            background: #e6f7ff;
+            color: #0958d9;
+        }
+        .diff-type-badge.target-only {
+            background: #fff2f0;
+            color: #cf1322;
+        }
+
         /* 通知消息 */
         .notification {
             position: fixed;
@@ -1182,6 +1359,70 @@
             border: 1px solid #ffa39e;
             color: #f5222d;
         }
+
+        .token-expired-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .token-expired-modal {
+            background: #fff;
+            border-radius: 8px;
+            padding: 32px 40px;
+            text-align: center;
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.15);
+            max-width: 360px;
+            width: 90%;
+        }
+
+        .token-expired-modal .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .token-expired-modal .title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .token-expired-modal .message {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .token-expired-modal .countdown {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 16px;
+        }
+
+        .token-expired-modal .btn-relogin {
+            display: inline-block;
+            padding: 8px 32px;
+            background: #1890ff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .token-expired-modal .btn-relogin:hover {
+            background: #40a9ff;
+        }
     </style>
 </head>
 <body>
@@ -1203,7 +1444,7 @@
                 
                 <div class="menu-section">
                     <div class="menu-title">其他</div>
-                    <div class="menu-item" onclick="switchPage('validation')">校验任务管理</div>
+                    <div class="menu-item" onclick="switchPage('validation')">数据对比任务管理</div>
                 </div>
             </nav>
         </aside>
@@ -1260,8 +1501,8 @@
                                 </div>
                             </div>
                             <div class="status-dropdown" id="statusDropdown">
-                                <div class="status-option" data-status="PENDING">创建中</div>
-                                <div class="status-option" data-status="STARTING">启动中</div>
+                                <div class="status-option" data-status="CONFIGURING">配置中</div>
+                                <div class="status-option" data-status="PENDING">启动中</div>
                                 <div class="status-option" data-status="FULL_MIGRATING">全量同步中</div>
                                 <div class="status-option" data-status="FULL_COMPLETED">全量完成</div>
                                 <div class="status-option" data-status="INCREMENT_RUNNING">增量同步中</div>
@@ -1340,14 +1581,14 @@
             </div>
             </div>
             
-            <!-- 校验任务页面 -->
+            <!-- 数据对比任务页面 -->
             <div id="validationPage" style="display: none;">
                 <header class="header">
                     <div class="header-left">
-                        <h1 class="header-title">校验任务管理</h1>
+                        <h1 class="header-title">数据对比任务管理</h1>
                     </div>
                     <div class="header-right">
-                        <button class="btn-confirm" onclick="openCreateValidationModal()">创建校验任务</button>
+                        <button class="btn-confirm" onclick="openCreateValidationModal()">创建对比任务</button>
                     </div>
                 </header>
                 
@@ -1355,8 +1596,9 @@
                     <div class="table-container">
                         <div class="table-header">
                             <div class="table-cell col-name">任务名称</div>
+                            <div class="table-cell" style="width: 100px;">对比类型</div>
                             <div class="table-cell col-status">状态</div>
-                            <div class="table-cell col-progress">校验进度</div>
+                            <div class="table-cell col-progress">对比结果</div>
                             <div class="table-cell col-time">创建时间</div>
                             <div class="table-cell col-action">操作</div>
                         </div>
@@ -1370,7 +1612,7 @@
                                         <line x1="25" y1="52" x2="45" y2="52" stroke="#d9d9d9" stroke-width="2"/>
                                     </svg>
                                 </div>
-                                <div class="empty-text">暂无校验任务</div>
+                                <div class="empty-text">暂无对比任务</div>
                             </div>
                         </div>
                     </div>
@@ -1395,117 +1637,231 @@
 
     <!-- 创建任务模态框 -->
     <div class="modal" id="createTaskModal">
-        <div class="modal-content" style="width: 800px;">
+        <div class="modal-content" style="width: 600px;">
             <div class="modal-header">
                 <h3 class="modal-title">创建同步任务</h3>
                 <span class="modal-close" id="closeModal">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- 步骤导航 -->
-                <div class="step-nav">
-                    <div class="step-item active" id="step1Nav" onclick="goToStep(1)">
-                        <span>1. 填写连接信息</span>
-                    </div>
-                    <div class="step-item" id="step2Nav" onclick="goToStep(2)">
-                        <span>2. 选择同步对象</span>
-                    </div>
-                    <div class="step-item" id="step3Nav" onclick="goToStep(3)">
-                        <span>3. 校验检查</span>
-                    </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">任务名称</label>
+                    <input type="text" class="form-input" id="taskNameCreate" placeholder="请输入任务名称" style="max-width: 400px;">
                 </div>
-                
-                <!-- 步骤1: 填写连接信息 -->
-                <div class="step-content active" id="step1Content">
-                    <div class="form-group">
-                        <label class="form-label">任务名称</label>
-                        <input type="text" class="form-input" id="taskName" placeholder="请输入任务名称">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">源数据库连接</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" class="form-input" id="sourceConnection" placeholder="例如：mysql://user:pass@host:port/db" oninput="validateConnectionInput(this, 'source')" style="flex: 1;">
-                            <button type="button" class="btn-test" id="testSourceBtn" onclick="testConnection('source')">测试连接</button>
+                <div class="db-type-section">
+                    <div class="db-type-section-title">源数据库类型</div>
+                    <div class="db-type-cards">
+                        <div class="db-type-card selected" id="sourceTypeMysql" onclick="selectSourceType('mysql')">
+                            <div class="db-type-card-icon">🐬</div>
+                            <div class="db-type-card-name">MySQL</div>
+                            <div class="db-type-card-desc">MySQL 5.7+ / 8.0+</div>
                         </div>
-                        <div id="sourceConnectionStatus" class="connection-status"></div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">目标数据库连接</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" class="form-input" id="targetConnection" placeholder="例如：mysql://user:pass@host:port/db" oninput="validateConnectionInput(this, 'target')" style="flex: 1;">
-                            <button type="button" class="btn-test" id="testTargetBtn" onclick="testConnection('target')">测试连接</button>
-                        </div>
-                        <div id="targetConnectionStatus" class="connection-status"></div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">同步模式</label>
-                        <div style="display: flex; gap: 16px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                                <input type="radio" name="migrationMode" value="full" id="modeFull" checked>
-                                <span>全量同步任务</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                                <input type="radio" name="migrationMode" value="fullAndIncre" id="modeFullAndIncre">
-                                <span>增量同步任务</span>
-                            </label>
+                        <div class="db-type-card" id="sourceTypePg" onclick="selectSourceType('postgresql')">
+                            <div class="db-type-card-icon">🐘</div>
+                            <div class="db-type-card-name">PostgreSQL</div>
+                            <div class="db-type-card-desc">PostgreSQL 12+</div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- 步骤2: 选择同步对象 -->
-                <div class="step-content" id="step2Content">
-                    <div class="sync-objects-container">
-                        <!-- 左侧: 源数据库对象列表 -->
-                        <div class="sync-objects-panel">
-                            <div class="sync-objects-panel-header">
-                                源数据库对象列表
-                            </div>
-                            <div class="sync-objects-panel-body" id="sourceObjectsList">
-                                <div class="empty-selection">请先填写源数据库连接并点击"下一步"</div>
-                            </div>
+                <div class="db-type-section">
+                    <div class="db-type-section-title">目标数据库类型</div>
+                    <div class="db-type-cards">
+                        <div class="db-type-card selected" id="targetTypeMysql" onclick="selectTargetType('mysql')">
+                            <div class="db-type-card-icon">🐬</div>
+                            <div class="db-type-card-name">MySQL</div>
+                            <div class="db-type-card-desc">MySQL 5.7+ / 8.0+</div>
                         </div>
-                        
-                        <!-- 右侧: 已选择的同步对象 -->
-                        <div class="sync-objects-panel">
-                            <div class="sync-objects-panel-header">
-                                已选择的同步对象
-                            </div>
-                            <div class="sync-objects-panel-body" id="selectedObjectsList">
-                                <div class="empty-selection" id="emptySelection">暂未选择任何对象</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 步骤3: 校验检查 -->
-                <div class="step-content" id="step3Content">
-                    <div class="validation-container">
-                        <div class="validation-header">
-                            <span>数据库同步前校验</span>
-                            <button type="button" class="btn-test" id="runValidationBtn" onclick="runValidation()">开始校验</button>
-                        </div>
-                        <div class="validation-result" id="validationResult">
-                            <div class="validation-empty">请点击"开始校验"按钮进行数据库同步条件检查</div>
+                        <div class="db-type-card" id="targetTypePg" onclick="selectTargetType('postgresql')">
+                            <div class="db-type-card-icon">🐘</div>
+                            <div class="db-type-card-name">PostgreSQL</div>
+                            <div class="db-type-card-desc">PostgreSQL 12+</div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" id="cancelBtn">取消</button>
-                <button class="btn-default" id="prevBtn" style="display: none;" onclick="goToStep(currentStep - 1)">上一步</button>
-                <button class="btn-confirm" id="nextBtn" onclick="nextStep()">下一步</button>
-                <button class="btn-confirm" id="confirmBtn" style="display: none;" onclick="createTask()">创建任务</button>
+                <button class="btn-confirm" id="createTaskBtnModal" onclick="createTaskFromModal()">创建任务</button>
             </div>
         </div>
     </div>
 
-    <!-- 创建校验任务模态框 -->
+    <!-- 任务配置页面 -->
+    <div class="modal" id="taskConfigModal">
+        <div class="modal-content" style="width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="configPageTitle">任务配置</h3>
+                <span class="modal-close" id="closeConfigModal">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
+                <div class="step-nav">
+                    <div class="step-item active" id="cfgStep1Nav" onclick="cfgGoToStep(1)">
+                        <span>1. 填写连接信息</span>
+                    </div>
+                    <div class="step-item" id="cfgStep2Nav" onclick="cfgGoToStep(2)">
+                        <span>2. 选择同步对象</span>
+                    </div>
+                    <div class="step-item" id="cfgStep3Nav" onclick="cfgGoToStep(3)">
+                        <span>3. 校验检查</span>
+                    </div>
+                </div>
+
+                <div class="step-content active" id="cfgStep1Content">
+                    <div class="form-group">
+                        <label class="form-label">源数据库连接</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div><input type="text" class="form-input" id="cfgSourceHost" placeholder="IP地址" oninput="cfgOnConnectionFieldChange('source')"></div>
+                            <div><input type="text" class="form-input" id="cfgSourcePort" placeholder="端口号" oninput="cfgOnConnectionFieldChange('source')"></div>
+                            <div><input type="text" class="form-input" id="cfgSourceUsername" placeholder="用户名" oninput="cfgOnConnectionFieldChange('source')"></div>
+                            <div><input type="password" class="form-input" id="cfgSourcePassword" placeholder="密码" oninput="cfgOnConnectionFieldChange('source')"></div>
+                        </div>
+                        <div id="cfgSourceDbNameRow" style="margin-top: 8px; display: none;">
+                            <input type="text" class="form-input" id="cfgSourceDbNameInput" placeholder="数据库名称（PG必填，如 test_db1）" oninput="cfgOnConnectionFieldChange('source')" style="max-width: 400px;">
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">PostgreSQL 为三层结构(db-schema-table)，请指定要同步的数据库</div>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button type="button" class="btn-test" id="cfgTestSourceBtn" onclick="cfgTestConnection('source')">测试连接</button>
+                        </div>
+                        <div id="cfgSourceConnectionStatus" class="connection-status"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">目标数据库连接</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div><input type="text" class="form-input" id="cfgTargetHost" placeholder="IP地址" oninput="cfgOnConnectionFieldChange('target')"></div>
+                            <div><input type="text" class="form-input" id="cfgTargetPort" placeholder="端口号" oninput="cfgOnConnectionFieldChange('target')"></div>
+                            <div><input type="text" class="form-input" id="cfgTargetUsername" placeholder="用户名" oninput="cfgOnConnectionFieldChange('target')"></div>
+                            <div><input type="password" class="form-input" id="cfgTargetPassword" placeholder="密码" oninput="cfgOnConnectionFieldChange('target')"></div>
+                        </div>
+                        <div id="cfgTargetDbNameRow" style="margin-top: 8px; display: none;">
+                            <input type="text" class="form-input" id="cfgTargetDbNameInput" placeholder="数据库名称（PG必填，如 test_db1）" oninput="cfgOnConnectionFieldChange('target')" style="max-width: 400px;">
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">PostgreSQL 为三层结构(db-schema-table)，请指定目标数据库</div>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button type="button" class="btn-test" id="cfgTestTargetBtn" onclick="cfgTestConnection('target')">测试连接</button>
+                        </div>
+                        <div id="cfgTargetConnectionStatus" class="connection-status"></div>
+                    </div>
+                    <input type="hidden" id="cfgSourceConnection">
+                    <input type="hidden" id="cfgTargetConnection">
+                    <div class="form-group">
+                        <label class="form-label">同步模式</label>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="cfgMigrationMode" value="full" id="cfgModeFull" checked>
+                                <span>全量同步任务</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="cfgMigrationMode" value="fullAndIncre" id="cfgModeFullAndIncre">
+                                <span>增量同步任务</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-content" id="cfgStep2Content">
+                    <div class="form-group" style="margin-bottom: 12px;" id="cfgTargetDbNameGroup">
+                        <label class="form-label">目标数据库名称</label>
+                        <input type="text" class="form-input" id="cfgTargetDbName" placeholder="请输入同步到目标库的数据库名称" style="max-width: 400px;">
+                        <div id="cfgTargetDbNameHint" style="font-size: 11px; color: #999; margin-top: 4px;">MySQL中每个数据库对应一个同步目标库</div>
+                    </div>
+                    <div class="sync-objects-container">
+                        <div class="sync-objects-panel">
+                            <div class="sync-objects-panel-header">源数据库对象列表</div>
+                            <div class="sync-objects-panel-body" id="cfgSourceObjectsList">
+                                <div class="empty-selection">请先填写源数据库连接并点击"下一步"</div>
+                            </div>
+                        </div>
+                        <div class="sync-objects-panel">
+                            <div class="sync-objects-panel-header">已选择的同步对象</div>
+                            <div class="sync-objects-panel-body" id="cfgSelectedObjectsList">
+                                <div class="empty-selection">暂未选择任何对象</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-content" id="cfgStep3Content">
+                    <div class="validation-container">
+                        <div class="validation-header">
+                            <span>数据库同步前校验</span>
+                            <button type="button" class="btn-test" id="cfgRunValidationBtn" onclick="cfgRunValidation()">开始校验</button>
+                        </div>
+                        <div class="validation-result" id="cfgValidationResult">
+                            <div class="validation-empty">请点击"开始校验"按钮进行数据库同步条件检查</div>
+                        </div>
+                    </div>
+                    <div class="content-compare-section" id="cfgContentCompareSection" style="display: none; margin-top: 20px; border-top: 1px solid #e8e8e8; padding-top: 20px;">
+                        <div class="validation-header">
+                            <span>数据内容对比</span>
+                            <button type="button" class="btn-test" id="cfgStartCompareBtn" onclick="cfgStartContentCompare()">开始内容对比</button>
+                        </div>
+                        <div id="cfgCompareStatus" style="display: none; padding: 12px 16px; background: #e6f7ff; border-radius: 4px; margin-bottom: 12px;">
+                            <span id="cfgCompareStatusText" style="color: #1890ff;"></span>
+                        </div>
+                        <div id="cfgCompareResult">
+                            <div class="validation-empty">点击"开始内容对比"检查源库和目标库的数据是否一致</div>
+                        </div>
+                        <div id="cfgCompareDiffDetail" style="display: none; margin-top: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-weight: 500; font-size: 14px;" id="cfgDiffDetailTitle">差异详情</span>
+                                <div>
+                                    <select id="cfgDiffFilter" onchange="cfgFilterDiffs()" style="height: 30px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 12px;">
+                                        <option value="all">全部差异</option>
+                                        <option value="CONTENT_DIFF">仅内容不同</option>
+                                        <option value="SOURCE_ONLY">仅源库有</option>
+                                        <option value="TARGET_ONLY">仅目标库有</option>
+                                    </select>
+                                    <button type="button" class="btn-test" onclick="cfgLoadMoreDiffs()" id="cfgLoadMoreBtn" style="margin-left: 8px; display: none;">加载更多差异</button>
+                                </div>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 12px;" id="cfgDiffTable">
+                                    <thead>
+                                        <tr style="background: #fafafa; border-bottom: 2px solid #e8e8e8;">
+                                            <th style="padding: 8px; text-align: left; width: 40px;">#</th>
+                                            <th style="padding: 8px; text-align: left; width: 100px;">主键值</th>
+                                            <th style="padding: 8px; text-align: left; width: 100px;">差异类型</th>
+                                            <th style="padding: 8px; text-align: left;">差异字段</th>
+                                            <th style="padding: 8px; text-align: left;">源库数据</th>
+                                            <th style="padding: 8px; text-align: left;">目标库数据</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cfgDiffTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="cfgDiffPagination" style="display: none; margin-top: 12px; text-align: center;">
+                                <button class="btn-test" onclick="cfgDiffPrevPage()" id="cfgDiffPrevBtn">上一页</button>
+                                <span id="cfgDiffPageInfo" style="margin: 0 12px; font-size: 13px;"></span>
+                                <button class="btn-test" onclick="cfgDiffNextPage()" id="cfgDiffNextBtn">下一页</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeConfigModal()">取消</button>
+                <button class="btn-default" id="cfgPrevBtn" style="display: none;" onclick="cfgGoToStep(cfgCurrentStep - 1)">上一步</button>
+                <button class="btn-confirm" id="cfgNextBtn" onclick="cfgNextStep()">下一步</button>
+                <button class="btn-confirm" id="cfgLaunchBtn" style="display: none;" onclick="launchTask()">启动任务</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建对比任务模态框 -->
     <div class="modal" id="createValidationModal">
         <div class="modal-content" style="width: 500px;">
             <div class="modal-header">
-                <h3 class="modal-title">创建校验任务</h3>
+                <h3 class="modal-title">创建对比任务</h3>
                 <span class="modal-close" id="closeValidationModal">&times;</span>
             </div>
             <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">对比类型</label>
+                    <select class="form-input" id="validationCompareTypeSelect" style="height: 38px;">
+                        <option value="ROW_COUNT">行数对比</option>
+                        <option value="CONTENT">数据内容对比</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label class="form-label">选择增量同步任务</label>
                     <select class="form-input" id="validationWorkflowSelect" style="height: 38px;">
@@ -1526,14 +1882,14 @@
         </div>
     </div>
     
-    <!-- 校验任务详情模态框 -->
+    <!-- 对比任务详情模态框 -->
     <div class="modal" id="validationDetailModal">
-        <div class="modal-content" style="width: 600px;">
+        <div class="modal-content" style="width: 780px;">
             <div class="modal-header">
-                <h3 class="modal-title">校验任务详情</h3>
+                <h3 class="modal-title">对比任务详情</h3>
                 <span class="modal-close" id="closeValidationDetailModal">&times;</span>
             </div>
-            <div class="modal-body" id="validationDetailBody">
+            <div class="modal-body" id="validationDetailBody" style="max-height: 70vh; overflow-y: auto;">
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" id="closeValidationDetailBtn">关闭</button>
@@ -1564,6 +1920,16 @@
     <!-- 通知消息 -->
     <div class="notification" id="notification"></div>
 
+    <div class="token-expired-overlay" id="tokenExpiredOverlay" style="display: none;">
+        <div class="token-expired-modal">
+            <div class="icon">⚠️</div>
+            <div class="title">登录已过期</div>
+            <div class="message">登录信息已过期，请重新登录</div>
+            <div class="countdown" id="tokenExpiredCountdown"></div>
+            <button class="btn-relogin" onclick="handleTokenExpired()">立即登录</button>
+        </div>
+    </div>
+
     <script>
         // Global error handler
         window.onerror = function(message, source, lineno, colno, error) {
@@ -1586,7 +1952,10 @@
         let sortField = 'created_at';
         let sortDirection = 'DESC';
         
-        let currentStep = 1;
+        let currentStep = 0;
+        
+        let selectedSourceType = 'mysql';
+        let selectedTargetType = 'mysql';
         
         let filterKeyword = null;
         let filterStatus = null;
@@ -1602,14 +1971,15 @@
         
         // 状态映射
         const statusMap = {
-            'PENDING': { text: '等待中', class: 'status-pending' },
-            'STARTING': { text: '启动中', class: 'status-starting' },
+            'CONFIGURING': { text: '配置中', class: 'status-configuring', icon: '⚙' },
+            'PENDING': { text: '启动中', class: 'status-pending', icon: '' },
+            'STARTING': { text: '启动中', class: 'status-starting', icon: '' },
             'FULL_MIGRATING': { text: '全量同步中', class: 'status-full-migrating', dot: true },
-            'FULL_COMPLETED': { text: '全量同步完成', class: 'status-full-completed', dot: true },
+            'FULL_COMPLETED': { text: '全量同步完成', class: 'status-full-completed', icon: '✓' },
             'INCREMENT_RUNNING': { text: '增量同步中', class: 'status-increment-running', dot: true },
-            'COMPLETED': { text: '已完成', class: 'status-completed' },
-            'FAILED': { text: '失败', class: 'status-failed' },
-            'PAUSED': { text: '已暂停', class: 'status-paused' }
+            'COMPLETED': { text: '已完成', class: 'status-completed', icon: '✓' },
+            'FAILED': { text: '失败', class: 'status-failed', icon: '✗' },
+            'PAUSED': { text: '已暂停', class: 'status-paused', icon: '' }
         };
         
         // 检查登录状态
@@ -1618,6 +1988,14 @@
             if (!token) {
                 window.location.href = 'login.html';
                 return false;
+            }
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp && payload.exp * 1000 < Date.now()) {
+                    showTokenExpiredModal();
+                    return false;
+                }
+            } catch (e) {
             }
             return true;
         }
@@ -1698,13 +2076,17 @@
                 statusInfo = { text: '增量同步中', class: 'status-increment-running', dot: true };
             }
             
-            const statusCell = row.querySelector('.col-status .status-tag');
+            const statusCell = row.querySelector('.col-status');
             
             if (statusCell) {
-                let statusHtml = `<span class="${statusInfo.class}">${statusInfo.text}</span>`;
+                let statusHtml = `<span class="status-tag ${statusInfo.class}">`;
                 if (statusInfo.dot) {
-                    statusHtml = `<span class="${statusInfo.class}"><span class="status-dot"></span>${statusInfo.text}</span>`;
+                    statusHtml += `<span class="status-dot"></span>`;
+                } else if (statusInfo.icon) {
+                    statusHtml += `<span class="status-icon">${statusInfo.icon}</span>`;
                 }
+                statusHtml += `${statusInfo.text}</span>`;
+                
                 statusCell.innerHTML = statusHtml;
             }
             
@@ -1747,12 +2129,15 @@
                 const isPaused = data.status === 'PAUSED';
                 const isFailed = data.status === 'FAILED';
                 const isCompleted = data.status === 'COMPLETED' || data.status === 'FULL_COMPLETED';
+                const isConfiguring = data.status === 'CONFIGURING';
                 
                 const rowDataset = row.dataset;
                 const taskName = rowDataset.name || '';
                 
                 let actionHtml = '';
-                if (isFailed) {
+                if (isConfiguring) {
+                    actionHtml = `<button class="action-btn" onclick="openTaskConfig('${taskId}')">配置</button><button class="action-btn delete" onclick="deleteWorkflow('${taskId}', '${taskName.replace(/'/g, "\\'")}')">删除</button>`;
+                } else if (isFailed) {
                     actionHtml = `<button class="action-btn" onclick="retryWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isStarting) {
                     actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
@@ -1762,8 +2147,24 @@
                     actionHtml = `<button class="action-btn" onclick="resumeWorkflow('${taskId}')">恢复</button>`;
                 } else if (isCompleted) {
                     actionHtml = `<button class="action-btn delete" onclick="deleteWorkflow('${taskId}', '${taskName.replace(/'/g, "\\'")}')">删除</button>`;
+                } else {
+                    actionHtml = `<button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 }
                 actionCell.innerHTML = actionHtml;
+            }
+
+            const monitorCell = row.querySelector('.col-monitor');
+            if (monitorCell && (data.status === 'INCREMENT_RUNNING' || data.status === 'FULL_COMPLETED')) {
+                const rpoMs = data.rpo_ms !== undefined ? data.rpo_ms : data.rpoMs;
+                const rtoMs = data.rto_ms !== undefined ? data.rto_ms : data.rtoMs;
+                const rpoColor = rpoMs != null && rpoMs < 5000 ? '#52c41a' : rpoMs != null && rpoMs < 30000 ? '#faad14' : rpoMs != null ? '#ff4d4f' : '#999';
+                const rtoColor = rtoMs != null && rtoMs < 5000 ? '#52c41a' : rtoMs != null && rtoMs < 30000 ? '#faad14' : rtoMs != null ? '#ff4d4f' : '#999';
+                monitorCell.innerHTML = `<div style="font-size: 11px; line-height: 1.6;">
+                    <div style="color: ${rpoColor};">RPO: ${rpoMs != null ? formatDelay(rpoMs) : '-'}</div>
+                    <div style="color: ${rtoColor};">RTO: ${rtoMs != null ? formatDelay(rtoMs) : '-'}</div>
+                </div>`;
+            } else if (monitorCell) {
+                monitorCell.innerHTML = '<span style="color: #999;">-</span>';
             }
         }
         
@@ -1773,8 +2174,43 @@
             localStorage.removeItem('user');
             window.location.href = 'login.html';
         }
-        
-        // 获取请求头（包含认证信息）
+
+        let _tokenExpiredHandled = false;
+        let _tokenExpiredTimer = null;
+
+        function handleTokenExpired() {
+            if (_tokenExpiredTimer) {
+                clearInterval(_tokenExpiredTimer);
+                _tokenExpiredTimer = null;
+            }
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html?expired=1';
+        }
+
+        function showTokenExpiredModal() {
+            if (_tokenExpiredHandled) return;
+            _tokenExpiredHandled = true;
+
+            const overlay = document.getElementById('tokenExpiredOverlay');
+            const countdownEl = document.getElementById('tokenExpiredCountdown');
+            overlay.style.display = 'flex';
+
+            let seconds = 5;
+            countdownEl.textContent = `${seconds} 秒后自动跳转到登录页`;
+
+            _tokenExpiredTimer = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(_tokenExpiredTimer);
+                    _tokenExpiredTimer = null;
+                    handleTokenExpired();
+                } else {
+                    countdownEl.textContent = `${seconds} 秒后自动跳转到登录页`;
+                }
+            }, 1000);
+        }
+
         function getAuthHeaders() {
             const token = localStorage.getItem('token');
             return {
@@ -1782,8 +2218,68 @@
                 'Authorization': token ? `Bearer ${token}` : ''
             };
         }
+
+        async function fetchWithAuth(url, options = {}) {
+            if (!options.headers) {
+                options.headers = getAuthHeaders();
+            }
+            const response = await fetch(url, options);
+
+            if (response.status === 401) {
+                showTokenExpiredModal();
+                return new Promise(() => {});
+            }
+
+            return response;
+        }
         
         // 格式化时间（根据用户所在时区显示）
+        const ERROR_CODE_MAP = {
+            'E1001': { desc: '源数据库连接失败', solution: '请检查源数据库地址、端口、用户名和密码是否正确，确认数据库服务已启动且网络可达' },
+            'E1002': { desc: '目标数据库连接失败', solution: '请检查目标数据库地址、端口、用户名和密码是否正确，确认数据库服务已启动且网络可达' },
+            'E1003': { desc: '源数据库认证失败', solution: '请检查源数据库用户名和密码是否正确，确认用户有远程登录权限' },
+            'E1004': { desc: '目标数据库认证失败', solution: '请检查目标数据库用户名和密码是否正确，确认用户有远程登录权限' },
+            'E1005': { desc: '源数据库网络不可达', solution: '请检查源数据库主机地址是否正确，确认网络连通性和防火墙规则' },
+            'E1006': { desc: '目标数据库网络不可达', solution: '请检查目标数据库主机地址是否正确，确认网络连通性和防火墙规则' },
+            'E2001': { desc: '源数据库Binlog未开启', solution: '请在MySQL配置文件中设置 log_bin=ON 并重启数据库服务' },
+            'E2002': { desc: 'Binlog格式不是ROW', solution: '请在MySQL配置文件中设置 binlog_format=ROW 并重启数据库服务' },
+            'E2003': { desc: 'Binlog Row Image不是FULL', solution: '请在MySQL配置文件中设置 binlog_row_image=FULL 并重启数据库服务' },
+            'E2004': { desc: '源数据库server_id未设置', solution: '请在MySQL配置文件中设置 server_id 为非0值并重启数据库服务' },
+            'E2005': { desc: 'Checkpoint初始化失败', solution: '请检查源数据库连接是否正常，确认用户有REPLICATION权限' },
+            'E2006': { desc: 'PostgreSQL WAL LSN获取失败', solution: '请检查PostgreSQL连接是否正常，确认用户有replication权限' },
+            'E3001': { desc: 'Capture进程启动失败', solution: '请检查Agent日志，确认capture模块JAR包存在且配置正确' },
+            'E3002': { desc: 'Capture进程异常退出', solution: '请检查Agent日志，确认源数据库连接正常且binlog/WAL可访问' },
+            'E3003': { desc: 'Extract进程启动失败', solution: '请检查Agent日志，确认extract模块JAR包存在且配置正确' },
+            'E3004': { desc: '增量同步进程启动失败', solution: '请检查Agent日志，确认increment模块JAR包存在且配置正确' },
+            'E3005': { desc: '增量同步进程异常退出', solution: '请检查Agent日志，可能是目标数据库连接中断或SQL执行异常' },
+            'E4001': { desc: '全量同步失败', solution: '请检查Agent日志，确认源库和目标库连接正常，表结构和数据无异常' },
+            'E4002': { desc: '全量同步超时', solution: '请检查数据量是否过大，考虑分批同步或优化网络带宽' },
+            'E4003': { desc: '目标数据库写入失败', solution: '请检查目标数据库磁盘空间、表结构是否与源库一致、是否有写入权限' },
+            'E4004': { desc: '主键冲突写入失败', solution: '请检查目标库是否已存在相同主键的数据，可通过恢复任务自动跳过重复数据' },
+            'E5001': { desc: '源数据库配置为空', solution: '请检查任务创建时源数据库连接信息是否填写完整' },
+            'E5002': { desc: '目标数据库配置为空', solution: '请检查任务创建时目标数据库连接信息是否填写完整' },
+            'E5003': { desc: '连接串解析失败', solution: '请检查连接串格式是否正确，正确格式: mysql://user:pass@host:port 或 postgresql://user:pass@host:port' },
+            'E9999': { desc: '未知错误', solution: '请查看Agent日志获取详细错误信息，或联系技术支持' }
+        };
+
+        function getErrorCodeDescription(code) {
+            if (!code) return '未知错误';
+            return ERROR_CODE_MAP[code] ? ERROR_CODE_MAP[code].desc : '未知错误 (' + code + ')';
+        }
+
+        function getErrorCodeSolution(code) {
+            if (!code) return '请查看日志获取详细错误信息';
+            return ERROR_CODE_MAP[code] ? ERROR_CODE_MAP[code].solution : '请查看Agent日志获取详细错误信息，或联系技术支持';
+        }
+
+        function formatDelay(ms) {
+            if (ms == null || ms < 0) return '-';
+            if (ms < 1000) return ms + 'ms';
+            if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+            if (ms < 3600000) return Math.floor(ms / 60000) + 'm' + Math.floor((ms % 60000) / 1000) + 's';
+            return Math.floor(ms / 3600000) + 'h' + Math.floor((ms % 3600000) / 60000) + 'm';
+        }
+
         function formatDateTime(dateString) {
             if (!dateString) return '-';
             
@@ -1835,14 +2331,7 @@
                     url += `&status=${filterStatus}`;
                 }
                 
-                const response = await fetch(url, {
-                    headers: getAuthHeaders()
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
+                const response = await fetchWithAuth(url);
                 
                 const result = await response.json();
                 console.log('API 返回结果:', result);
@@ -1864,14 +2353,7 @@
             if (!checkAuth()) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/failed`, {
-                    headers: getAuthHeaders()
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/failed`);
                 
                 const result = await response.json();
                 
@@ -1979,12 +2461,12 @@
                 <div class="table-cell col-name">
                     <div>
                         <div>${workflow.name}</div>
-                        <div style="font-size: 11px; color: #1890ff; cursor: pointer;" onclick="showTaskDetail('${workflow.id}')">${workflow.id}</div>
+                        <div style="font-size: 11px; color: #1890ff; cursor: pointer;" onclick="${workflow.status === 'CONFIGURING' ? `openTaskConfig('${workflow.id}')` : `showTaskDetail('${workflow.id}')`}">${workflow.id}</div>
                     </div>
                 </div>
                 <div class="table-cell col-status">
                     <span class="status-tag ${statusInfo.class}">
-                        ${statusInfo.dot ? '<span class="status-dot"></span>' : ''}
+                        ${statusInfo.dot ? '<span class="status-dot"></span>' : statusInfo.icon ? `<span class="status-icon">${statusInfo.icon}</span>` : ''}
                         ${statusInfo.text}
                     </span>
                 </div>
@@ -1992,7 +2474,16 @@
                     <div style="font-size: 12px; color: #666;">${formatDateTime(workflow.created_at)}</div>
                 </div>
                 <div class="table-cell col-monitor">
-                    <span style="color: #999;">-</span>
+                    ${workflow.status === 'INCREMENT_RUNNING' || workflow.status === 'FULL_COMPLETED' ?
+                        `<div style="font-size: 11px; line-height: 1.6;">
+                            <div style="color: ${workflow.rpo_ms != null && workflow.rpo_ms < 5000 ? '#52c41a' : workflow.rpo_ms != null && workflow.rpo_ms < 30000 ? '#faad14' : workflow.rpo_ms != null ? '#ff4d4f' : '#999'};">
+                                RPO: ${workflow.rpo_ms != null ? formatDelay(workflow.rpo_ms) : '-'}
+                            </div>
+                            <div style="color: ${workflow.rto_ms != null && workflow.rto_ms < 5000 ? '#52c41a' : workflow.rto_ms != null && workflow.rto_ms < 30000 ? '#faad14' : workflow.rto_ms != null ? '#ff4d4f' : '#999'};">
+                                RTO: ${workflow.rto_ms != null ? formatDelay(workflow.rto_ms) : '-'}
+                            </div>
+                        </div>` :
+                        '<span style="color: #999;">-</span>'}
                 </div>
                 <div class="table-cell col-billing">
                     ${workflow.is_billing ? '<span style="color: #52c41a;">是</span>' : '<span style="color: #999;">否</span>'}
@@ -2013,7 +2504,9 @@
                 </div>
                 <div class="table-cell col-action">
                     <div class="action-btns">
-                        ${workflow.status === 'FAILED' ? 
+                        ${workflow.status === 'CONFIGURING' ? 
+                            `<button class="action-btn" onclick="openTaskConfig('${workflow.id}')">配置</button>` : 
+                        workflow.status === 'FAILED' ? 
                             `<button class="action-btn" onclick="retryWorkflow('${workflow.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
                             (workflow.status === 'STARTING' || workflow.status === 'FULL_MIGRATING') ? 
                             `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
@@ -2022,7 +2515,8 @@
                             workflow.status === 'PAUSED' ?
                             `<button class="action-btn" onclick="resumeWorkflow('${workflow.id}')">恢复</button>` :
                             (workflow.status === 'COMPLETED' || workflow.status === 'FULL_COMPLETED') ? 
-                            `<button class="action-btn delete" onclick="deleteWorkflow('${workflow.id}', '${workflow.name.replace(/'/g, "\\'")}')">删除</button>` : ''}
+                            `<button class="action-btn delete" onclick="deleteWorkflow('${workflow.id}', '${workflow.name.replace(/'/g, "\\'")}')">删除</button>` : 
+                            `<button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>`}
                     </div>
                 </div>
             `;
@@ -2056,7 +2550,6 @@
             
             let html = '';
             
-            // 显示最多5个页码
             let startPage = Math.max(1, currentPage - 2);
             let endPage = Math.min(totalPages, startPage + 4);
             
@@ -2064,29 +2557,22 @@
                 startPage = Math.max(1, endPage - 4);
             }
             
-            // 第一页
             if (startPage > 1) {
-                html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+                html += `<button class="page-btn ${1 === currentPage ? 'active' : ''}" onclick="goToPage(1)">1</button>`;
                 if (startPage > 2) {
-                    html += `<span style="padding: 0 8px; color: #999;">...</span>`;
+                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.max(1, currentPage - 5)})">···</span>`;
                 }
             }
             
-            // 中间页码
             for (let i = startPage; i <= endPage; i++) {
-                if (i === currentPage) {
-                    html += `<button class="page-btn active">${i}</button>`;
-                } else {
-                    html += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
-                }
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
             }
             
-            // 最后一页
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
-                    html += `<span style="padding: 0 8px; color: #999;">...</span>`;
+                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.min(totalPages, currentPage + 5)})">···</span>`;
                 }
-                html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+                html += `<button class="page-btn ${totalPages === currentPage ? 'active' : ''}" onclick="goToPage(${totalPages})">${totalPages}</button>`;
             }
             
             pageNumbersContainer.innerHTML = html;
@@ -2118,40 +2604,190 @@
             target: null
         };
         
+        function buildConnectionString(type) {
+            const host = document.getElementById(type + 'Host').value.trim();
+            const port = document.getElementById(type + 'Port').value.trim();
+            const username = document.getElementById(type + 'Username').value.trim();
+            const password = document.getElementById(type + 'Password').value.trim();
+            const dbType = (type === 'source') ? selectedSourceType : selectedTargetType;
+            const protocol = dbType === 'postgresql' ? 'postgresql' : 'mysql';
+            
+            if (!host || !port || !username) return '';
+            
+            let connStr = `${protocol}://${username}:${password}@${host}:${port}`;
+            
+            if (dbType === 'postgresql') {
+                let dbNameInput = document.getElementById(type + 'DbName');
+                if (!dbNameInput) dbNameInput = document.getElementById(type + 'DbNameInput');
+                if (dbNameInput && dbNameInput.value.trim()) {
+                    connStr += '/' + dbNameInput.value.trim();
+                }
+            }
+            
+            return connStr;
+        }
+        
+        function buildConnectionStringWithDb(type, dbName) {
+            const base = buildConnectionString(type);
+            if (!base) return '';
+            return `${base}/${dbName}`;
+        }
+        
+        function onConnectionFieldChange(type) {
+            connectionTestStatus[type] = null;
+            const statusDiv = document.getElementById(type + 'ConnectionStatus');
+            statusDiv.className = 'connection-status';
+            statusDiv.textContent = '';
+            
+            const hostInput = document.getElementById(type + 'Host');
+            const portInput = document.getElementById(type + 'Port');
+            const usernameInput = document.getElementById(type + 'Username');
+            const passwordInput = document.getElementById(type + 'Password');
+            
+            [hostInput, portInput, usernameInput, passwordInput].forEach(input => input.classList.remove('error'));
+            
+            let dbNameInput = document.getElementById(type + 'DbName');
+            if (!dbNameInput) dbNameInput = document.getElementById(type + 'DbNameInput');
+            if (dbNameInput) dbNameInput.classList.remove('error');
+            
+            const host = hostInput.value.trim();
+            const port = portInput.value.trim();
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (host && !/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*)$/.test(host)) {
+                hostInput.classList.add('error');
+            }
+            if (port && !/^\d+$/.test(port)) {
+                portInput.classList.add('error');
+            }
+            if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
+                usernameInput.classList.add('error');
+            }
+            
+            const hiddenInput = document.getElementById(type + 'Connection');
+            hiddenInput.value = buildConnectionString(type);
+        }
+        
+        function validateConnectionFields(type) {
+            const hostInput = document.getElementById(type + 'Host');
+            const portInput = document.getElementById(type + 'Port');
+            const usernameInput = document.getElementById(type + 'Username');
+            const passwordInput = document.getElementById(type + 'Password');
+            
+            const host = hostInput.value.trim();
+            const port = portInput.value.trim();
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            let errors = [];
+            
+            [hostInput, portInput, usernameInput, passwordInput].forEach(input => input.classList.remove('error'));
+            
+            if (!host) {
+                errors.push('IP地址');
+                hostInput.classList.add('error');
+            } else if (!/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*)$/.test(host)) {
+                errors.push('IP地址格式不正确');
+                hostInput.classList.add('error');
+            }
+            
+            if (!port) {
+                errors.push('端口号');
+                portInput.classList.add('error');
+            } else if (!/^\d+$/.test(port) || parseInt(port) < 1 || parseInt(port) > 65535) {
+                errors.push('端口号范围1-65535');
+                portInput.classList.add('error');
+            }
+            
+            if (!username) {
+                errors.push('用户名');
+                usernameInput.classList.add('error');
+            } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                errors.push('用户名格式不正确');
+                usernameInput.classList.add('error');
+            }
+            
+            if (!password) {
+                errors.push('密码');
+                passwordInput.classList.add('error');
+            }
+            
+            const dbType = (type === 'source') ? selectedSourceType : selectedTargetType;
+            if (dbType === 'postgresql') {
+                let dbNameInput = document.getElementById(type + 'DbName');
+                if (!dbNameInput) dbNameInput = document.getElementById(type + 'DbNameInput');
+                if (dbNameInput && !dbNameInput.value.trim()) {
+                    errors.push('数据库名称(PG必填)');
+                    dbNameInput.classList.add('error');
+                } else if (dbNameInput) {
+                    dbNameInput.classList.remove('error');
+                }
+            }
+            
+            return errors;
+        }
+        
         function testConnection(type) {
-            const connectionInput = document.getElementById(type === 'source' ? 'sourceConnection' : 'targetConnection');
             const statusDiv = document.getElementById(type + 'ConnectionStatus');
             const testBtn = document.getElementById('test' + (type === 'source' ? 'Source' : 'Target') + 'Btn');
-            const connection = connectionInput.value.trim();
             
+            const errors = validateConnectionFields(type);
+            if (errors.length > 0) {
+                showNotification('请正确填写: ' + errors.join('、'), 'error');
+                return;
+            }
+            
+            const connection = buildConnectionString(type);
             if (!connection) {
-                showNotification('请先填写' + (type === 'source' ? '源' : '目标') + '数据库连接', 'error');
+                showNotification('请先填写' + (type === 'source' ? '源' : '目标') + '数据库连接信息', 'error');
                 return;
             }
             
-            const error = validateConnectionString(connection);
-            if (error) {
-                showNotification('连接串格式不正确', 'error');
-                return;
-            }
+            const dbType = (type === 'source') ? (selectedSourceType || 'mysql') : (selectedTargetType || 'mysql');
             
             statusDiv.className = 'connection-status testing';
             statusDiv.textContent = '正在测试连接...';
             testBtn.disabled = true;
             
-            fetch(`${API_BASE_URL}/metadata/test-connection`, {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            
+            fetchWithAuth(`${API_BASE_URL}/metadata/test-connection`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ sourceConnection: connection })
+                body: JSON.stringify({ sourceConnection: connection, dbType: dbType }),
+                signal: controller.signal
             })
             .then(response => response.json())
             .then(result => {
+                clearTimeout(timeoutId);
                 testBtn.disabled = false;
                 if (result.success && result.data && result.data.connected) {
                     statusDiv.className = 'connection-status success';
                     statusDiv.textContent = '✓ 连接成功';
                     connectionTestStatus[type] = true;
-                    connectionInput.classList.remove('error');
+                } else if (result.success && result.data && !result.data.connected) {
+                    statusDiv.className = 'connection-status error';
+                    const errorType = result.data.errorType;
+                    const errorMsg = result.data.errorMessage || '无法连接到数据库';
+                    const suggestion = result.data.suggestion || '';
+                    
+                    let displayMsg = '';
+                    if (errorType === 'AUTH_FAILED') {
+                        displayMsg = '✗ 认证失败：用户名或密码错误';
+                    } else if (errorType === 'NETWORK_ERROR') {
+                        displayMsg = '✗ 网络错误：无法连接到数据库服务器';
+                    } else if (errorType === 'DB_TYPE_MISMATCH') {
+                        displayMsg = '✗ 类型不匹配：' + errorMsg;
+                    } else if (errorType === 'TIMEOUT') {
+                        displayMsg = '✗ 连接超时：20秒内未连接到数据库服务器';
+                    } else {
+                        displayMsg = '✗ 连接失败：' + errorMsg.substring(0, 80);
+                    }
+                    
+                    statusDiv.innerHTML = `<div>${displayMsg}</div>${suggestion ? '<div style="font-size:11px;color:#999;margin-top:2px;">💡 ' + suggestion + '</div>' : ''}`;
+                    connectionTestStatus[type] = false;
                 } else {
                     statusDiv.className = 'connection-status error';
                     statusDiv.textContent = '✗ 连接失败: ' + (result.message || '无法连接到数据库');
@@ -2159,65 +2795,31 @@
                 }
             })
             .catch(error => {
+                clearTimeout(timeoutId);
                 testBtn.disabled = false;
                 statusDiv.className = 'connection-status error';
-                statusDiv.textContent = '✗ 连接测试出错: ' + error.message;
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = '<div>✗ 连接超时：20秒内未连接到数据库服务器</div><div style="font-size:11px;color:#999;margin-top:2px;">💡 请检查目标主机是否可达、端口是否开放、防火墙是否放行</div>';
+                } else {
+                    statusDiv.textContent = '✗ 连接测试出错: ' + error.message;
+                }
                 connectionTestStatus[type] = false;
             });
         }
         
-        // 验证数据库连接串格式
-        function validateConnectionString(connectionString) {
-            if (!connectionString) {
-                return null;
-            }
-            
-            const regex = /^mysql:\/\/[a-zA-Z0-9_]+:[^@]+@[a-zA-Z0-9.-]+:\d+\/[a-zA-Z0-9_]+$/;
-            if (!regex.test(connectionString)) {
-                return '格式不正确，正确格式为：mysql://user:pass@host:port/db';
-            }
-            return null;
-        }
-        
-        // 实时验证连接串输入
-        function validateConnectionInput(input, type) {
-            const value = input.value.trim();
-            const fieldName = type === 'source' ? '源数据库连接' : '目标数据库连接';
-            
-            connectionTestStatus[type] = null;
-            const statusDiv = document.getElementById(type + 'ConnectionStatus');
-            statusDiv.className = 'connection-status';
-            statusDiv.textContent = '';
-            
-            if (!value) {
-                input.classList.remove('error');
-                input.placeholder = `例如：mysql://user:pass@host:port/db`;
-                return;
-            }
-            
-            const error = validateConnectionString(value);
-            if (error) {
-                input.classList.add('error');
-                input.placeholder = `${fieldName}${error}`;
-            } else {
-                input.classList.remove('error');
-                input.placeholder = `例如：mysql://user:pass@host:port/db`;
-            }
-        }
-        
         // 步骤导航
         function goToStep(step) {
-            if (step === 2 && currentStep === 1) {
-                const sourceConnection = document.getElementById('sourceConnection').value.trim();
-                const sourceInput = document.getElementById('sourceConnection');
-                
-                if (!sourceConnection) {
-                    showNotification('请填写源数据库连接', 'error');
+            if (step === 1 && currentStep === 0) {
+                if (!selectedSourceType || !selectedTargetType) {
+                    showNotification('请选择源数据库和目标数据库类型', 'error');
                     return;
                 }
-                
-                if (sourceInput.classList.contains('error')) {
-                    showNotification('源数据库连接串格式不正确', 'error');
+            }
+            
+            if (step === 2 && currentStep === 1) {
+                const errors = validateConnectionFields('source');
+                if (errors.length > 0) {
+                    showNotification('请正确填写源数据库: ' + errors.join('、'), 'error');
                     return;
                 }
                 
@@ -2226,13 +2828,28 @@
                     return;
                 }
                 
-                loadDatabases(sourceConnection);
+                const sourceConnection = buildConnectionString('source');
+                if (selectedSourceType === 'postgresql') {
+                    const sourceDbName = document.getElementById('sourceDbName').value.trim();
+                    loadSchemas(sourceConnection, sourceDbName);
+                    updateTargetDbNameHint();
+                } else {
+                    loadDatabases(sourceConnection);
+                    updateTargetDbNameHint();
+                }
             }
             
             if (step === 3 && currentStep === 2) {
                 if (Object.keys(selectedSyncObjects).length === 0) {
                     showNotification('请至少选择一个同步对象', 'error');
                     return;
+                }
+                if (!(selectedSourceType === 'postgresql' && selectedTargetType === 'mysql')) {
+                    const targetDbName = document.getElementById('targetDbName').value.trim();
+                    if (!targetDbName) {
+                        showNotification('请填写目标数据库名称', 'error');
+                        return;
+                    }
                 }
             }
             
@@ -2241,7 +2858,9 @@
         }
         
         function nextStep() {
-            if (currentStep === 1) {
+            if (currentStep === 0) {
+                goToStep(1);
+            } else if (currentStep === 1) {
                 goToStep(2);
             } else if (currentStep === 2) {
                 goToStep(3);
@@ -2249,24 +2868,98 @@
         }
         
         function updateStepUI() {
+            document.getElementById('step0Nav').className = 'step-item' + (currentStep === 0 ? ' active' : (currentStep > 0 ? ' completed' : ''));
             document.getElementById('step1Nav').className = 'step-item' + (currentStep === 1 ? ' active' : (currentStep > 1 ? ' completed' : ''));
             document.getElementById('step2Nav').className = 'step-item' + (currentStep === 2 ? ' active' : (currentStep > 2 ? ' completed' : ''));
             document.getElementById('step3Nav').className = 'step-item' + (currentStep === 3 ? ' active' : '');
             
+            document.getElementById('step0Content').className = 'step-content' + (currentStep === 0 ? ' active' : '');
             document.getElementById('step1Content').className = 'step-content' + (currentStep === 1 ? ' active' : '');
             document.getElementById('step2Content').className = 'step-content' + (currentStep === 2 ? ' active' : '');
             document.getElementById('step3Content').className = 'step-content' + (currentStep === 3 ? ' active' : '');
             
-            document.getElementById('nextBtn').style.display = (currentStep === 1 || currentStep === 2) ? 'inline-block' : 'none';
-            document.getElementById('prevBtn').style.display = (currentStep === 2 || currentStep === 3) ? 'inline-block' : 'none';
+            document.getElementById('nextBtn').style.display = (currentStep >= 0 && currentStep <= 2) ? 'inline-block' : 'none';
+            document.getElementById('prevBtn').style.display = (currentStep >= 1 && currentStep <= 3) ? 'inline-block' : 'none';
             document.getElementById('confirmBtn').style.display = currentStep === 3 ? 'inline-block' : 'none';
+        }
+        
+        function selectSourceType(type) {
+            selectedSourceType = type;
+            
+            document.getElementById('sourceTypeMysql').className = 'db-type-card' + (type === 'mysql' ? ' selected' : '');
+            document.getElementById('sourceTypePg').className = 'db-type-card' + (type === 'postgresql' ? ' selected' : '');
+            
+            onConnectionFieldChange('source');
+            updateTargetTypeCards();
+            updateConnectionPlaceholders();
+        }
+        
+        function selectTargetType(type) {
+            const card = document.getElementById(type === 'mysql' ? 'targetTypeMysql' : 'targetTypePg');
+            if (card.classList.contains('disabled')) {
+                return;
+            }
+            
+            selectedTargetType = type;
+            
+            document.getElementById('targetTypeMysql').className = 'db-type-card' + (type === 'mysql' ? ' selected' : '');
+            document.getElementById('targetTypePg').className = 'db-type-card' + (type === 'postgresql' ? ' selected' : '');
+            
+            onConnectionFieldChange('target');
+            updateConnectionPlaceholders();
+        }
+        
+        function updateTargetTypeCards() {
+            const targetMysqlCard = document.getElementById('targetTypeMysql');
+            const targetPgCard = document.getElementById('targetTypePg');
+            
+            targetMysqlCard.className = 'db-type-card' + (selectedTargetType === 'mysql' ? ' selected' : '');
+            targetPgCard.className = 'db-type-card' + (selectedTargetType === 'postgresql' ? ' selected' : '');
+            
+            if (!selectedTargetType) {
+                selectedTargetType = 'mysql';
+                targetMysqlCard.className = 'db-type-card selected';
+            }
+        }
+        
+        function updateConnectionPlaceholders() {
+            const sourcePort = document.getElementById('sourcePort');
+            const targetPort = document.getElementById('targetPort');
+            const sourceHost = document.getElementById('sourceHost');
+            const targetHost = document.getElementById('targetHost');
+            const sourceDbNameRow = document.getElementById('sourceDbNameRow');
+            const targetDbNameRow = document.getElementById('targetDbNameRow');
+            
+            if (selectedSourceType === 'postgresql') {
+                sourcePort.placeholder = '端口号(默认5432)';
+                sourceHost.placeholder = 'IP地址';
+                if (!sourcePort.value || sourcePort.value === '3306') sourcePort.value = '5432';
+                sourceDbNameRow.style.display = 'block';
+            } else {
+                sourcePort.placeholder = '端口号(默认3306)';
+                sourceHost.placeholder = 'IP地址';
+                if (!sourcePort.value || sourcePort.value === '5432') sourcePort.value = '3306';
+                sourceDbNameRow.style.display = 'none';
+            }
+            
+            if (selectedTargetType === 'postgresql') {
+                targetPort.placeholder = '端口号(默认5432)';
+                targetHost.placeholder = 'IP地址';
+                if (!targetPort.value || targetPort.value === '3306') targetPort.value = '5432';
+                targetDbNameRow.style.display = 'block';
+            } else {
+                targetPort.placeholder = '端口号(默认3306)';
+                targetHost.placeholder = 'IP地址';
+                if (!targetPort.value || targetPort.value === '5432') targetPort.value = '3306';
+                targetDbNameRow.style.display = 'none';
+            }
         }
         
         let validationPassed = false;
         
         async function runValidation() {
-            const sourceConnection = document.getElementById('sourceConnection').value.trim();
-            const targetConnection = document.getElementById('targetConnection').value.trim();
+            const sourceConnection = buildConnectionString('source');
+            const targetConnection = buildConnectionString('target');
             const modeFull = document.getElementById('modeFull');
             const migrationMode = modeFull.checked ? 'full' : 'fullAndIncre';
             
@@ -2277,13 +2970,15 @@
             runBtn.disabled = true;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/metadata/validate`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/validate`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         sourceConnection: sourceConnection,
                         targetConnection: targetConnection,
-                        migrationMode: migrationMode
+                        migrationMode: migrationMode,
+                        sourceType: selectedSourceType || 'mysql',
+                        targetType: selectedTargetType || 'mysql'
                     })
                 });
                 
@@ -2335,12 +3030,209 @@
         }
         
         // 加载数据库列表
+        let schemasCache = [];
+        
+        function updateTargetDbNameHint() {
+            const hintDiv = document.getElementById('targetDbNameHint');
+            const targetDbNameInput = document.getElementById('targetDbName');
+            const targetDbNameGroup = document.getElementById('targetDbNameGroup');
+            
+            if (selectedSourceType === 'postgresql' && selectedTargetType === 'mysql') {
+                hintDiv.textContent = 'PostgreSQL的schema对应MySQL的数据库，每个选中的schema将同步到目标MySQL的同名数据库';
+                targetDbNameInput.placeholder = '默认使用源schema名称作为目标数据库名';
+                targetDbNameGroup.style.display = 'none';
+            } else if (selectedSourceType === 'postgresql' && selectedTargetType === 'postgresql') {
+                hintDiv.textContent = 'PostgreSQL的schema将同步到目标PostgreSQL的同名schema，需指定目标数据库名称';
+                targetDbNameInput.placeholder = '请输入目标PostgreSQL数据库名称（PG三层结构中的db层）';
+                targetDbNameGroup.style.display = 'block';
+            } else if (selectedSourceType === 'mysql' && selectedTargetType === 'postgresql') {
+                hintDiv.textContent = 'MySQL的数据库对应PostgreSQL的schema，需指定同步到目标PostgreSQL的哪个数据库';
+                targetDbNameInput.placeholder = '请输入目标PostgreSQL数据库名称（如 myapp_db）';
+                targetDbNameGroup.style.display = 'block';
+            } else {
+                hintDiv.textContent = 'MySQL中每个数据库对应一个同步目标库，默认同步到同名数据库';
+                targetDbNameInput.placeholder = '留空则使用源数据库名称';
+                targetDbNameGroup.style.display = 'none';
+            }
+        }
+        
+        async function loadSchemas(connectionStr, database) {
+            const sourceList = document.getElementById('sourceObjectsList');
+            sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/schemas`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: database })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data.schemas) {
+                    schemasCache = result.data.schemas;
+                    renderSchemas(database);
+                } else {
+                    sourceList.innerHTML = `<div class="empty-selection" style="color: #f5222d;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                console.error('加载schema列表失败:', error);
+                sourceList.innerHTML = '<div class="empty-selection" style="color: #f5222d;">加载失败，请检查连接信息</div>';
+            }
+        }
+        
+        function renderSchemas(database) {
+            const sourceList = document.getElementById('sourceObjectsList');
+            
+            if (schemasCache.length === 0) {
+                sourceList.innerHTML = '<div class="empty-selection">未找到可访问的schema</div>';
+                return;
+            }
+            
+            let html = '';
+            schemasCache.forEach(schema => {
+                html += `
+                    <div class="database-item" data-db="${schema}" data-schema="${schema}" data-pg-database="${database}">
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="selectAllPgTables('${database}', '${schema}', this.checked)">
+                            <span class="database-name" onclick="togglePgSchema('${database}', '${schema}')">${schema}</span>
+                            <span class="database-expand" id="expand-pg-${schema}" onclick="togglePgSchema('${database}', '${schema}')">▶</span>
+                        </div>
+                        <div class="table-list" id="tables-pg-${schema}">
+                            <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            sourceList.innerHTML = html;
+        }
+        
+        async function togglePgSchema(database, schema) {
+            const tableList = document.getElementById(`tables-pg-${schema}`);
+            const expandIcon = document.getElementById(`expand-pg-${schema}`);
+            
+            if (tableList.classList.contains('show')) {
+                tableList.classList.remove('show');
+                expandIcon.classList.remove('expanded');
+            } else {
+                tableList.classList.add('show');
+                expandIcon.classList.add('expanded');
+                
+                if (!tablesCache[`pg-${schema}`]) {
+                    await loadPgTables(database, schema);
+                }
+            }
+        }
+        
+        async function loadPgTables(database, schema) {
+            const connectionStr = buildConnectionString('source');
+            const tableList = document.getElementById(`tables-pg-${schema}`);
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/tables`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: database, schema: schema })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data.tables) {
+                    tablesCache[`pg-${schema}`] = result.data.tables;
+                    renderPgTables(database, schema);
+                } else {
+                    tableList.innerHTML = `<div style="padding: 16px; color: #f5222d; font-size: 12px;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                console.error('加载PG表列表失败:', error);
+                tableList.innerHTML = '<div style="padding: 16px; color: #f5222d; font-size: 12px;">加载失败</div>';
+            }
+        }
+        
+        function renderPgTables(database, schema) {
+            const tableList = document.getElementById(`tables-pg-${schema}`);
+            const tables = tablesCache[`pg-${schema}`] || [];
+            
+            if (tables.length === 0) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #999; font-size: 12px;">该schema没有表</div>';
+                return;
+            }
+            
+            let html = '';
+            tables.forEach(table => {
+                const isSelected = selectedSyncObjects[schema] && selectedSyncObjects[schema].includes(table.name);
+                html += `
+                    <div class="table-item">
+                        <span class="table-name">${table.name}</span>
+                        <span class="table-info">${table.rows} 行</span>
+                        <button class="table-add-btn" onclick="addPgTable('${schema}', '${table.name}')" ${isSelected ? 'disabled style="opacity: 0.5;"' : ''}>
+                            ${isSelected ? '已选择' : '选择'}
+                        </button>
+                    </div>
+                `;
+            });
+            
+            tableList.innerHTML = html;
+        }
+        
+        function selectAllPgTables(database, schema, checked) {
+            const tableList = document.getElementById(`tables-pg-${schema}`);
+            const expandIcon = document.getElementById(`expand-pg-${schema}`);
+
+            if (checked) {
+                if (tableList && !tableList.classList.contains('show')) {
+                    tableList.classList.add('show');
+                    expandIcon.classList.add('expanded');
+                }
+                if (!tablesCache[`pg-${schema}`]) {
+                    loadPgTables(database, schema).then(() => {
+                        if (!selectedSyncObjects[schema]) {
+                            selectedSyncObjects[schema] = [];
+                        }
+                        tablesCache[`pg-${schema}`].forEach(table => {
+                            if (!selectedSyncObjects[schema].includes(table.name)) {
+                                selectedSyncObjects[schema].push(table.name);
+                            }
+                        });
+                        renderPgTables(database, schema);
+                        renderSelectedObjects();
+                    });
+                    return;
+                }
+                if (!selectedSyncObjects[schema]) {
+                    selectedSyncObjects[schema] = [];
+                }
+                tablesCache[`pg-${schema}`].forEach(table => {
+                    if (!selectedSyncObjects[schema].includes(table.name)) {
+                        selectedSyncObjects[schema].push(table.name);
+                    }
+                });
+            } else {
+                delete selectedSyncObjects[schema];
+            }
+            renderPgTables(database, schema);
+            renderSelectedObjects();
+        }
+        
+        function addPgTable(schema, tableName) {
+            if (!selectedSyncObjects[schema]) {
+                selectedSyncObjects[schema] = [];
+            }
+            if (!selectedSyncObjects[schema].includes(tableName)) {
+                selectedSyncObjects[schema].push(tableName);
+            }
+            const database = document.getElementById('sourceDbName').value.trim();
+            renderPgTables(database, schema);
+            renderSelectedObjects();
+        }
+
         async function loadDatabases(connectionStr) {
             const sourceList = document.getElementById('sourceObjectsList');
             sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/metadata/databases`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/databases`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ sourceConnection: connectionStr })
@@ -2373,10 +3265,10 @@
             databasesCache.forEach(db => {
                 html += `
                     <div class="database-item" data-db="${db}">
-                        <div class="database-header" onclick="toggleDatabase('${db}')">
-                            <input type="checkbox" class="database-checkbox" onclick="event.stopPropagation(); selectAllTables('${db}', this.checked)">
-                            <span class="database-name">${db}</span>
-                            <span class="database-expand" id="expand-${db}">▶</span>
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="selectAllTables('${db}', this.checked)">
+                            <span class="database-name" onclick="toggleDatabase('${db}')">${db}</span>
+                            <span class="database-expand" id="expand-${db}" onclick="toggleDatabase('${db}')">▶</span>
                         </div>
                         <div class="table-list" id="tables-${db}">
                             <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
@@ -2409,11 +3301,11 @@
         
         // 加载表列表
         async function loadTables(db) {
-            const connectionStr = document.getElementById('sourceConnection').value.trim();
+            const connectionStr = buildConnectionStringWithDb('source', db);
             const tableList = document.getElementById(`tables-${db}`);
             
             try {
-                const response = await fetch(`${API_BASE_URL}/metadata/tables`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/tables`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ sourceConnection: connectionStr, database: db })
@@ -2462,20 +3354,38 @@
         
         // 选择所有表
         function selectAllTables(db, checked) {
+            const tableList = document.getElementById(`tables-${db}`);
+            const expandIcon = document.getElementById(`expand-${db}`);
+
             if (checked) {
-                // 添加该数据库的所有表
-                if (tablesCache[db]) {
-                    if (!selectedSyncObjects[db]) {
-                        selectedSyncObjects[db] = [];
-                    }
-                    tablesCache[db].forEach(table => {
-                        if (!selectedSyncObjects[db].includes(table.name)) {
-                            selectedSyncObjects[db].push(table.name);
-                        }
-                    });
+                if (tableList && !tableList.classList.contains('show')) {
+                    tableList.classList.add('show');
+                    expandIcon.classList.add('expanded');
                 }
+                if (!tablesCache[db]) {
+                    loadTables(db).then(() => {
+                        if (!selectedSyncObjects[db]) {
+                            selectedSyncObjects[db] = [];
+                        }
+                        tablesCache[db].forEach(table => {
+                            if (!selectedSyncObjects[db].includes(table.name)) {
+                                selectedSyncObjects[db].push(table.name);
+                            }
+                        });
+                        renderTables(db);
+                        renderSelectedObjects();
+                    });
+                    return;
+                }
+                if (!selectedSyncObjects[db]) {
+                    selectedSyncObjects[db] = [];
+                }
+                tablesCache[db].forEach(table => {
+                    if (!selectedSyncObjects[db].includes(table.name)) {
+                        selectedSyncObjects[db].push(table.name);
+                    }
+                });
             } else {
-                // 移除该数据库的所有表
                 delete selectedSyncObjects[db];
             }
             renderTables(db);
@@ -2507,16 +3417,17 @@
             }
             renderSelectedObjects();
             
-            // 更新源列表中的按钮状态
             if (tablesCache[db]) {
                 renderTables(db);
+            } else if (tablesCache[`pg-${db}`]) {
+                const database = document.getElementById('sourceDbName') ? document.getElementById('sourceDbName').value.trim() : '';
+                renderPgTables(database, db);
             }
         }
         
         // 渲染已选择的对象
         function renderSelectedObjects() {
             const selectedList = document.getElementById('selectedObjectsList');
-            const emptySelection = document.getElementById('emptySelection');
             
             const dbNames = Object.keys(selectedSyncObjects);
             if (dbNames.length === 0) {
@@ -2525,11 +3436,13 @@
             }
             
             let html = '';
+            const isPgSource = selectedSourceType === 'postgresql';
             dbNames.forEach(db => {
                 selectedSyncObjects[db].forEach(tableName => {
+                    const label = isPgSource ? `${db} (schema)` : db;
                     html += `
                         <div class="selected-item">
-                            <span class="selected-db-name">${db}.</span>
+                            <span class="selected-db-name">${label}.</span>
                             <span class="selected-table-name">${tableName}</span>
                             <button class="remove-btn" onclick="removeTable('${db}', '${tableName}')">移除</button>
                         </div>
@@ -2550,19 +3463,18 @@
             }
             
             const name = document.getElementById('taskName').value.trim();
-            const sourceConnection = document.getElementById('sourceConnection').value.trim();
-            const targetConnection = document.getElementById('targetConnection').value.trim();
+            const sourceConnection = buildConnectionString('source');
+            const targetConnection = buildConnectionString('target');
             
-            const sourceInput = document.getElementById('sourceConnection');
-            const targetInput = document.getElementById('targetConnection');
-            
-            if (sourceInput.classList.contains('error')) {
-                showNotification('源数据库连接串格式不正确', 'error');
+            const sourceErrors = validateConnectionFields('source');
+            if (sourceErrors.length > 0) {
+                showNotification('请正确填写源数据库: ' + sourceErrors.join('、'), 'error');
                 return;
             }
             
-            if (targetInput.classList.contains('error')) {
-                showNotification('目标数据库连接串格式不正确', 'error');
+            const targetErrors = validateConnectionFields('target');
+            if (targetErrors.length > 0) {
+                showNotification('请正确填写目标数据库: ' + targetErrors.join('、'), 'error');
                 return;
             }
             
@@ -2603,10 +3515,19 @@
                 });
                 syncObjectsJson = JSON.stringify(syncObjectsData);
                 
-                const match = sourceConnection.match(/\/([^\/]+)$/);
-                if (match) {
-                    sourceDbName = match[1];
+                if (selectedSourceType === 'postgresql') {
+                    sourceDbName = document.getElementById('sourceDbName').value.trim();
+                } else {
+                    const dbNames = Object.keys(selectedSyncObjects);
+                    if (dbNames.length === 1) {
+                        sourceDbName = dbNames[0];
+                    }
                 }
+            }
+            
+            let targetDbName = document.getElementById('targetDbName').value.trim();
+            if (selectedSourceType === 'postgresql' && selectedTargetType === 'mysql') {
+                targetDbName = targetDbName || Object.keys(selectedSyncObjects)[0] || '';
             }
             
             isSubmitting = true;
@@ -2615,7 +3536,7 @@
             confirmBtn.textContent = '创建中...';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
@@ -2624,14 +3545,12 @@
                         targetConnection: targetConnection || 'default-target',
                         migrationMode,
                         syncObjects: syncObjectsJson,
-                        sourceDbName
+                        sourceDbName,
+                        targetDbName: targetDbName,
+                        sourceType: selectedSourceType || 'mysql',
+                        targetType: selectedTargetType || 'mysql'
                     })
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2658,15 +3577,10 @@
             if (!checkAuth()) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}/pause`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}/pause`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2687,15 +3601,10 @@
             if (!checkAuth()) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}/resume`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}/resume`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2727,15 +3636,10 @@
             console.log('Sending request to:', `${API_BASE_URL}/workflows/${id}/stop`);
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}/stop`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}/stop`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2756,14 +3660,7 @@
             if (!checkAuth()) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
-                    headers: getAuthHeaders()
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}`);
                 
                 const result = await response.json();
                 
@@ -2841,9 +3738,10 @@
                             <div style="font-size: 13px; color: #666;">当前状态:</div>
                             <div>
                                 <span class="status-tag ${statusInfo.class}">
-                                    ${statusInfo.dot ? '<span class="status-dot"></span>' : ''}
+                                    ${statusInfo.dot ? '<span class="status-dot"></span>' : statusInfo.icon ? `<span class="status-icon">${statusInfo.icon}</span>` : ''}
                                     ${statusInfo.text}
                                 </span>
+                                ${task.status === 'CONFIGURING' ? `<button class="action-btn" style="margin-left: 8px;" onclick="closeDetailModal(); openTaskConfig('${task.id}')">前往配置</button>` : ''}
                             </div>
                             
                             <div style="font-size: 13px; color: #666;">执行进度:</div>
@@ -2878,6 +3776,22 @@
                                 <div style="font-size: 13px; color: #666;">完成时间:</div>
                                 <div style="font-size: 13px;">${formatDateTime(task.completed_at)}</div>
                             ` : ''}
+                            
+                            ${task.status === 'FAILED' ? `
+                                <div style="font-size: 13px; color: #666;">错误码:</div>
+                                <div style="font-size: 13px;">
+                                    ${task.error_code ? `<span style="font-weight: 600; background: #fff1f0; color: #f5222d; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${task.error_code}</span>` : '<span style="color: #999;">无</span>'}
+                                </div>
+                                
+                                <div style="font-size: 13px; color: #666;">错误描述:</div>
+                                <div style="font-size: 13px; color: #f5222d;">${getErrorCodeDescription(task.error_code)}</div>
+                                
+                                <div style="font-size: 13px; color: #666;">错误详情:</div>
+                                <div style="font-size: 13px; color: #f5222d; background: #fff2f0; padding: 8px 12px; border-radius: 4px; word-break: break-all;">${task.error_message || '无详细信息'}</div>
+                                
+                                <div style="font-size: 13px; color: #666;">处理建议:</div>
+                                <div style="font-size: 13px; color: #1890ff; background: #e6f7ff; padding: 8px 12px; border-radius: 4px;">${getErrorCodeSolution(task.error_code)}</div>
+                            ` : ''}
                         </div>
                         ${logsHtml}
                     `;
@@ -2907,15 +3821,10 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}`, {
                     method: 'DELETE',
                     headers: getAuthHeaders()
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2937,15 +3846,10 @@
             if (!checkAuth()) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/workflows/${id}/retry`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}/retry`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
                 
                 const result = await response.json();
                 
@@ -2977,32 +3881,1247 @@
             document.getElementById('createTaskModal').classList.add('show');
         }
         
-        // 关闭模态框
         function closeModal() {
             document.getElementById('createTaskModal').classList.remove('show');
         }
         
-        // 清空表单
         function clearForm() {
-            document.getElementById('taskName').value = '';
-            document.getElementById('sourceConnection').value = '';
-            document.getElementById('targetConnection').value = '';
+            document.getElementById('taskNameCreate').value = '';
+            selectedSourceType = 'mysql';
+            selectedTargetType = 'mysql';
+            document.getElementById('sourceTypeMysql').className = 'db-type-card selected';
+            document.getElementById('sourceTypePg').className = 'db-type-card';
+            document.getElementById('targetTypeMysql').className = 'db-type-card selected';
+            document.getElementById('targetTypePg').className = 'db-type-card';
+        }
+
+        let cfgCurrentStep = 1;
+        let cfgWorkflowId = null;
+        let cfgSourceType = 'mysql';
+        let cfgTargetType = 'mysql';
+        let cfgConnectionTestStatus = { source: null, target: null };
+        let cfgSelectedSyncObjects = {};
+        let cfgTablesCache = {};
+        let cfgDatabasesCache = [];
+        let cfgSchemasCache = [];
+        let cfgValidationPassed = false;
+
+        async function createTaskFromModal() {
+            if (!checkAuth()) return;
             
-            const sourceInput = document.getElementById('sourceConnection');
-            const targetInput = document.getElementById('targetConnection');
-            sourceInput.classList.remove('error');
-            targetInput.classList.remove('error');
-            sourceInput.placeholder = '例如：mysql://user:pass@host:port/db';
-            targetInput.placeholder = '例如：mysql://user:pass@host:port/db';
+            const name = document.getElementById('taskNameCreate').value.trim();
+            if (!name) {
+                showNotification('请输入任务名称', 'error');
+                return;
+            }
+            if (!selectedSourceType || !selectedTargetType) {
+                showNotification('请选择源数据库和目标数据库类型', 'error');
+                return;
+            }
             
-            connectionTestStatus = { source: null, target: null };
-            document.getElementById('sourceConnectionStatus').className = 'connection-status';
-            document.getElementById('sourceConnectionStatus').textContent = '';
-            document.getElementById('targetConnectionStatus').className = 'connection-status';
-            document.getElementById('targetConnectionStatus').textContent = '';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        name: name,
+                        sourceType: selectedSourceType,
+                        targetType: selectedTargetType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('任务创建成功，请继续配置', 'success');
+                    closeModal();
+                    clearForm();
+                    fetchWorkflows();
+                    openTaskConfig(result.data.id);
+                } else {
+                    showNotification(result.message || '创建失败', 'error');
+                }
+            } catch (error) {
+                console.error('创建任务失败:', error);
+                showNotification('创建任务失败', 'error');
+            }
+        }
+
+        async function openTaskConfig(taskId) {
+            if (!checkAuth()) return;
             
-            validationPassed = false;
-            document.getElementById('validationResult').innerHTML = '<div class="validation-empty">请点击"开始校验"按钮进行数据库同步条件检查</div>';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}`);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showNotification(result.message || '获取任务信息失败', 'error');
+                    return;
+                }
+                
+                const task = result.data;
+                if (task.status !== 'CONFIGURING') {
+                    showTaskDetail(taskId);
+                    return;
+                }
+                
+                cfgWorkflowId = taskId;
+                cfgSourceType = task.source_type || 'mysql';
+                cfgTargetType = task.target_type || 'mysql';
+                cfgCurrentStep = 1;
+                cfgConnectionTestStatus = { source: null, target: null };
+                cfgSelectedSyncObjects = {};
+                cfgTablesCache = {};
+                cfgDatabasesCache = [];
+                cfgSchemasCache = [];
+                cfgValidationPassed = false;
+                
+                document.getElementById('configPageTitle').textContent = '任务配置 - ' + task.name;
+                
+                if (task.source_connection) {
+                    cfgParseConnectionString('source', task.source_connection);
+                } else {
+                    cfgClearConnectionFields('source');
+                }
+                if (task.target_connection) {
+                    cfgParseConnectionString('target', task.target_connection);
+                } else {
+                    cfgClearConnectionFields('target');
+                }
+                
+                if (task.sync_objects) {
+                    try {
+                        const syncObjects = JSON.parse(task.sync_objects);
+                        cfgSelectedSyncObjects = {};
+                        for (const [db, dbValue] of Object.entries(syncObjects)) {
+                            let tables = Array.isArray(dbValue) ? dbValue : (dbValue.tables || []);
+                            cfgSelectedSyncObjects[db] = tables;
+                        }
+                    } catch (e) {}
+                }
+                
+                if (task.migration_mode) {
+                    if (task.migration_mode === 'fullAndIncre') {
+                        document.getElementById('cfgModeFullAndIncre').checked = true;
+                    } else {
+                        document.getElementById('cfgModeFull').checked = true;
+                    }
+                }
+                
+                if (task.target_db_name) {
+                    document.getElementById('cfgTargetDbName').value = task.target_db_name;
+                }
+                
+                cfgUpdateDbNameRows();
+                cfgUpdateTargetDbNameHint();
+                cfgUpdateStepUI();
+                
+                document.getElementById('cfgValidationResult').innerHTML = '<div class="validation-empty">请点击"开始校验"按钮进行数据库同步条件检查</div>';
+                
+                document.getElementById('cfgContentCompareSection').style.display = 'none';
+                document.getElementById('cfgCompareResult').innerHTML = '<div class="validation-empty">点击"开始内容对比"检查源库和目标库的数据是否一致</div>';
+                document.getElementById('cfgCompareDiffDetail').style.display = 'none';
+                document.getElementById('cfgCompareStatus').style.display = 'none';
+                cfgCompareSessionId = null;
+                cfgCompareAllDiffs = [];
+                cfgCompareDiffPage = 0;
+                
+                document.getElementById('taskConfigModal').classList.add('show');
+            } catch (error) {
+                console.error('获取任务信息失败:', error);
+                showNotification('获取任务信息失败', 'error');
+            }
+        }
+
+        function cfgParseConnectionString(type, connStr) {
+            const dbType = (type === 'source') ? cfgSourceType : cfgTargetType;
+            const protocol = dbType === 'postgresql' ? 'postgresql' : 'mysql';
+            const regex = new RegExp(protocol + ':\\/\\/([^:]+):([^@]+)@([^:]+):(\\d+)(?:\\/(.+))?', 'i');
+            const match = connStr.match(regex);
+            if (match) {
+                document.getElementById('cfg' + capitalize(type) + 'Username').value = match[1];
+                document.getElementById('cfg' + capitalize(type) + 'Password').value = match[2];
+                document.getElementById('cfg' + capitalize(type) + 'Host').value = match[3];
+                document.getElementById('cfg' + capitalize(type) + 'Port').value = match[4];
+                const dbNameInput = document.getElementById('cfg' + capitalize(type) + 'DbNameInput');
+                if (match[5] && dbNameInput) {
+                    dbNameInput.value = match[5];
+                }
+            }
+        }
+
+        function cfgClearConnectionFields(type) {
+            const prefix = 'cfg' + capitalize(type);
+            document.getElementById(prefix + 'Host').value = '';
+            document.getElementById(prefix + 'Port').value = type === 'source' ? (cfgSourceType === 'postgresql' ? '5432' : '3306') : (cfgTargetType === 'postgresql' ? '5432' : '3306');
+            document.getElementById(prefix + 'Username').value = '';
+            document.getElementById(prefix + 'Password').value = '';
+            const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+            if (dbNameInput) dbNameInput.value = '';
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function cfgUpdateDbNameRows() {
+            document.getElementById('cfgSourceDbNameRow').style.display = cfgSourceType === 'postgresql' ? 'block' : 'none';
+            document.getElementById('cfgTargetDbNameRow').style.display = cfgTargetType === 'postgresql' ? 'block' : 'none';
+        }
+
+        function cfgBuildConnectionString(type) {
+            const prefix = 'cfg' + capitalize(type);
+            const host = document.getElementById(prefix + 'Host').value.trim();
+            const port = document.getElementById(prefix + 'Port').value.trim();
+            const username = document.getElementById(prefix + 'Username').value.trim();
+            const password = document.getElementById(prefix + 'Password').value.trim();
+            const dbType = (type === 'source') ? cfgSourceType : cfgTargetType;
+            const protocol = dbType === 'postgresql' ? 'postgresql' : 'mysql';
+            
+            if (!host || !port || !username) return '';
+            
+            let connStr = `${protocol}://${username}:${password}@${host}:${port}`;
+            
+            if (dbType === 'postgresql') {
+                const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+                if (dbNameInput && dbNameInput.value.trim()) {
+                    connStr += '/' + dbNameInput.value.trim();
+                }
+            }
+            
+            return connStr;
+        }
+
+        function cfgBuildConnectionStringWithDb(type, dbName) {
+            const base = cfgBuildConnectionString(type);
+            if (!base) return '';
+            if (cfgSourceType === 'postgresql' && type === 'source') {
+                return base;
+            }
+            return `${base}/${dbName}`;
+        }
+
+        function cfgOnConnectionFieldChange(type) {
+            cfgConnectionTestStatus[type] = null;
+            const prefix = 'cfg' + capitalize(type);
+            const statusDiv = document.getElementById(prefix + 'ConnectionStatus');
+            statusDiv.className = 'connection-status';
+            statusDiv.textContent = '';
+            
+            ['Host', 'Port', 'Username', 'Password'].forEach(field => {
+                document.getElementById(prefix + field).classList.remove('error');
+            });
+            const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+            if (dbNameInput) dbNameInput.classList.remove('error');
+        }
+
+        function cfgValidateConnectionFields(type) {
+            const prefix = 'cfg' + capitalize(type);
+            const hostInput = document.getElementById(prefix + 'Host');
+            const portInput = document.getElementById(prefix + 'Port');
+            const usernameInput = document.getElementById(prefix + 'Username');
+            const passwordInput = document.getElementById(prefix + 'Password');
+            
+            const host = hostInput.value.trim();
+            const port = portInput.value.trim();
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            let errors = [];
+            
+            [hostInput, portInput, usernameInput, passwordInput].forEach(input => input.classList.remove('error'));
+            
+            if (!host) { errors.push('IP地址'); hostInput.classList.add('error'); }
+            else if (!/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*)$/.test(host)) { errors.push('IP地址格式不正确'); hostInput.classList.add('error'); }
+            if (!port) { errors.push('端口号'); portInput.classList.add('error'); }
+            else if (!/^\d+$/.test(port) || parseInt(port) < 1 || parseInt(port) > 65535) { errors.push('端口号范围1-65535'); portInput.classList.add('error'); }
+            if (!username) { errors.push('用户名'); usernameInput.classList.add('error'); }
+            else if (!/^[a-zA-Z0-9_]+$/.test(username)) { errors.push('用户名格式不正确'); usernameInput.classList.add('error'); }
+            if (!password) { errors.push('密码'); passwordInput.classList.add('error'); }
+            
+            const dbType = (type === 'source') ? cfgSourceType : cfgTargetType;
+            if (dbType === 'postgresql') {
+                const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+                if (dbNameInput && !dbNameInput.value.trim()) {
+                    errors.push('数据库名称(PG必填)');
+                    dbNameInput.classList.add('error');
+                } else if (dbNameInput) {
+                    dbNameInput.classList.remove('error');
+                }
+            }
+            
+            return errors;
+        }
+
+        function cfgTestConnection(type) {
+            const prefix = 'cfg' + capitalize(type);
+            const statusDiv = document.getElementById(prefix + 'ConnectionStatus');
+            const testBtn = document.getElementById('cfgTest' + capitalize(type) + 'Btn');
+            
+            const errors = cfgValidateConnectionFields(type);
+            if (errors.length > 0) {
+                showNotification('请正确填写: ' + errors.join('、'), 'error');
+                return;
+            }
+            
+            const connection = cfgBuildConnectionString(type);
+            if (!connection) {
+                showNotification('请先填写' + (type === 'source' ? '源' : '目标') + '数据库连接信息', 'error');
+                return;
+            }
+            
+            const dbType = (type === 'source') ? cfgSourceType : cfgTargetType;
+            
+            statusDiv.className = 'connection-status testing';
+            statusDiv.textContent = '正在测试连接...';
+            testBtn.disabled = true;
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            
+            fetchWithAuth(`${API_BASE_URL}/metadata/test-connection`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ sourceConnection: connection, dbType: dbType }),
+                signal: controller.signal
+            })
+            .then(response => response.json())
+            .then(result => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                if (result.success && result.data && result.data.connected) {
+                    statusDiv.className = 'connection-status success';
+                    statusDiv.textContent = '✓ 连接成功';
+                    cfgConnectionTestStatus[type] = true;
+                } else if (result.success && result.data && !result.data.connected) {
+                    statusDiv.className = 'connection-status error';
+                    const errorType = result.data.errorType;
+                    const errorMsg = result.data.errorMessage || '无法连接到数据库';
+                    const suggestion = result.data.suggestion || '';
+                    let displayMsg = '';
+                    if (errorType === 'AUTH_FAILED') displayMsg = '✗ 认证失败：用户名或密码错误';
+                    else if (errorType === 'NETWORK_ERROR') displayMsg = '✗ 网络错误：无法连接到数据库服务器';
+                    else if (errorType === 'DB_TYPE_MISMATCH') displayMsg = '✗ 类型不匹配：' + errorMsg;
+                    else if (errorType === 'TIMEOUT') displayMsg = '✗ 连接超时：20秒内未连接到数据库服务器';
+                    else displayMsg = '✗ 连接失败：' + errorMsg.substring(0, 80);
+                    statusDiv.innerHTML = `<div>${displayMsg}</div>${suggestion ? '<div style="font-size:11px;color:#999;margin-top:2px;">💡 ' + suggestion + '</div>' : ''}`;
+                    cfgConnectionTestStatus[type] = false;
+                } else {
+                    statusDiv.className = 'connection-status error';
+                    statusDiv.textContent = '✗ 连接失败: ' + (result.message || '无法连接到数据库');
+                    cfgConnectionTestStatus[type] = false;
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                statusDiv.className = 'connection-status error';
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = '<div>✗ 连接超时：20秒内未连接到数据库服务器</div><div style="font-size:11px;color:#999;margin-top:2px;">💡 请检查目标主机是否可达、端口是否开放、防火墙是否放行</div>';
+                } else {
+                    statusDiv.textContent = '✗ 连接测试出错: ' + error.message;
+                }
+                cfgConnectionTestStatus[type] = false;
+            });
+        }
+
+        function cfgGoToStep(step) {
+            if (step < 1 || step > 3) return;
+            
+            if (step === 2 && cfgCurrentStep === 1) {
+                const sourceErrors = cfgValidateConnectionFields('source');
+                if (sourceErrors.length > 0) {
+                    showNotification('请正确填写源数据库: ' + sourceErrors.join('、'), 'error');
+                    return;
+                }
+                if (!cfgConnectionTestStatus.source) {
+                    showNotification('请先测试源数据库连接', 'error');
+                    return;
+                }
+                
+                cfgSaveConfig().then(() => {
+                    const sourceConnection = cfgBuildConnectionString('source');
+                    if (cfgSourceType === 'postgresql') {
+                        const prefix = 'cfg' + capitalize('source');
+                        const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+                        const sourceDbName = dbNameInput ? dbNameInput.value.trim() : '';
+                        cfgLoadSchemas(sourceConnection, sourceDbName);
+                    } else {
+                        cfgLoadDatabases(sourceConnection);
+                    }
+                    cfgUpdateTargetDbNameHint();
+                });
+            }
+            
+            if (step === 3 && cfgCurrentStep === 2) {
+                if (Object.keys(cfgSelectedSyncObjects).length === 0) {
+                    showNotification('请至少选择一个同步对象', 'error');
+                    return;
+                }
+                if (cfgTargetType === 'postgresql') {
+                    const targetDbName = document.getElementById('cfgTargetDbName').value.trim();
+                    if (!targetDbName) {
+                        showNotification('请填写目标PostgreSQL数据库名称', 'error');
+                        return;
+                    }
+                }
+                cfgSaveConfig();
+            }
+            
+            cfgCurrentStep = step;
+            cfgUpdateStepUI();
+        }
+
+        function cfgNextStep() {
+            cfgGoToStep(cfgCurrentStep + 1);
+        }
+
+        function cfgUpdateStepUI() {
+            document.getElementById('cfgStep1Nav').className = 'step-item' + (cfgCurrentStep === 1 ? ' active' : (cfgCurrentStep > 1 ? ' completed' : ''));
+            document.getElementById('cfgStep2Nav').className = 'step-item' + (cfgCurrentStep === 2 ? ' active' : (cfgCurrentStep > 2 ? ' completed' : ''));
+            document.getElementById('cfgStep3Nav').className = 'step-item' + (cfgCurrentStep === 3 ? ' active' : '');
+            
+            document.getElementById('cfgStep1Content').className = 'step-content' + (cfgCurrentStep === 1 ? ' active' : '');
+            document.getElementById('cfgStep2Content').className = 'step-content' + (cfgCurrentStep === 2 ? ' active' : '');
+            document.getElementById('cfgStep3Content').className = 'step-content' + (cfgCurrentStep === 3 ? ' active' : '');
+            
+            document.getElementById('cfgNextBtn').style.display = (cfgCurrentStep >= 1 && cfgCurrentStep <= 2) ? 'inline-block' : 'none';
+            document.getElementById('cfgPrevBtn').style.display = (cfgCurrentStep >= 2 && cfgCurrentStep <= 3) ? 'inline-block' : 'none';
+            document.getElementById('cfgLaunchBtn').style.display = cfgCurrentStep === 3 ? 'inline-block' : 'none';
+        }
+
+        function cfgUpdateTargetDbNameHint() {
+            const hintDiv = document.getElementById('cfgTargetDbNameHint');
+            const targetDbNameInput = document.getElementById('cfgTargetDbName');
+            const targetDbNameGroup = document.getElementById('cfgTargetDbNameGroup');
+            
+            if (cfgSourceType === 'postgresql' && cfgTargetType === 'mysql') {
+                hintDiv.textContent = 'PostgreSQL的schema对应MySQL的数据库，每个选中的schema将同步到目标MySQL的同名数据库';
+                targetDbNameInput.placeholder = '默认使用源schema名称作为目标数据库名';
+                targetDbNameGroup.style.display = 'none';
+            } else if (cfgSourceType === 'postgresql' && cfgTargetType === 'postgresql') {
+                hintDiv.textContent = 'PostgreSQL的schema将同步到目标PostgreSQL的同名schema，需指定目标数据库名称';
+                targetDbNameInput.placeholder = '请输入目标PostgreSQL数据库名称（PG三层结构中的db层）';
+                targetDbNameGroup.style.display = 'block';
+            } else if (cfgSourceType === 'mysql' && cfgTargetType === 'postgresql') {
+                hintDiv.textContent = 'MySQL的数据库对应PostgreSQL的schema，需指定同步到目标PostgreSQL的哪个数据库';
+                targetDbNameInput.placeholder = '请输入目标PostgreSQL数据库名称（如 myapp_db）';
+                targetDbNameGroup.style.display = 'block';
+            } else {
+                hintDiv.textContent = 'MySQL中每个数据库对应一个同步目标库';
+                targetDbNameInput.placeholder = '请输入同步到目标库的数据库名称';
+                targetDbNameGroup.style.display = 'block';
+            }
+        }
+
+        async function cfgSaveConfig() {
+            const sourceConnection = cfgBuildConnectionString('source');
+            const targetConnection = cfgBuildConnectionString('target');
+            const modeFull = document.getElementById('cfgModeFull');
+            const migrationMode = modeFull.checked ? 'full' : 'fullAndIncre';
+            
+            let syncObjectsJson = null;
+            let sourceDbName = null;
+            
+            if (Object.keys(cfgSelectedSyncObjects).length > 0) {
+                const syncObjectsData = {};
+                Object.keys(cfgSelectedSyncObjects).forEach(db => {
+                    syncObjectsData[db] = { tables: cfgSelectedSyncObjects[db] };
+                });
+                syncObjectsJson = JSON.stringify(syncObjectsData);
+                
+                if (cfgSourceType === 'postgresql') {
+                    const prefix = 'cfg' + capitalize('source');
+                    const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+                    sourceDbName = dbNameInput ? dbNameInput.value.trim() : '';
+                } else {
+                    const dbNames = Object.keys(cfgSelectedSyncObjects);
+                    if (dbNames.length === 1) sourceDbName = dbNames[0];
+                }
+            }
+            
+            let targetDbName = document.getElementById('cfgTargetDbName').value.trim();
+            if (!targetDbName) {
+                if (cfgSourceType === 'postgresql' && cfgTargetType === 'mysql') {
+                    targetDbName = Object.keys(cfgSelectedSyncObjects)[0] || '';
+                } else if (cfgSourceType === 'mysql' && cfgTargetType === 'mysql') {
+                    targetDbName = sourceDbName || Object.keys(cfgSelectedSyncObjects)[0] || '';
+                }
+            }
+            
+            try {
+                await fetchWithAuth(`${API_BASE_URL}/workflows/${cfgWorkflowId}/config`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection: sourceConnection || '',
+                        targetConnection: targetConnection || '',
+                        migrationMode,
+                        syncObjects: syncObjectsJson,
+                        sourceDbName,
+                        targetDbName: targetDbName,
+                        sourceType: cfgSourceType,
+                        targetType: cfgTargetType
+                    })
+                });
+            } catch (error) {
+                console.error('保存配置失败:', error);
+            }
+        }
+
+        async function cfgRunValidation() {
+            const sourceConnection = cfgBuildConnectionString('source');
+            const targetConnection = cfgBuildConnectionString('target');
+            const modeFull = document.getElementById('cfgModeFull');
+            const migrationMode = modeFull.checked ? 'full' : 'fullAndIncre';
+            
+            const resultDiv = document.getElementById('cfgValidationResult');
+            const runBtn = document.getElementById('cfgRunValidationBtn');
+            
+            resultDiv.innerHTML = '<div class="validation-loading">正在校验中，请稍候...</div>';
+            runBtn.disabled = true;
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/validate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection: sourceConnection,
+                        targetConnection: targetConnection,
+                        migrationMode: migrationMode,
+                        sourceType: cfgSourceType,
+                        targetType: cfgTargetType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    cfgRenderValidationResult(result.data);
+                } else {
+                    resultDiv.innerHTML = `<div class="validation-empty" style="color: #f5222d;">校验失败: ${result.message || '未知错误'}</div>`;
+                    cfgValidationPassed = false;
+                }
+            } catch (error) {
+                console.error('校验失败:', error);
+                resultDiv.innerHTML = `<div class="validation-empty" style="color: #f5222d;">校验请求失败: ${error.message}</div>`;
+                cfgValidationPassed = false;
+            } finally {
+                runBtn.disabled = false;
+            }
+        }
+
+        function cfgRenderValidationResult(data) {
+            const resultDiv = document.getElementById('cfgValidationResult');
+            let html = '';
+            
+            if (data.checkItems && data.checkItems.length > 0) {
+                data.checkItems.forEach(item => {
+                    const statusClass = item.passed ? 'passed' : (item.severity === 'warning' ? 'warning' : 'failed');
+                    const icon = item.passed ? '✓' : (item.severity === 'warning' ? '⚠' : '✗');
+                    html += `
+                        <div class="check-item ${statusClass}">
+                            <div class="check-icon ${statusClass}">${icon}</div>
+                            <div class="check-content">
+                                <div class="check-name">${item.name}</div>
+                                <div class="check-description">${item.description}</div>
+                                <div class="check-message">${item.message}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            const summaryClass = data.allPassed ? 'passed' : 'failed';
+            const summaryText = data.allPassed ? '✓ 所有检查项均已通过，可以启动任务' : '✗ 存在未通过的检查项，请修复后再启动任务';
+            html += `<div class="validation-summary ${summaryClass}">${summaryText}</div>`;
+            
+            resultDiv.innerHTML = html;
+            cfgValidationPassed = data.allPassed;
+
+            const compareSection = document.getElementById('cfgContentCompareSection');
+            if (cfgSourceType === cfgTargetType) {
+                compareSection.style.display = 'block';
+            } else {
+                compareSection.style.display = 'none';
+            }
+        }
+
+        let cfgCompareSessionId = null;
+        let cfgCompareCurrentTableIndex = 0;
+        let cfgCompareDiffPage = 0;
+        let cfgCompareDiffPageSize = 10;
+        let cfgCompareAllDiffs = [];
+
+        async function cfgStartContentCompare() {
+            if (!checkAuth()) return;
+
+            const sourceConnection = cfgBuildConnectionString('source');
+            const targetConnection = cfgBuildConnectionString('target');
+
+            if (!sourceConnection || !targetConnection) {
+                showNotification('请先填写源库和目标库连接信息', 'error');
+                return;
+            }
+
+            if (cfgSourceType !== cfgTargetType) {
+                showNotification('内容对比仅支持源库和目标库为相同类型的数据库', 'error');
+                return;
+            }
+
+            const syncObjects = cfgSelectedSyncObjects;
+            if (!syncObjects || Object.keys(syncObjects).length === 0) {
+                showNotification('请先选择同步对象', 'error');
+                return;
+            }
+
+            const startBtn = document.getElementById('cfgStartCompareBtn');
+            startBtn.disabled = true;
+            startBtn.textContent = '初始化中...';
+
+            const statusDiv = document.getElementById('cfgCompareStatus');
+            const statusText = document.getElementById('cfgCompareStatusText');
+            statusDiv.style.display = 'block';
+            statusText.textContent = '正在初始化内容对比...';
+
+            try {
+                const startResponse = await fetchWithAuth(`${API_BASE_URL}/metadata/compare-content/start`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection: sourceConnection,
+                        targetConnection: targetConnection,
+                        sourceType: cfgSourceType,
+                        targetType: cfgTargetType,
+                        syncObjects: syncObjects
+                    })
+                });
+
+                const startResult = await startResponse.json();
+                if (!startResult.success) {
+                    showNotification(startResult.message || '初始化失败', 'error');
+                    startBtn.disabled = false;
+                    startBtn.textContent = '开始内容对比';
+                    statusDiv.style.display = 'none';
+                    return;
+                }
+
+                cfgCompareSessionId = startResult.data.sessionId;
+
+                statusText.textContent = '正在执行表级校验和对比（阶段1）...';
+
+                const checksumResponse = await fetchWithAuth(
+                    `${API_BASE_URL}/metadata/compare-content/${cfgCompareSessionId}/checksum`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+
+                const checksumResult = await checksumResponse.json();
+                if (!checksumResult.success) {
+                    showNotification(checksumResult.message || '校验和对比失败', 'error');
+                    startBtn.disabled = false;
+                    startBtn.textContent = '开始内容对比';
+                    statusDiv.style.display = 'none';
+                    return;
+                }
+
+                cfgRenderCompareResult(checksumResult.data);
+                statusText.textContent = '阶段1校验和对比完成';
+                startBtn.disabled = false;
+                startBtn.textContent = '重新对比';
+
+            } catch (error) {
+                console.error('内容对比失败:', error);
+                showNotification('内容对比请求失败: ' + error.message, 'error');
+                startBtn.disabled = false;
+                startBtn.textContent = '开始内容对比';
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        function cfgRenderCompareResult(sessionData) {
+            const resultDiv = document.getElementById('cfgCompareResult');
+            let html = '';
+
+            if (sessionData.tables && sessionData.tables.length > 0) {
+                sessionData.tables.forEach((table, index) => {
+                    let statusIcon = '⏳';
+                    let statusText = '待检查';
+                    let itemClass = '';
+
+                    if (table.checksumMatch === true) {
+                        statusIcon = '✓';
+                        statusText = '数据一致';
+                        itemClass = 'match';
+                    } else if (table.checksumMatch === false) {
+                        statusIcon = '✗';
+                        statusText = '数据不一致';
+                        itemClass = 'mismatch';
+                    } else if (table.status === 'ERROR') {
+                        statusIcon = '⚠';
+                        statusText = '检查失败';
+                        itemClass = 'mismatch';
+                    } else if (table.status === 'NO_PK') {
+                        statusIcon = '⚠';
+                        statusText = '无主键，无法对比';
+                        itemClass = '';
+                    }
+
+                    html += `
+                        <div class="compare-table-item ${itemClass}">
+                            <span class="table-name">${table.sourceTable}</span>
+                            <span class="table-status">${statusIcon} ${statusText}</span>
+                            <span style="margin-left: 12px; font-size: 12px; color: #999;">源: ${table.sourceRowCount != null ? table.sourceRowCount : '?'} 行 / 目标: ${table.targetRowCount != null ? table.targetRowCount : '?'} 行</span>
+                            ${table.checksumMatch === false ? `<span class="table-action"><button onclick="cfgViewTableDiffs(${index})">查看差异</button></span>` : ''}
+                        </div>
+                    `;
+                });
+            } else {
+                html = '<div class="validation-empty">未找到需要对比的表</div>';
+            }
+
+            const allMatch = sessionData.tables && sessionData.tables.every(t => t.checksumMatch === true);
+            if (allMatch) {
+                html += `<div class="validation-summary passed" style="margin-top: 12px;">✓ 所有表数据内容一致</div>`;
+            } else if (sessionData.tables && sessionData.tables.some(t => t.checksumMatch === false)) {
+                html += `<div class="validation-summary failed" style="margin-top: 12px;">✗ 存在数据不一致的表，请点击"查看差异"查看详情</div>`;
+            }
+
+            resultDiv.innerHTML = html;
+        }
+
+        async function cfgViewTableDiffs(tableIndex) {
+            cfgCompareCurrentTableIndex = tableIndex;
+            cfgCompareDiffPage = 0;
+            cfgCompareAllDiffs = [];
+
+            document.getElementById('cfgCompareDiffDetail').style.display = 'block';
+            document.getElementById('cfgDiffDetailTitle').textContent = '差异详情 - ' + (cfgCompareSessionId ? '' : '');
+
+            await cfgFetchDiffs(tableIndex, 10);
+        }
+
+        async function cfgFetchDiffs(tableIndex, limit) {
+            if (!cfgCompareSessionId) return;
+
+            const statusDiv = document.getElementById('cfgCompareStatus');
+            const statusText = document.getElementById('cfgCompareStatusText');
+            statusDiv.style.display = 'block';
+            statusText.textContent = '正在扫描差异...';
+
+            try {
+                const response = await fetchWithAuth(
+                    `${API_BASE_URL}/metadata/compare-content/${cfgCompareSessionId}?tableIndex=${tableIndex}&limit=${limit}`,
+                    { headers: getAuthHeaders() }
+                );
+
+                const result = await response.json();
+                if (!result.success) {
+                    showNotification(result.message || '获取差异失败', 'error');
+                    statusDiv.style.display = 'none';
+                    return;
+                }
+
+                const data = result.data;
+                const currentTable = data.currentTable;
+
+                if (currentTable.diffs && currentTable.diffs.length > 0) {
+                    cfgCompareAllDiffs = currentTable.diffs;
+                }
+
+                cfgRenderDiffTable();
+
+                const tableName = currentTable.sourceTable;
+                document.getElementById('cfgDiffDetailTitle').textContent = `差异详情 - ${tableName}`;
+
+                if (currentTable.cursor) {
+                    statusText.textContent = `扫描进度: ${currentTable.cursor.scanProgress || '0%'} | 已发现 ${currentTable.totalDiffsFound} 处差异`;
+                }
+
+                const loadMoreBtn = document.getElementById('cfgLoadMoreBtn');
+                if (!currentTable.scanCompleted) {
+                    loadMoreBtn.style.display = 'inline-block';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                    statusText.textContent = `扫描完成 | 共发现 ${currentTable.totalDiffsFound} 处差异`;
+                }
+
+            } catch (error) {
+                console.error('获取差异失败:', error);
+                showNotification('获取差异失败: ' + error.message, 'error');
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        async function cfgLoadMoreDiffs() {
+            await cfgFetchDiffs(cfgCompareCurrentTableIndex, 10);
+        }
+
+        function cfgRenderDiffTable() {
+            const filter = document.getElementById('cfgDiffFilter').value;
+            let filteredDiffs = cfgCompareAllDiffs;
+
+            if (filter !== 'all') {
+                filteredDiffs = cfgCompareAllDiffs.filter(d => d.diffType === filter);
+            }
+
+            const totalPages = Math.ceil(filteredDiffs.length / cfgCompareDiffPageSize);
+            const startIdx = cfgCompareDiffPage * cfgCompareDiffPageSize;
+            const endIdx = Math.min(startIdx + cfgCompareDiffPageSize, filteredDiffs.length);
+            const pageDiffs = filteredDiffs.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('cfgDiffTableBody');
+            let html = '';
+
+            pageDiffs.forEach((diff, i) => {
+                const globalIdx = startIdx + i + 1;
+                let diffTypeBadge = '';
+                if (diff.diffType === 'CONTENT_DIFF') {
+                    diffTypeBadge = '<span class="diff-type-badge content-diff">内容不同</span>';
+                } else if (diff.diffType === 'SOURCE_ONLY') {
+                    diffTypeBadge = '<span class="diff-type-badge source-only">仅源库有</span>';
+                } else if (diff.diffType === 'TARGET_ONLY') {
+                    diffTypeBadge = '<span class="diff-type-badge target-only">仅目标库有</span>';
+                }
+
+                const diffFields = diff.diffFields ? diff.diffFields.join(', ') : '-';
+                const sourceData = diff.sourceData ? formatDiffData(diff.sourceData) : '<span style="color: #999;">-</span>';
+                const targetData = diff.targetData ? formatDiffData(diff.targetData) : '<span style="color: #999;">-</span>';
+
+                html += `
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding: 6px 8px;">${globalIdx}</td>
+                        <td style="padding: 6px 8px; font-family: monospace;">${diff.primaryKeyValue != null ? diff.primaryKeyValue : '-'}</td>
+                        <td style="padding: 6px 8px;">${diffTypeBadge}</td>
+                        <td style="padding: 6px 8px; font-size: 11px; color: #d48806;">${diffFields}</td>
+                        <td style="padding: 6px 8px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(diff.sourceData || '')}">${sourceData}</td>
+                        <td style="padding: 6px 8px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(diff.targetData || '')}">${targetData}</td>
+                    </tr>
+                `;
+            });
+
+            if (pageDiffs.length === 0) {
+                html = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #999;">暂无差异数据</td></tr>';
+            }
+
+            tbody.innerHTML = html;
+
+            const paginationDiv = document.getElementById('cfgDiffPagination');
+            if (totalPages > 1) {
+                paginationDiv.style.display = 'block';
+                document.getElementById('cfgDiffPageInfo').textContent = `${cfgCompareDiffPage + 1} / ${totalPages}`;
+                document.getElementById('cfgDiffPrevBtn').disabled = cfgCompareDiffPage === 0;
+                document.getElementById('cfgDiffNextBtn').disabled = cfgCompareDiffPage >= totalPages - 1;
+            } else {
+                paginationDiv.style.display = 'none';
+            }
+        }
+
+        function formatDiffData(dataStr) {
+            try {
+                const obj = JSON.parse(dataStr);
+                const parts = [];
+                for (const [key, value] of Object.entries(obj)) {
+                    parts.push(`${key}=${value != null ? value : 'null'}`);
+                }
+                return parts.join(', ');
+            } catch (e) {
+                return dataStr;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function cfgFilterDiffs() {
+            cfgCompareDiffPage = 0;
+            cfgRenderDiffTable();
+        }
+
+        function cfgDiffPrevPage() {
+            if (cfgCompareDiffPage > 0) {
+                cfgCompareDiffPage--;
+                cfgRenderDiffTable();
+            }
+        }
+
+        function cfgDiffNextPage() {
+            const filter = document.getElementById('cfgDiffFilter').value;
+            let filteredDiffs = cfgCompareAllDiffs;
+            if (filter !== 'all') {
+                filteredDiffs = cfgCompareAllDiffs.filter(d => d.diffType === filter);
+            }
+            const totalPages = Math.ceil(filteredDiffs.length / cfgCompareDiffPageSize);
+            if (cfgCompareDiffPage < totalPages - 1) {
+                cfgCompareDiffPage++;
+                cfgRenderDiffTable();
+            }
+        }
+
+        async function launchTask() {
+            if (!checkAuth()) return;
+            
+            if (!cfgValidationPassed) {
+                showNotification('请先完成校验检查并确保所有检查项通过', 'error');
+                return;
+            }
+            
+            if (!confirm('确定要启动此同步任务吗？')) return;
+            
+            try {
+                await cfgSaveConfig();
+                
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${cfgWorkflowId}/launch`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('任务启动成功', 'success');
+                    closeConfigModal();
+                    fetchWorkflows();
+                } else {
+                    showNotification(result.message || '启动失败', 'error');
+                }
+            } catch (error) {
+                console.error('启动任务失败:', error);
+                showNotification('启动任务失败', 'error');
+            }
+        }
+
+        function closeConfigModal() {
+            document.getElementById('taskConfigModal').classList.remove('show');
+            cfgWorkflowId = null;
+        }
+
+        async function cfgLoadDatabases(connectionStr) {
+            const sourceList = document.getElementById('cfgSourceObjectsList');
+            sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/databases`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr })
+                });
+                const result = await response.json();
+                if (result.success && result.data.databases) {
+                    cfgDatabasesCache = result.data.databases;
+                    cfgRenderDatabases();
+                } else {
+                    sourceList.innerHTML = `<div class="empty-selection" style="color: #f5222d;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                sourceList.innerHTML = '<div class="empty-selection" style="color: #f5222d;">加载失败，请检查连接串</div>';
+            }
+        }
+
+        function cfgRenderDatabases() {
+            const sourceList = document.getElementById('cfgSourceObjectsList');
+            if (cfgDatabasesCache.length === 0) {
+                sourceList.innerHTML = '<div class="empty-selection">未找到可访问的数据库</div>';
+                return;
+            }
+            let html = '';
+            cfgDatabasesCache.forEach(db => {
+                html += `
+                    <div class="database-item" data-db="${db}">
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="cfgSelectAllTables('${db}', this.checked)">
+                            <span class="database-name" onclick="cfgToggleDatabase('${db}')">${db}</span>
+                            <span class="database-expand" id="cfg-expand-${db}" onclick="cfgToggleDatabase('${db}')">▶</span>
+                        </div>
+                        <div class="table-list" id="cfg-tables-${db}">
+                            <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
+                        </div>
+                    </div>
+                `;
+            });
+            sourceList.innerHTML = html;
+        }
+
+        async function cfgToggleDatabase(db) {
+            const tableList = document.getElementById(`cfg-tables-${db}`);
+            const expandIcon = document.getElementById(`cfg-expand-${db}`);
+            if (tableList.classList.contains('show')) {
+                tableList.classList.remove('show');
+                expandIcon.classList.remove('expanded');
+            } else {
+                tableList.classList.add('show');
+                expandIcon.classList.add('expanded');
+                if (!cfgTablesCache[db]) {
+                    await cfgLoadTables(db);
+                }
+            }
+        }
+
+        async function cfgLoadTables(db) {
+            const connectionStr = cfgBuildConnectionStringWithDb('source', db);
+            const tableList = document.getElementById(`cfg-tables-${db}`);
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/tables`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: db })
+                });
+                const result = await response.json();
+                if (result.success && result.data.tables) {
+                    cfgTablesCache[db] = result.data.tables;
+                    cfgRenderTables(db);
+                } else {
+                    tableList.innerHTML = `<div style="padding: 16px; color: #f5222d; font-size: 12px;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #f5222d; font-size: 12px;">加载失败</div>';
+            }
+        }
+
+        function cfgRenderTables(db) {
+            const tableList = document.getElementById(`cfg-tables-${db}`);
+            const tables = cfgTablesCache[db] || [];
+            if (tables.length === 0) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #999; font-size: 12px;">该数据库没有表</div>';
+                return;
+            }
+            let html = '';
+            tables.forEach(table => {
+                const isSelected = cfgSelectedSyncObjects[db] && cfgSelectedSyncObjects[db].includes(table.name);
+                html += `
+                    <div class="table-item">
+                        <span class="table-name">${table.name}</span>
+                        <span class="table-info">${table.rows} 行 | ${table.size}</span>
+                        <button class="table-add-btn" onclick="cfgAddTable('${db}', '${table.name}')" ${isSelected ? 'disabled style="opacity: 0.5;"' : ''}>
+                            ${isSelected ? '已选择' : '选择'}
+                        </button>
+                    </div>
+                `;
+            });
+            tableList.innerHTML = html;
+        }
+
+        function cfgSelectAllTables(db, checked) {
+            const tableList = document.getElementById(`cfg-tables-${db}`);
+            const expandIcon = document.getElementById(`cfg-expand-${db}`);
+            if (checked) {
+                if (tableList && !tableList.classList.contains('show')) {
+                    tableList.classList.add('show');
+                    expandIcon.classList.add('expanded');
+                }
+                if (!cfgTablesCache[db]) {
+                    cfgLoadTables(db).then(() => {
+                        if (!cfgSelectedSyncObjects[db]) cfgSelectedSyncObjects[db] = [];
+                        cfgTablesCache[db].forEach(table => {
+                            if (!cfgSelectedSyncObjects[db].includes(table.name)) cfgSelectedSyncObjects[db].push(table.name);
+                        });
+                        cfgRenderTables(db);
+                        cfgRenderSelectedObjects();
+                    });
+                    return;
+                }
+                if (!cfgSelectedSyncObjects[db]) cfgSelectedSyncObjects[db] = [];
+                cfgTablesCache[db].forEach(table => {
+                    if (!cfgSelectedSyncObjects[db].includes(table.name)) cfgSelectedSyncObjects[db].push(table.name);
+                });
+            } else {
+                delete cfgSelectedSyncObjects[db];
+            }
+            cfgRenderTables(db);
+            cfgRenderSelectedObjects();
+        }
+
+        function cfgAddTable(db, tableName) {
+            if (!cfgSelectedSyncObjects[db]) cfgSelectedSyncObjects[db] = [];
+            if (!cfgSelectedSyncObjects[db].includes(tableName)) cfgSelectedSyncObjects[db].push(tableName);
+            cfgRenderTables(db);
+            cfgRenderSelectedObjects();
+        }
+
+        function cfgRemoveTable(db, tableName) {
+            if (cfgSelectedSyncObjects[db]) {
+                const index = cfgSelectedSyncObjects[db].indexOf(tableName);
+                if (index > -1) cfgSelectedSyncObjects[db].splice(index, 1);
+                if (cfgSelectedSyncObjects[db].length === 0) delete cfgSelectedSyncObjects[db];
+            }
+            cfgRenderSelectedObjects();
+            if (cfgTablesCache[db]) cfgRenderTables(db);
+            else if (cfgTablesCache[`pg-${db}`]) {
+                const prefix = 'cfg' + capitalize('source');
+                const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+                const database = dbNameInput ? dbNameInput.value.trim() : '';
+                cfgRenderPgTables(database, db);
+            }
+        }
+
+        function cfgRenderSelectedObjects() {
+            const selectedList = document.getElementById('cfgSelectedObjectsList');
+            const dbNames = Object.keys(cfgSelectedSyncObjects);
+            if (dbNames.length === 0) {
+                selectedList.innerHTML = '<div class="empty-selection">暂未选择任何对象</div>';
+                return;
+            }
+            let html = '';
+            const isPgSource = cfgSourceType === 'postgresql';
+            dbNames.forEach(db => {
+                cfgSelectedSyncObjects[db].forEach(tableName => {
+                    const label = isPgSource ? `${db} (schema)` : db;
+                    html += `
+                        <div class="selected-item">
+                            <span class="selected-db-name">${label}.</span>
+                            <span class="selected-table-name">${tableName}</span>
+                            <button class="remove-btn" onclick="cfgRemoveTable('${db}', '${tableName}')">移除</button>
+                        </div>
+                    `;
+                });
+            });
+            selectedList.innerHTML = html;
+        }
+
+        async function cfgLoadSchemas(connectionStr, database) {
+            const sourceList = document.getElementById('cfgSourceObjectsList');
+            sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/schemas`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: database })
+                });
+                const result = await response.json();
+                if (result.success && result.data.schemas) {
+                    cfgSchemasCache = result.data.schemas;
+                    cfgRenderSchemas(database);
+                } else {
+                    sourceList.innerHTML = `<div class="empty-selection" style="color: #f5222d;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                sourceList.innerHTML = '<div class="empty-selection" style="color: #f5222d;">加载失败，请检查连接信息</div>';
+            }
+        }
+
+        function cfgRenderSchemas(database) {
+            const sourceList = document.getElementById('cfgSourceObjectsList');
+            if (cfgSchemasCache.length === 0) {
+                sourceList.innerHTML = '<div class="empty-selection">未找到可访问的schema</div>';
+                return;
+            }
+            let html = '';
+            cfgSchemasCache.forEach(schema => {
+                html += `
+                    <div class="database-item" data-db="${schema}" data-schema="${schema}" data-pg-database="${database}">
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="cfgSelectAllPgTables('${database}', '${schema}', this.checked)">
+                            <span class="database-name" onclick="cfgTogglePgSchema('${database}', '${schema}')">${schema}</span>
+                            <span class="database-expand" id="cfg-expand-pg-${schema}" onclick="cfgTogglePgSchema('${database}', '${schema}')">▶</span>
+                        </div>
+                        <div class="table-list" id="cfg-tables-pg-${schema}">
+                            <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
+                        </div>
+                    </div>
+                `;
+            });
+            sourceList.innerHTML = html;
+        }
+
+        async function cfgTogglePgSchema(database, schema) {
+            const tableList = document.getElementById(`cfg-tables-pg-${schema}`);
+            const expandIcon = document.getElementById(`cfg-expand-pg-${schema}`);
+            if (tableList.classList.contains('show')) {
+                tableList.classList.remove('show');
+                expandIcon.classList.remove('expanded');
+            } else {
+                tableList.classList.add('show');
+                expandIcon.classList.add('expanded');
+                if (!cfgTablesCache[`pg-${schema}`]) {
+                    await cfgLoadPgTables(database, schema);
+                }
+            }
+        }
+
+        async function cfgLoadPgTables(database, schema) {
+            const connectionStr = cfgBuildConnectionString('source');
+            const tableList = document.getElementById(`cfg-tables-pg-${schema}`);
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/tables`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: database, schema: schema })
+                });
+                const result = await response.json();
+                if (result.success && result.data.tables) {
+                    cfgTablesCache[`pg-${schema}`] = result.data.tables;
+                    cfgRenderPgTables(database, schema);
+                } else {
+                    tableList.innerHTML = `<div style="padding: 16px; color: #f5222d; font-size: 12px;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #f5222d; font-size: 12px;">加载失败</div>';
+            }
+        }
+
+        function cfgRenderPgTables(database, schema) {
+            const tableList = document.getElementById(`cfg-tables-pg-${schema}`);
+            const tables = cfgTablesCache[`pg-${schema}`] || [];
+            if (tables.length === 0) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #999; font-size: 12px;">该schema没有表</div>';
+                return;
+            }
+            let html = '';
+            tables.forEach(table => {
+                const isSelected = cfgSelectedSyncObjects[schema] && cfgSelectedSyncObjects[schema].includes(table.name);
+                html += `
+                    <div class="table-item">
+                        <span class="table-name">${table.name}</span>
+                        <span class="table-info">${table.rows} 行</span>
+                        <button class="table-add-btn" onclick="cfgAddPgTable('${schema}', '${table.name}')" ${isSelected ? 'disabled style="opacity: 0.5;"' : ''}>
+                            ${isSelected ? '已选择' : '选择'}
+                        </button>
+                    </div>
+                `;
+            });
+            tableList.innerHTML = html;
+        }
+
+        function cfgSelectAllPgTables(database, schema, checked) {
+            const tableList = document.getElementById(`cfg-tables-pg-${schema}`);
+            const expandIcon = document.getElementById(`cfg-expand-pg-${schema}`);
+            if (checked) {
+                if (tableList && !tableList.classList.contains('show')) {
+                    tableList.classList.add('show');
+                    expandIcon.classList.add('expanded');
+                }
+                if (!cfgTablesCache[`pg-${schema}`]) {
+                    cfgLoadPgTables(database, schema).then(() => {
+                        if (!cfgSelectedSyncObjects[schema]) cfgSelectedSyncObjects[schema] = [];
+                        cfgTablesCache[`pg-${schema}`].forEach(table => {
+                            if (!cfgSelectedSyncObjects[schema].includes(table.name)) cfgSelectedSyncObjects[schema].push(table.name);
+                        });
+                        cfgRenderPgTables(database, schema);
+                        cfgRenderSelectedObjects();
+                    });
+                    return;
+                }
+                if (!cfgSelectedSyncObjects[schema]) cfgSelectedSyncObjects[schema] = [];
+                cfgTablesCache[`pg-${schema}`].forEach(table => {
+                    if (!cfgSelectedSyncObjects[schema].includes(table.name)) cfgSelectedSyncObjects[schema].push(table.name);
+                });
+            } else {
+                delete cfgSelectedSyncObjects[schema];
+            }
+            cfgRenderPgTables(database, schema);
+            cfgRenderSelectedObjects();
+        }
+
+        function cfgAddPgTable(schema, tableName) {
+            if (!cfgSelectedSyncObjects[schema]) cfgSelectedSyncObjects[schema] = [];
+            if (!cfgSelectedSyncObjects[schema].includes(tableName)) cfgSelectedSyncObjects[schema].push(tableName);
+            const prefix = 'cfg' + capitalize('source');
+            const dbNameInput = document.getElementById(prefix + 'DbNameInput');
+            const database = dbNameInput ? dbNameInput.value.trim() : '';
+            cfgRenderPgTables(database, schema);
+            cfgRenderSelectedObjects();
         }
         
         let validationCurrentPage = 0;
@@ -3034,14 +5153,7 @@
             console.log('Token:', localStorage.getItem('token'));
             
             try {
-                const response = await fetch(`${API_BASE_URL}/validation-tasks?page=${validationCurrentPage}&size=${validationPageSize}`, {
-                    headers: getAuthHeaders()
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
+                const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks?page=${validationCurrentPage}&size=${validationPageSize}`);
                 
                 if (!response.ok) {
                     showNotification(`请求失败: ${response.status}`, 'error');
@@ -3053,31 +5165,43 @@
                 if (result.success) {
                     renderValidationTasks(result.data);
                 } else {
-                    showNotification(result.message || '获取校验任务列表失败', 'error');
+                    showNotification(result.message || '获取对比任务列表失败', 'error');
                 }
             } catch (error) {
-                console.error('获取校验任务列表失败:', error);
-                showNotification('获取校验任务列表失败: ' + error.message, 'error');
+                console.error('获取对比任务列表失败:', error);
+                showNotification('获取对比任务列表失败: ' + error.message, 'error');
             }
         }
         
-        function getValidationStatusClass(status) {
+        function getValidationStatusClass(status, task) {
+            if (status === 'COMPLETED' && task) {
+                return (task.failedTables || 0) === 0 ? 'status-completed' : 'status-mismatch';
+            }
             switch(status) {
                 case 'PENDING': return 'status-pending';
                 case 'RUNNING': return 'status-running';
-                case 'COMPLETED': return 'status-completed';
                 case 'FAILED': return 'status-failed';
                 default: return '';
             }
         }
         
-        function getValidationStatusText(status) {
+        function getValidationStatusText(status, task) {
+            if (status === 'COMPLETED' && task) {
+                return (task.failedTables || 0) === 0 ? '一致' : '不一致';
+            }
             switch(status) {
                 case 'PENDING': return '等待中';
-                case 'RUNNING': return '校验中';
-                case 'COMPLETED': return '已完成';
+                case 'RUNNING': return '对比中';
                 case 'FAILED': return '失败';
                 default: return status;
+            }
+        }
+
+        function getCompareTypeText(compareType) {
+            switch(compareType) {
+                case 'ROW_COUNT': return '行数对比';
+                case 'CONTENT': return '内容对比';
+                default: return compareType || '行数对比';
             }
         }
         
@@ -3093,7 +5217,7 @@
                                 <rect x="20" y="20" width="40" height="8" rx="1" stroke="#d9d9d9" stroke-width="2" fill="none"/>
                             </svg>
                         </div>
-                        <div class="empty-text">暂无校验任务</div>
+                        <div class="empty-text">暂无对比任务</div>
                     </div>
                 `;
                 return;
@@ -3101,19 +5225,28 @@
             
             let html = '';
             data.content.forEach(task => {
-                const statusClass = getValidationStatusClass(task.status);
-                const statusText = getValidationStatusText(task.status);
-                const progress = task.totalTables > 0 
-                    ? `${task.passedTables || 0}/${task.totalTables} 表通过` 
-                    : '-';
+                const statusClass = getValidationStatusClass(task.status, task);
+                const statusText = getValidationStatusText(task.status, task);
+                const compareTypeText = getCompareTypeText(task.compareType);
+                let resultText = '-';
+                if (task.status === 'RUNNING') {
+                    resultText = `${task.passedTables || 0}/${task.totalTables || 0} 表已对比`;
+                } else if (task.status === 'COMPLETED') {
+                    resultText = `${task.passedTables || 0}/${task.totalTables || 0} 表通过`;
+                } else if (task.status === 'FAILED') {
+                    resultText = '对比失败';
+                }
                 
                 html += `
                     <div class="table-row">
                         <div class="table-cell col-name">${task.name}</div>
+                        <div class="table-cell" style="width: 100px;">
+                            <span style="background: ${task.compareType === 'CONTENT' ? '#e6f7ff' : '#f6ffed'}; color: ${task.compareType === 'CONTENT' ? '#1890ff' : '#52c41a'}; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${compareTypeText}</span>
+                        </div>
                         <div class="table-cell col-status">
                             <span class="status-badge ${statusClass}">${statusText}</span>
                         </div>
-                        <div class="table-cell col-progress">${progress}</div>
+                        <div class="table-cell col-progress">${resultText}</div>
                         <div class="table-cell col-time">${formatDateTime(task.createdAt)}</div>
                         <div class="table-cell col-action">
                             <div class="action-btns">
@@ -3141,9 +5274,34 @@
             const pageNumbers = document.getElementById('validationPageNumbers');
             let html = '';
             
-            for (let i = 0; i < totalPages; i++) {
-                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToValidationPage(${i})">${i + 1}</button>`;
+            if (totalPages <= 7) {
+                for (let i = 0; i < totalPages; i++) {
+                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToValidationPage(${i})">${i + 1}</button>`;
+                }
+            } else {
+                html += `<button class="page-btn ${0 === currentPage ? 'active' : ''}" onclick="goToValidationPage(0)">1</button>`;
+                
+                if (currentPage <= 3) {
+                    for (let i = 1; i <= Math.min(4, totalPages - 2); i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToValidationPage(${i})">${i + 1}</button>`;
+                    }
+                    html += `<span class="page-ellipsis" onclick="goToValidationPage(${Math.min(currentPage + 5, Math.floor(totalPages / 2))})">···</span>`;
+                } else if (currentPage >= totalPages - 4) {
+                    html += `<span class="page-ellipsis" onclick="goToValidationPage(${Math.max(currentPage - 5, Math.floor(totalPages / 2))})">···</span>`;
+                    for (let i = totalPages - 5; i <= totalPages - 2; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToValidationPage(${i})">${i + 1}</button>`;
+                    }
+                } else {
+                    html += `<span class="page-ellipsis" onclick="goToValidationPage(${Math.max(0, currentPage - 5)})">···</span>`;
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToValidationPage(${i})">${i + 1}</button>`;
+                    }
+                    html += `<span class="page-ellipsis" onclick="goToValidationPage(${Math.min(totalPages - 1, currentPage + 5)})">···</span>`;
+                }
+                
+                html += `<button class="page-btn ${totalPages - 1 === currentPage ? 'active' : ''}" onclick="goToValidationPage(${totalPages - 1})">${totalPages}</button>`;
             }
+            
             pageNumbers.innerHTML = html;
             
             document.getElementById('validationPrevPageBtn').disabled = currentPage === 0;
@@ -3163,9 +5321,7 @@
             document.getElementById('validationWorkflowInfo').style.display = 'none';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/validation-tasks/available-workflows`, {
-                    headers: getAuthHeaders()
-                });
+                const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks/available-workflows`);
                 
                 const result = await response.json();
                 
@@ -3210,6 +5366,7 @@
         
         async function createValidationTask() {
             const workflowId = document.getElementById('validationWorkflowSelect').value;
+            const compareType = document.getElementById('validationCompareTypeSelect').value;
             
             if (!workflowId) {
                 showNotification('请选择增量同步任务', 'error');
@@ -3217,90 +5374,295 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE_URL}/validation-tasks`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ workflowId })
+                    body: JSON.stringify({ workflowId, compareType })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    showNotification('校验任务创建成功', 'success');
+                    const typeLabel = compareType === 'CONTENT' ? '内容对比' : '行数对比';
+                    showNotification(typeLabel + '任务创建成功', 'success');
                     document.getElementById('createValidationModal').classList.remove('show');
                     fetchValidationTasks();
                 } else {
                     showNotification(result.message || '创建失败', 'error');
                 }
             } catch (error) {
-                console.error('创建校验任务失败:', error);
-                showNotification('创建校验任务失败', 'error');
+                console.error('创建对比任务失败:', error);
+                showNotification('创建对比任务失败', 'error');
             }
         }
         
         async function viewValidationDetail(id) {
             try {
-                const response = await fetch(`${API_BASE_URL}/validation-tasks/${id}`, {
-                    headers: getAuthHeaders()
-                });
+                const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks/${id}`);
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     const task = result.data;
-                    const statusClass = getValidationStatusClass(task.status);
-                    const statusText = getValidationStatusText(task.status);
+                    window._currentValidationDetailTask = task;
+                    _compareResultData = null;
+                    _mismatchTableVisible = 5;
+                    _diffVisibleMap = {};
+                    _diffPageMap = {};
                     
-                    const detailHtml = `
-                        <div style="padding: 8px 0;">
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-weight: 500; margin-bottom: 8px;">基本信息</div>
-                                <div style="font-size: 13px; color: #666; line-height: 1.8;">
-                                    <div>任务名称：${task.name}</div>
-                                    <div>关联同步任务：${task.workflowName || '-'}</div>
-                                    <div>状态：<span class="status-badge ${statusClass}">${statusText}</span></div>
-                                    <div>创建时间：${formatDateTime(task.createdAt)}</div>
-                                    ${task.startedAt ? `<div>开始时间：${formatDateTime(task.startedAt)}</div>` : ''}
-                                    ${task.completedAt ? `<div>完成时间：${formatDateTime(task.completedAt)}</div>` : ''}
-                                </div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-weight: 500; margin-bottom: 8px;">校验结果</div>
-                                <div style="font-size: 13px; color: #666; line-height: 1.8;">
-                                    <div>总表数：${task.totalTables || '-'}</div>
-                                    <div>通过表数：${task.passedTables || 0}</div>
-                                    <div>失败表数：${task.failedTables || 0}</div>
-                                    <div>总行数：${task.totalRows || 0}</div>
-                                    <div>差异行数：${task.mismatchedRows || 0}</div>
-                                </div>
-                            </div>
-                            ${task.errorMessage ? `
-                            <div>
-                                <div style="font-weight: 500; margin-bottom: 8px; color: #f5222d;">错误信息</div>
-                                <div style="font-size: 13px; color: #f5222d; background: #fff2f0; padding: 8px 12px; border-radius: 4px;">
-                                    ${task.errorMessage}
-                                </div>
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                    
-                    document.getElementById('validationDetailBody').innerHTML = detailHtml;
+                    document.getElementById('validationDetailBody').innerHTML = _rebuildDetailHtml();
                     document.getElementById('validationDetailModal').classList.add('show');
                 } else {
                     showNotification(result.message || '获取详情失败', 'error');
                 }
             } catch (error) {
-                console.error('获取校验任务详情失败:', error);
+                console.error('获取对比任务详情失败:', error);
                 showNotification('获取详情失败', 'error');
             }
         }
         
+        let _compareResultData = null;
+        let _mismatchTableVisible = 5;
+        let _diffVisibleMap = {};
+        let _diffPageMap = {};
+
+        function renderCompareResult(compareResultStr) {
+            try {
+                const result = JSON.parse(compareResultStr);
+                if (!result.tables || result.tables.length === 0) return '';
+                
+                if (!_compareResultData || _compareResultData.sessionId !== result.sessionId) {
+                    _compareResultData = result;
+                    _mismatchTableVisible = 5;
+                    _diffVisibleMap = {};
+                    _diffPageMap = {};
+                } else {
+                    _compareResultData = result;
+                }
+                
+                return _buildCompareResultHtml();
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function _buildCompareResultHtml() {
+            const result = _compareResultData;
+            const tables = result.tables || [];
+            const matchTables = tables.filter(t => t.status === 'MATCH');
+            const noPkTables = tables.filter(t => t.status === 'NO_PK');
+            const mismatchTables = tables.filter(t => t.status === 'MISMATCH');
+            
+            let html = '<div style="margin-bottom: 16px;">';
+            html += '<div style="font-weight: 500; margin-bottom: 10px;">详细对比结果</div>';
+            
+            if (matchTables.length > 0) {
+                html += `<div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; font-size: 13px;">`;
+                html += `<span style="color: #52c41a; font-weight: 500;">✓ ${matchTables.length}个表数据一致</span>`;
+                const names = matchTables.map(t => t.sourceTable);
+                if (names.length <= 8) {
+                    html += `<span style="color: #666; margin-left: 8px;">${names.join('、')}</span>`;
+                } else {
+                    html += `<span style="color: #666; margin-left: 8px;">${names.slice(0, 8).join('、')} 等${names.length}个表</span>`;
+                }
+                html += '</div>';
+            }
+            
+            if (noPkTables.length > 0) {
+                html += `<div style="background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; font-size: 13px;">`;
+                html += `<span style="color: #fa8c16; font-weight: 500;">⚠ ${noPkTables.length}个表无主键</span>`;
+                const names = noPkTables.map(t => t.sourceTable);
+                if (names.length <= 8) {
+                    html += `<span style="color: #666; margin-left: 8px;">${names.join('、')}</span>`;
+                } else {
+                    html += `<span style="color: #666; margin-left: 8px;">${names.slice(0, 8).join('、')} 等${names.length}个表</span>`;
+                }
+                html += '</div>';
+            }
+            
+            if (mismatchTables.length > 0) {
+                const visibleCount = Math.min(_mismatchTableVisible, mismatchTables.length);
+                for (let i = 0; i < visibleCount; i++) {
+                    html += _buildMismatchTableCard(mismatchTables[i], i);
+                }
+                
+                if (mismatchTables.length > visibleCount) {
+                    const remaining = mismatchTables.length - visibleCount;
+                    html += `<div id="loadMoreTablesBtn" onclick="_loadMoreMismatchTables()" style="text-align: center; padding: 8px; border: 1px dashed #d9d9d9; border-radius: 4px; margin-bottom: 8px; cursor: pointer; color: #1890ff; font-size: 13px;">··· 还有 ${remaining} 个不一致的表，点击查看</div>`;
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function _buildMismatchTableCard(table, index) {
+            const diffCount = table.diffCount || (table.diffs ? table.diffs.length : 0);
+            const isExpanded = _diffVisibleMap[index] === true;
+            const currentPage = _diffPageMap[index] || 0;
+            const pageSize = 10;
+            
+            let html = `<div style="border: 1px solid #e8e8e8; border-radius: 4px; margin-bottom: 8px; overflow: hidden;">`;
+            
+            html += `<div style="padding: 10px 12px; background: #fafafa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="_toggleDiffExpand(${index})">`;
+            html += `<div style="display: flex; align-items: center; gap: 8px;">`;
+            html += `<span style="font-weight: 500; font-size: 13px;">${table.sourceTable}</span>`;
+            html += `<span style="background: #fff1f0; color: #f5222d; padding: 1px 6px; border-radius: 3px; font-size: 11px;">不一致</span>`;
+            html += `</div>`;
+            html += `<div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: #999;">`;
+            html += `<span>源: ${table.sourceRowCount || 0}行</span>`;
+            html += `<span>目标: ${table.targetRowCount || 0}行</span>`;
+            html += `<span style="color: #f5222d; font-weight: 500;">差异: ${diffCount}行</span>`;
+            html += `<span style="color: #1890ff; font-size: 11px;">${isExpanded ? '收起 ▴' : '查看差异 ▾'}</span>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            if (isExpanded && table.diffs && table.diffs.length > 0) {
+                const totalPages = Math.ceil(table.diffs.length / pageSize);
+                const startIdx = 0;
+                const endIdx = Math.min((currentPage + 1) * pageSize, table.diffs.length);
+                const visibleDiffs = table.diffs.slice(startIdx, endIdx);
+                
+                html += `<div style="padding: 8px 12px; border-top: 1px solid #f0f0f0; max-height: 400px; overflow-y: auto;">`;
+                
+                visibleDiffs.forEach((diff, diffIdx) => {
+                    html += _buildDiffRow(diff, diffIdx + startIdx, diffCount);
+                });
+                
+                if (endIdx < table.diffs.length) {
+                    const remaining = table.diffs.length - endIdx;
+                    html += `<div onclick="_loadMoreDiffs(${index})" style="text-align: center; padding: 6px; margin-top: 4px; cursor: pointer; color: #1890ff; font-size: 12px; border: 1px dashed #d9d9d9; border-radius: 3px;">还有 ${remaining} 行差异，点击加载更多</div>`;
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function _buildDiffRow(diff, globalIdx, totalDiffs) {
+            const diffType = diff.diffType || diff.type || 'DIFF';
+            const pkValue = diff.primaryKeyValue || (diff.primaryKey ? JSON.stringify(diff.primaryKey) : '');
+            const diffFields = diff.diffFields || [];
+            
+            let sourceData = diff.sourceData;
+            let targetData = diff.targetData;
+            if (typeof sourceData === 'string') { try { sourceData = JSON.parse(sourceData); } catch(e) {} }
+            if (typeof targetData === 'string') { try { targetData = JSON.parse(targetData); } catch(e) {} }
+            
+            let html = `<div style="margin-bottom: 6px; border: 1px solid #f0f0f0; border-radius: 3px; overflow: hidden; font-size: 12px;">`;
+            
+            html += `<div style="background: #fff2f0; padding: 4px 8px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #ffe7e7;">`;
+            html += `<span style="color: #999;">#${globalIdx + 1}</span>`;
+            const typeLabel = diffType === 'CONTENT_DIFF' ? '内容差异' : (diffType === 'SOURCE_ONLY' ? '仅源库存在' : (diffType === 'TARGET_ONLY' ? '仅目标库存在' : diffType));
+            html += `<span style="background: #f5222d22; color: #f5222d; padding: 0 4px; border-radius: 2px; font-size: 11px;">${typeLabel}</span>`;
+            if (pkValue) {
+                html += `<span style="color: #333;">主键: ${pkValue}</span>`;
+            }
+            if (diffFields.length > 0) {
+                html += `<span style="color: #fa8c16;">差异字段: ${diffFields.join(', ')}</span>`;
+            }
+            html += '</div>';
+            
+            if (diffFields.length > 0 && sourceData && targetData) {
+                html += `<table style="width: 100%; border-collapse: collapse;">`;
+                html += `<tr style="background: #f6f6f6;"><td style="padding: 2px 8px; font-weight: 500; width: 80px; border-bottom: 1px solid #e8e8e8;">字段</td><td style="padding: 2px 8px; font-weight: 500; border-bottom: 1px solid #e8e8e8; color: #52c41a;">源库</td><td style="padding: 2px 8px; font-weight: 500; border-bottom: 1px solid #e8e8e8; color: #f5222d;">目标库</td></tr>`;
+                diffFields.forEach(field => {
+                    const sv = sourceData[field] !== undefined ? String(sourceData[field]) : '-';
+                    const tv = targetData[field] !== undefined ? String(targetData[field]) : '-';
+                    const isDiff = sv !== tv;
+                    html += `<tr>`;
+                    html += `<td style="padding: 2px 8px; border-bottom: 1px solid #f5f5f5; font-weight: 500; color: #333; width: 80px;">${field}</td>`;
+                    html += `<td style="padding: 2px 8px; border-bottom: 1px solid #f5f5f5; color: #52c41a; word-break: break-all;">${_truncateVal(sv)}</td>`;
+                    html += `<td style="padding: 2px 8px; border-bottom: 1px solid #f5f5f5; ${isDiff ? 'color: #f5222d; font-weight: 500;' : 'color: #52c41a;'} word-break: break-all;">${_truncateVal(tv)}</td>`;
+                    html += '</tr>';
+                });
+                html += '</table>';
+            } else {
+                if (sourceData && typeof sourceData === 'object') {
+                    html += `<div style="padding: 4px 8px; color: #52c41a; background: #f6ffed; border-bottom: 1px solid #e8e8e8;">源: ${_truncateVal(JSON.stringify(sourceData))}</div>`;
+                }
+                if (targetData && typeof targetData === 'object') {
+                    html += `<div style="padding: 4px 8px; color: #f5222d; background: #fff1f0;">目标: ${_truncateVal(JSON.stringify(targetData))}</div>`;
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function _truncateVal(val) {
+            if (!val) return '-';
+            return val.length > 80 ? val.substring(0, 80) + '...' : val;
+        }
+
+        function _toggleDiffExpand(tableIdx) {
+            if (_diffVisibleMap[tableIdx]) {
+                _diffVisibleMap[tableIdx] = false;
+                delete _diffPageMap[tableIdx];
+            } else {
+                _diffVisibleMap[tableIdx] = true;
+                _diffPageMap[tableIdx] = 0;
+            }
+            document.getElementById('validationDetailBody').innerHTML = _rebuildDetailHtml();
+        }
+
+        function _loadMoreDiffs(tableIdx) {
+            _diffPageMap[tableIdx] = (_diffPageMap[tableIdx] || 0) + 1;
+            document.getElementById('validationDetailBody').innerHTML = _rebuildDetailHtml();
+        }
+
+        function _loadMoreMismatchTables() {
+            _mismatchTableVisible += 5;
+            document.getElementById('validationDetailBody').innerHTML = _rebuildDetailHtml();
+        }
+
+        function _rebuildDetailHtml() {
+            const task = window._currentValidationDetailTask;
+            if (!task) return '';
+            const statusClass = getValidationStatusClass(task.status, task);
+            const statusText = getValidationStatusText(task.status, task);
+            
+            let detailHtml = `<div style="padding: 8px 0;">`;
+            detailHtml += `<div style="margin-bottom: 16px;">`;
+            detailHtml += `<div style="font-weight: 500; margin-bottom: 8px;">基本信息</div>`;
+            detailHtml += `<div style="font-size: 13px; color: #666; line-height: 1.8;">`;
+            detailHtml += `<div>任务名称：${task.name}</div>`;
+            detailHtml += `<div>对比类型：<span style="background: ${task.compareType === 'CONTENT' ? '#e6f7ff' : '#f6ffed'}; color: ${task.compareType === 'CONTENT' ? '#1890ff' : '#52c41a'}; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${getCompareTypeText(task.compareType)}</span></div>`;
+            detailHtml += `<div>关联同步任务：${task.workflowName || '-'}</div>`;
+            detailHtml += `<div>状态：<span class="status-badge ${statusClass}">${statusText}</span></div>`;
+            detailHtml += `<div>创建时间：${formatDateTime(task.createdAt)}</div>`;
+            if (task.startedAt) detailHtml += `<div>开始时间：${formatDateTime(task.startedAt)}</div>`;
+            if (task.completedAt) detailHtml += `<div>完成时间：${formatDateTime(task.completedAt)}</div>`;
+            detailHtml += `</div></div>`;
+            
+            detailHtml += `<div style="margin-bottom: 16px;">`;
+            detailHtml += `<div style="font-weight: 500; margin-bottom: 8px;">对比结果</div>`;
+            detailHtml += `<div style="font-size: 13px; color: #666; line-height: 1.8;">`;
+            detailHtml += `<div>总表数：${task.totalTables || '-'}</div>`;
+            detailHtml += `<div>通过表数：${task.passedTables || 0}</div>`;
+            detailHtml += `<div>失败表数：${task.failedTables || 0}</div>`;
+            detailHtml += `<div>总行数：${task.totalRows || 0}</div>`;
+            detailHtml += `<div>差异行数：${task.mismatchedRows || 0}</div>`;
+            detailHtml += `</div></div>`;
+            
+            if (task.compareResult) detailHtml += renderCompareResult(task.compareResult);
+            
+            if (task.errorMessage) {
+                detailHtml += `<div><div style="font-weight: 500; margin-bottom: 8px; color: #f5222d;">错误信息</div>`;
+                detailHtml += `<div style="font-size: 13px; color: #f5222d; background: #fff2f0; padding: 8px 12px; border-radius: 4px;">${task.errorMessage}</div></div>`;
+            }
+            
+            detailHtml += '</div>';
+            return detailHtml;
+        }
+
         async function deleteValidationTask(id) {
-            if (!confirm('确定要删除这个校验任务吗？')) return;
+            if (!confirm('确定要删除这个对比任务吗？')) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/validation-tasks/${id}`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks/${id}`, {
                     method: 'DELETE',
                     headers: getAuthHeaders()
                 });
@@ -3308,13 +5670,13 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showNotification('校验任务已删除', 'success');
+                    showNotification('对比任务已删除', 'success');
                     fetchValidationTasks();
                 } else {
                     showNotification(result.message || '删除失败', 'error');
                 }
             } catch (error) {
-                console.error('删除校验任务失败:', error);
+                console.error('删除对比任务失败:', error);
                 showNotification('删除失败', 'error');
             }
         }
@@ -3323,7 +5685,7 @@
         document.getElementById('createTaskBtn').addEventListener('click', openModal);
         document.getElementById('closeModal').addEventListener('click', closeModal);
         document.getElementById('cancelBtn').addEventListener('click', closeModal);
-        document.getElementById('confirmBtn').addEventListener('click', createTask);
+        document.getElementById('closeConfigModal').addEventListener('click', closeConfigModal);
         document.getElementById('refreshBtn').addEventListener('click', fetchWorkflows);
         
         // 分页控件事件
@@ -3353,6 +5715,12 @@
         });
         document.getElementById('cancelValidationBtn').addEventListener('click', () => {
             document.getElementById('createValidationModal').classList.remove('show');
+        });
+        
+        document.getElementById('validationPageSizeSelect').addEventListener('change', (e) => {
+            validationPageSize = parseInt(e.target.value);
+            validationCurrentPage = 0;
+            fetchValidationTasks();
         });
         
         document.getElementById('closeValidationDetailModal').addEventListener('click', () => {
@@ -3505,6 +5873,19 @@
                 fetchWorkflows();
                 connectWebSocket();
                 initFilterDropdown();
+
+                setInterval(() => {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        try {
+                            const payload = JSON.parse(atob(token.split('.')[1]));
+                            if (payload.exp && payload.exp * 1000 < Date.now()) {
+                                showTokenExpiredModal();
+                            }
+                        } catch (e) {
+                        }
+                    }
+                }, 30000);
             }
             
             document.getElementById('viewFailedTasksBtn').addEventListener('click', () => {

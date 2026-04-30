@@ -22,7 +22,7 @@ public class MetadataService {
     private static final Logger logger = LoggerFactory.getLogger(MetadataService.class);
 
     private static final Pattern CONNECTION_PATTERN = Pattern.compile(
-        "mysql://([^:]+):([^@]+)@([^:]+):(\\d+)(?:/(.*))?"
+        "(?:mysql|postgresql)://([^:]+):([^@]+)@([^:]+):(\\d+)(?:/(.*))?"
     );
 
     public static class ParsedConnection {
@@ -31,13 +31,19 @@ public class MetadataService {
         public String host;
         public int port;
         public String database;
+        public String type;
 
-        public ParsedConnection(String username, String password, String host, int port, String database) {
+        public ParsedConnection(String username, String password, String host, int port, String database, String type) {
             this.username = username;
             this.password = password;
             this.host = host;
             this.port = port;
             this.database = database;
+            this.type = type;
+        }
+        
+        public boolean isPostgresql() {
+            return "postgresql".equals(type);
         }
     }
 
@@ -46,9 +52,11 @@ public class MetadataService {
             throw new IllegalArgumentException("连接串不能为空");
         }
 
+        String dbType = connectionStr.startsWith("postgresql://") ? "postgresql" : "mysql";
+
         Matcher matcher = CONNECTION_PATTERN.matcher(connectionStr);
         if (!matcher.matches()) {
-            throw new IllegalArgumentException("连接串格式不正确，正确格式: mysql://user:pass@host:port/db");
+            throw new IllegalArgumentException("连接串格式不正确，正确格式: mysql://user:pass@host:port 或 postgresql://user:pass@host:port");
         }
 
         String username = matcher.group(1);
@@ -57,26 +65,196 @@ public class MetadataService {
         int port = Integer.parseInt(matcher.group(4));
         String database = matcher.group(5);
 
-        return new ParsedConnection(username, password, host, port, database);
+        return new ParsedConnection(username, password, host, port, database, dbType);
     }
 
-    private String buildJdbcUrl(String host, int port, String database) {
-        if (database != null && !database.isEmpty()) {
-            return String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true", host, port, database);
+    public static class ConnectionTestResult {
+        public boolean connected;
+        public String errorType;
+        public String errorMessage;
+        public String suggestion;
+
+        public ConnectionTestResult(boolean connected, String errorType, String errorMessage, String suggestion) {
+            this.connected = connected;
+            this.errorType = errorType;
+            this.errorMessage = errorMessage;
+            this.suggestion = suggestion;
         }
-        return String.format("jdbc:mysql://%s:%d/?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true", host, port);
+    }
+
+    public ConnectionTestResult testConnectionDetailed(String connectionStr, String expectedType) {
+        ParsedConnection conn = parseConnection(connectionStr);
+        boolean isPg = conn.isPostgresql();
+        boolean expectPg = "postgresql".equalsIgnoreCase(expectedType);
+
+        try {
+            if (isPg) {
+                Class.forName("org.postgresql.Driver");
+            } else {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+            }
+        } catch (ClassNotFoundException e) {
+            return new ConnectionTestResult(false, "DRIVER_NOT_FOUND", 
+                "数据库驱动未找到: " + e.getMessage(), "请确保依赖中包含对应的数据库驱动");
+        }
+
+        if (expectPg && !isPg) {
+            return new ConnectionTestResult(false, "DB_TYPE_MISMATCH",
+                "期望PostgreSQL数据库，但连接串格式为MySQL", "请检查数据库类型是否正确");
+        }
+        if (!expectPg && isPg) {
+            return new ConnectionTestResult(false, "DB_TYPE_MISMATCH",
+                "期望MySQL数据库，但连接串格式为PostgreSQL", "请检查数据库类型是否正确");
+        }
+
+        String jdbcUrl;
+        if (isPg) {
+            jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s?connectTimeout=15&socketTimeout=15&stringtype=unspecified",
+                conn.host, conn.port, (conn.database != null && !conn.database.isEmpty()) ? conn.database : "postgres");
+        } else {
+            jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&connectTimeout=15000&socketTimeout=15000&allowPublicKeyRetrieval=true",
+                conn.host, conn.port, (conn.database != null && !conn.database.isEmpty()) ? conn.database : "");
+        }
+
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+            if (connection.isValid(5)) {
+                String dbTypeName = isPg ? "PostgreSQL" : "MySQL";
+                return new ConnectionTestResult(true, null, dbTypeName + "连接成功", null);
+            } else {
+                return new ConnectionTestResult(false, "CONNECTION_FAILED", "连接验证失败", "请检查数据库服务器状态");
+            }
+        } catch (java.sql.SQLInvalidAuthorizationSpecException e) {
+            return new ConnectionTestResult(false, "AUTH_FAILED",
+                "认证失败：用户名或密码错误", "请检查用户名和密码是否正确");
+        } catch (java.sql.SQLNonTransientConnectionException e) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("Access denied") || msg.contains("authentication"))) {
+                return new ConnectionTestResult(false, "AUTH_FAILED",
+                    "认证失败：用户名或密码错误", "请检查用户名和密码是否正确");
+            }
+            return new ConnectionTestResult(false, "NETWORK_ERROR",
+                "网络连接失败：" + e.getMessage(), "请检查数据库服务器地址和端口是否正确，以及网络是否可达");
+        } catch (com.mysql.cj.exceptions.WrongArgumentException e) {
+            return new ConnectionTestResult(false, "AUTH_FAILED",
+                "认证失败：用户名或密码错误", "请检查用户名和密码是否正确");
+        } catch (java.sql.SQLException e) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("Access denied") || msg.contains("authentication") || msg.contains("password"))) {
+                return new ConnectionTestResult(false, "AUTH_FAILED",
+                    "认证失败：用户名或密码错误", "请检查用户名和密码是否正确");
+            }
+            if (msg != null && (msg.contains("Connection refused") || msg.contains("timed out") || msg.contains("timeout"))) {
+                return new ConnectionTestResult(false, "NETWORK_ERROR",
+                    "网络连接失败：" + e.getMessage(), "请检查数据库服务器地址和端口是否正确，以及网络是否可达");
+            }
+            return new ConnectionTestResult(false, "CONNECTION_FAILED",
+                "连接失败：" + e.getMessage(), "请检查连接参数是否正确");
+        } catch (Exception e) {
+            if (e instanceof java.util.concurrent.TimeoutException || 
+                (e.getCause() != null && e.getCause() instanceof java.util.concurrent.TimeoutException)) {
+                return new ConnectionTestResult(false, "TIMEOUT",
+                    "连接超时：20秒内未连接到数据库服务器", "请检查数据库服务器是否可达，以及防火墙设置");
+            }
+            return new ConnectionTestResult(false, "CONNECTION_FAILED",
+                "连接失败：" + e.getMessage(), "请检查连接参数是否正确");
+        }
+    }
+
+    public List<String> listSchemas(String connectionStr, String database) {
+        ParsedConnection conn = parseConnection(connectionStr);
+        if (!conn.isPostgresql()) {
+            throw new IllegalArgumentException("listSchemas 仅支持PostgreSQL数据库");
+        }
+
+        List<String> schemas = new ArrayList<>();
+        try {
+            Class.forName("org.postgresql.Driver");
+            String jdbcUrl = buildJdbcUrl(conn, database);
+            try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT schema_name FROM information_schema.schemata " +
+                         "WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
+                         "ORDER BY schema_name")) {
+                    while (rs.next()) {
+                        schemas.add(rs.getString(1));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("查询schema列表失败: {}", e.getMessage());
+            throw new RuntimeException("查询schema列表失败: " + e.getMessage());
+        }
+        return schemas;
+    }
+
+    public List<TableInfo> listTables(String connectionStr, String database, String schema) {
+        ParsedConnection conn = parseConnection(connectionStr);
+        if (conn.isPostgresql()) {
+            List<TableInfo> tables = new ArrayList<>();
+            try {
+                Class.forName("org.postgresql.Driver");
+                String jdbcUrl = buildJdbcUrl(conn, database);
+                try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+                    String effectiveSchema = (schema != null && !schema.isEmpty()) ? schema : "public";
+                    try (Statement stmt = connection.createStatement();
+                         ResultSet rs = stmt.executeQuery(
+                             "SELECT tablename FROM pg_tables WHERE schemaname = '" + effectiveSchema + "'")) {
+                        while (rs.next()) {
+                            String tableName = rs.getString(1);
+                            long rows = getPgRowCount(connection, tableName);
+                            tables.add(new TableInfo(tableName, rows, "", "TABLE"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("查询表列表失败: {}", e.getMessage());
+                throw new RuntimeException("查询表列表失败: " + e.getMessage());
+            }
+            return tables;
+        }
+        return listTables(connectionStr, database);
+    }
+
+    private String buildJdbcUrl(ParsedConnection conn, String database) {
+        if (conn.isPostgresql()) {
+            if (database != null && !database.isEmpty()) {
+                return String.format("jdbc:postgresql://%s:%d/%s?currentSchema=public&stringtype=unspecified", conn.host, conn.port, database);
+            }
+            return String.format("jdbc:postgresql://%s:%d/?currentSchema=public&stringtype=unspecified", conn.host, conn.port);
+        }
+        if (database != null && !database.isEmpty()) {
+            return String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true", conn.host, conn.port, database);
+        }
+        return String.format("jdbc:mysql://%s:%d/?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true", conn.host, conn.port);
+    }
+    
+    private String buildJdbcUrl(ParsedConnection conn) {
+        return buildJdbcUrl(conn, conn.database);
     }
 
     public boolean testConnection(String connectionStr) {
         ParsedConnection conn = parseConnection(connectionStr);
         
-        try (Connection connection = DriverManager.getConnection(
-                buildJdbcUrl(conn.host, conn.port, conn.database),
-                conn.username, conn.password)) {
+        try {
+            Connection connection;
+            if (conn.isPostgresql()) {
+                Class.forName("org.postgresql.Driver");
+            } else {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+            }
+            connection = DriverManager.getConnection(
+                    buildJdbcUrl(conn, null),
+                    conn.username, conn.password);
             
-            return connection.isValid(5);
+            boolean valid = connection.isValid(5);
+            connection.close();
+            return valid;
         } catch (SQLException e) {
             logger.error("测试连接失败: {}", e.getMessage());
+            return false;
+        } catch (ClassNotFoundException e) {
+            logger.error("数据库驱动未找到: {}", e.getMessage());
             return false;
         }
     }
@@ -86,27 +264,56 @@ public class MetadataService {
         
         List<String> databases = new ArrayList<>();
         
-        try (Connection connection = DriverManager.getConnection(
-                buildJdbcUrl(conn.host, conn.port, null),
-                conn.username, conn.password)) {
-            
-            DatabaseMetaData metaData = connection.getMetaData();
-            ResultSet rs = metaData.getCatalogs();
-            
-            while (rs.next()) {
-                String dbName = rs.getString("TABLE_CAT");
-                if (!isSystemDatabase(dbName)) {
-                    databases.add(dbName);
-                }
+        try {
+            if (conn.isPostgresql()) {
+                Class.forName("org.postgresql.Driver");
+            } else {
+                Class.forName("com.mysql.cj.jdbc.Driver");
             }
             
-            logger.info("查询到 {} 个数据库", databases.size());
+            try (Connection connection = DriverManager.getConnection(
+                    buildJdbcUrl(conn, null),
+                    conn.username, conn.password)) {
+                
+                if (conn.isPostgresql()) {
+                    try (Statement stmt = connection.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT datname FROM pg_database WHERE datistemplate = false")) {
+                        while (rs.next()) {
+                            String dbName = rs.getString(1);
+                            if (!isPgSystemDatabase(dbName)) {
+                                databases.add(dbName);
+                            }
+                        }
+                    }
+                } else {
+                    DatabaseMetaData metaData = connection.getMetaData();
+                    ResultSet rs = metaData.getCatalogs();
+                    
+                    while (rs.next()) {
+                        String dbName = rs.getString("TABLE_CAT");
+                        if (!isSystemDatabase(dbName)) {
+                            databases.add(dbName);
+                        }
+                    }
+                }
+                
+                logger.info("查询到 {} 个数据库", databases.size());
+            }
         } catch (SQLException e) {
             logger.error("查询数据库列表失败: {}", e.getMessage());
             throw new RuntimeException("查询数据库列表失败: " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            logger.error("数据库驱动未找到: {}", e.getMessage());
+            throw new RuntimeException("数据库驱动未找到: " + e.getMessage());
         }
         
         return databases;
+    }
+    
+    private boolean isPgSystemDatabase(String dbName) {
+        return "postgres".equalsIgnoreCase(dbName) ||
+               "template0".equalsIgnoreCase(dbName) ||
+               "template1".equalsIgnoreCase(dbName);
     }
 
     private boolean isSystemDatabase(String dbName) {
@@ -121,29 +328,64 @@ public class MetadataService {
         
         List<TableInfo> tables = new ArrayList<>();
         
-        try (Connection connection = DriverManager.getConnection(
-                buildJdbcUrl(conn.host, conn.port, database),
-                conn.username, conn.password)) {
-            
-            DatabaseMetaData metaData = connection.getMetaData();
-            ResultSet rs = metaData.getTables(database, null, "%", new String[]{"TABLE"});
-            
-            while (rs.next()) {
-                String tableName = rs.getString("TABLE_NAME");
-                long rows = getRowCount(connection, database, tableName);
-                String size = getTableSize(connection, database, tableName);
-                String engine = getTableEngine(metaData, database, tableName);
-                
-                tables.add(new TableInfo(tableName, rows, size, engine));
+        try {
+            if (conn.isPostgresql()) {
+                Class.forName("org.postgresql.Driver");
+            } else {
+                Class.forName("com.mysql.cj.jdbc.Driver");
             }
             
-            logger.info("数据库 {} 查询到 {} 个表", database, tables.size());
+            try (Connection connection = DriverManager.getConnection(
+                    buildJdbcUrl(conn, database),
+                    conn.username, conn.password)) {
+                
+                if (conn.isPostgresql()) {
+                    try (Statement stmt = connection.createStatement();
+                         ResultSet rs = stmt.executeQuery(
+                             "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")) {
+                        while (rs.next()) {
+                            String tableName = rs.getString(1);
+                            long rows = getPgRowCount(connection, tableName);
+                            tables.add(new TableInfo(tableName, rows, "", "TABLE"));
+                        }
+                    }
+                } else {
+                    DatabaseMetaData metaData = connection.getMetaData();
+                    ResultSet rs = metaData.getTables(database, null, "%", new String[]{"TABLE"});
+                    
+                    while (rs.next()) {
+                        String tableName = rs.getString("TABLE_NAME");
+                        long rows = getRowCount(connection, database, tableName);
+                        String size = getTableSize(connection, database, tableName);
+                        String engine = getTableEngine(metaData, database, tableName);
+                        
+                        tables.add(new TableInfo(tableName, rows, size, engine));
+                    }
+                }
+                
+                logger.info("数据库 {} 查询到 {} 个表", database, tables.size());
+            }
         } catch (SQLException e) {
             logger.error("查询表列表失败: {}", e.getMessage());
             throw new RuntimeException("查询表列表失败: " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            logger.error("数据库驱动未找到: {}", e.getMessage());
+            throw new RuntimeException("数据库驱动未找到: " + e.getMessage());
         }
         
         return tables;
+    }
+    
+    private long getPgRowCount(Connection connection, String tableName) {
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM \"" + tableName + "\"")) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            logger.warn("获取PG表 {} 行数失败: {}", tableName, e.getMessage());
+        }
+        return 0;
     }
 
     private long getRowCount(Connection connection, String database, String tableName) {
@@ -213,6 +455,100 @@ public class MetadataService {
         return dbInfo;
     }
 
+    public ValidationResult validateForMigration(String sourceConnection, String targetConnection, 
+                                                  String migrationMode, String sourceType, String targetType) {
+        ValidationResult result = new ValidationResult();
+        
+        boolean sourceIsPg = "postgresql".equalsIgnoreCase(sourceType);
+        boolean targetIsPg = "postgresql".equalsIgnoreCase(targetType);
+        boolean bothMysql = !sourceIsPg && !targetIsPg;
+        boolean mysqlToPg = !sourceIsPg && targetIsPg;
+        boolean pgToMysql = sourceIsPg && !targetIsPg;
+        
+        ParsedConnection sourceConn = parseConnection(sourceConnection);
+        ParsedConnection targetConn = parseConnection(targetConnection);
+        
+        try (Connection sourceDb = DriverManager.getConnection(
+                buildJdbcUrl(sourceConn, sourceIsPg),
+                sourceConn.username, sourceConn.password);
+             Connection targetDb = DriverManager.getConnection(
+                buildJdbcUrl(targetConn, targetIsPg),
+                targetConn.username, targetConn.password)) {
+            
+            result.addItem("源库连接", "源数据库连接检查", true, 
+                sourceIsPg ? "PostgreSQL源库连接成功" : "MySQL源库连接成功", "info");
+            result.addItem("目标库连接", "目标数据库连接检查", true, 
+                targetIsPg ? "PostgreSQL目标库连接成功" : "MySQL目标库连接成功", "info");
+            
+            if (bothMysql) {
+                String sourceVersion = getMySQLVersion(sourceDb);
+                String targetVersion = getMySQLVersion(targetDb);
+                
+                if ("fullAndIncre".equals(migrationMode) || "increment".equals(migrationMode)) {
+                    checkBinlogEnabled(sourceDb, result);
+                    checkBinlogFormat(sourceDb, result);
+                    checkBinlogRowImage(sourceDb, result);
+                    checkServerId(sourceDb, sourceVersion, result);
+                }
+                
+                checkVersionCompatibility(sourceVersion, targetVersion, result);
+                checkSqlModeCompatibility(sourceDb, targetDb, result);
+                checkSourcePermissions(sourceDb, migrationMode, result);
+                checkTargetPermissions(targetDb, targetVersion, result);
+            }
+            
+            if (mysqlToPg) {
+                if ("fullAndIncre".equals(migrationMode) || "increment".equals(migrationMode)) {
+                    checkBinlogEnabled(sourceDb, result);
+                    checkBinlogFormat(sourceDb, result);
+                    checkBinlogRowImage(sourceDb, result);
+                }
+            }
+            
+            if (pgToMysql) {
+                // PG→MySQL: 检查源端PG的WAL配置
+                checkPgWalConfig(sourceDb, result);
+            }
+            
+        } catch (SQLException e) {
+            logger.error("数据库校验失败: {}", e.getMessage());
+            if (!result.getCheckItems().stream().anyMatch(item -> !item.isPassed())) {
+                result.addItem("连接检查", "数据库连接检查", false, "连接失败: " + e.getMessage(), "error");
+            }
+        }
+        
+        boolean allPassed = result.getCheckItems().stream().allMatch(ValidationResult.CheckItem::isPassed);
+        result.setAllPassed(allPassed);
+        
+        return result;
+    }
+    
+    private void checkPgWalConfig(Connection conn, ValidationResult result) {
+        try {
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SHOW wal_level")) {
+                if (rs.next()) {
+                    String walLevel = rs.getString(1);
+                    boolean passed = "logical".equalsIgnoreCase(walLevel);
+                    String message = passed ? "WAL级别为logical，支持增量同步" : 
+                        "WAL级别为" + walLevel + "，增量同步需要设置为logical";
+                    result.addItem("WAL级别", "增量同步需要源数据库WAL级别为logical", passed, message, "error");
+                }
+            }
+        } catch (SQLException e) {
+            result.addItem("WAL级别", "增量同步需要源数据库WAL级别为logical", false, 
+                "检查失败: " + e.getMessage(), "warning");
+        }
+    }
+    
+    private String buildJdbcUrl(ParsedConnection conn, boolean isPg) {
+        if (isPg) {
+            return String.format("jdbc:postgresql://%s:%d/%s?stringtype=unspecified", 
+                conn.host, conn.port, conn.database);
+        }
+        return buildJdbcUrl(conn);
+    }
+
     public ValidationResult validateForMigration(String sourceConnection, String targetConnection, String migrationMode) {
         ValidationResult result = new ValidationResult();
         
@@ -220,10 +556,10 @@ public class MetadataService {
         ParsedConnection targetConn = parseConnection(targetConnection);
         
         try (Connection sourceDb = DriverManager.getConnection(
-                buildJdbcUrl(sourceConn.host, sourceConn.port, sourceConn.database),
+                buildJdbcUrl(sourceConn),
                 sourceConn.username, sourceConn.password);
              Connection targetDb = DriverManager.getConnection(
-                buildJdbcUrl(targetConn.host, targetConn.port, targetConn.database),
+                buildJdbcUrl(targetConn),
                 targetConn.username, targetConn.password)) {
             
             String sourceVersion = getMySQLVersion(sourceDb);

@@ -1,7 +1,9 @@
 package com.synctask.entity;
 
 public enum WorkflowStatus {
-    PENDING,
+    CONFIGURING,        // 配置中
+    PENDING,            // 启动中（等待Agent接收）
+    RECEIVED,           // Agent已接收任务
     STARTING,           // 启动中
     FULL_MIGRATING,     // 全量同步中
     FULL_COMPLETED,     // 全量同步完成

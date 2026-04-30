@@ -28,14 +28,49 @@ public class WorkflowController {
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             Workflow workflow = workflowService.createWorkflow(
                     request.getName(),
+                    request.getSourceType(),
+                    request.getTargetType(),
+                    userPrincipal.getId()
+            );
+            return ResponseEntity.ok(new ApiResponse(true, "任务创建成功", convertToMap(workflow)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/config")
+    public ResponseEntity<?> updateConfig(
+            @PathVariable String id,
+            @RequestBody UpdateConfigRequest request,
+            Authentication authentication) {
+        try {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            Workflow workflow = workflowService.updateConfig(
+                    id,
+                    userPrincipal.getId(),
                     request.getSourceConnection(),
                     request.getTargetConnection(),
                     request.getMigrationMode(),
                     request.getSyncObjects(),
                     request.getSourceDbName(),
-                    userPrincipal.getId()
+                    request.getTargetDbName(),
+                    request.getSourceType(),
+                    request.getTargetType()
             );
-            return ResponseEntity.ok(new ApiResponse(true, "任务创建成功", convertToMap(workflow)));
+            return ResponseEntity.ok(new ApiResponse(true, "配置保存成功", convertToMap(workflow)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/launch")
+    public ResponseEntity<?> launchWorkflow(
+            @PathVariable String id,
+            Authentication authentication) {
+        try {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            Workflow workflow = workflowService.launchWorkflow(id, userPrincipal.getId());
+            return ResponseEntity.ok(new ApiResponse(true, "任务启动成功", convertToMap(workflow)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
@@ -204,6 +239,7 @@ public class WorkflowController {
         map.put("updated_at", workflow.getUpdatedAt());
         map.put("completed_at", workflow.getCompletedAt());
         map.put("error_message", workflow.getErrorMessage());
+        map.put("error_code", workflow.getErrorCode());
         map.put("user_id", workflow.getUserId());
         map.put("total_tables", workflow.getTotalTables());
         map.put("completed_tables", workflow.getCompletedTables());
@@ -211,64 +247,52 @@ public class WorkflowController {
         map.put("current_table_progress", workflow.getCurrentTableProgress());
         map.put("current_table_rows", workflow.getCurrentTableRows());
         map.put("current_table_total_rows", workflow.getCurrentTableTotalRows());
+        map.put("source_type", workflow.getSourceType());
+        map.put("target_type", workflow.getTargetType());
+        map.put("rpo_ms", workflow.getRpoMs());
+        map.put("rto_ms", workflow.getRtoMs());
         return map;
     }
 
     public static class CreateWorkflowRequest {
         private String name;
+        private String sourceType;
+        private String targetType;
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getSourceType() { return sourceType; }
+        public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+        public String getTargetType() { return targetType; }
+        public void setTargetType(String targetType) { this.targetType = targetType; }
+    }
+
+    public static class UpdateConfigRequest {
         private String sourceConnection;
         private String targetConnection;
         private String migrationMode;
         private String syncObjects;
         private String sourceDbName;
+        private String targetDbName;
+        private String sourceType;
+        private String targetType;
 
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getSourceConnection() {
-            return sourceConnection;
-        }
-
-        public void setSourceConnection(String sourceConnection) {
-            this.sourceConnection = sourceConnection;
-        }
-
-        public String getTargetConnection() {
-            return targetConnection;
-        }
-
-        public void setTargetConnection(String targetConnection) {
-            this.targetConnection = targetConnection;
-        }
-
-        public String getMigrationMode() {
-            return migrationMode;
-        }
-
-        public void setMigrationMode(String migrationMode) {
-            this.migrationMode = migrationMode;
-        }
-
-        public String getSyncObjects() {
-            return syncObjects;
-        }
-
-        public void setSyncObjects(String syncObjects) {
-            this.syncObjects = syncObjects;
-        }
-
-        public String getSourceDbName() {
-            return sourceDbName;
-        }
-
-        public void setSourceDbName(String sourceDbName) {
-            this.sourceDbName = sourceDbName;
-        }
+        public String getSourceConnection() { return sourceConnection; }
+        public void setSourceConnection(String sourceConnection) { this.sourceConnection = sourceConnection; }
+        public String getTargetConnection() { return targetConnection; }
+        public void setTargetConnection(String targetConnection) { this.targetConnection = targetConnection; }
+        public String getMigrationMode() { return migrationMode; }
+        public void setMigrationMode(String migrationMode) { this.migrationMode = migrationMode; }
+        public String getSyncObjects() { return syncObjects; }
+        public void setSyncObjects(String syncObjects) { this.syncObjects = syncObjects; }
+        public String getSourceDbName() { return sourceDbName; }
+        public void setSourceDbName(String sourceDbName) { this.sourceDbName = sourceDbName; }
+        public String getTargetDbName() { return targetDbName; }
+        public void setTargetDbName(String targetDbName) { this.targetDbName = targetDbName; }
+        public String getSourceType() { return sourceType; }
+        public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+        public String getTargetType() { return targetType; }
+        public void setTargetType(String targetType) { this.targetType = targetType; }
     }
 
     public static class ApiResponse {

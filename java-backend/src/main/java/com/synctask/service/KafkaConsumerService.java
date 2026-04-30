@@ -56,6 +56,8 @@ public class KafkaConsumerService {
             String status = getStringValue(messageMap, "status");
             Integer progress = getIntegerValue(messageMap, "progress");
             String errorMessage = getStringValue(messageMap, "errorMessage");
+            String message = getStringValue(messageMap, "message");
+            String errorCode = getStringValue(messageMap, "errorCode");
             Boolean isBilling = getBooleanValue(messageMap, "isBilling");
             
             Integer totalTables = getIntegerValue(messageMap, "totalTables");
@@ -64,6 +66,8 @@ public class KafkaConsumerService {
             Integer currentTableProgress = getIntegerValue(messageMap, "currentTableProgress");
             Long currentTableRows = getLongValue(messageMap, "currentTableRows");
             Long currentTableTotalRows = getLongValue(messageMap, "currentTableTotalRows");
+            Long rpoMs = getLongValue(messageMap, "rpoMs");
+            Long rtoMs = getLongValue(messageMap, "rtoMs");
 
             logger.info("解析消息: taskId={}, status={}, progress={}", taskId, status, progress);
 
@@ -76,8 +80,8 @@ public class KafkaConsumerService {
             WorkflowStatus newStatus = WorkflowStatus.valueOf(status.toUpperCase());
             WorkflowStatus oldStatus = workflow.getStatus();
             
-            if (oldStatus == WorkflowStatus.COMPLETED || oldStatus == WorkflowStatus.FAILED) {
-                logger.info("任务已处于终态 {}，忽略状态更新消息: newStatus={}", oldStatus, newStatus);
+            if (oldStatus == WorkflowStatus.COMPLETED || oldStatus == WorkflowStatus.FAILED || oldStatus == WorkflowStatus.CONFIGURING) {
+                logger.info("任务已处于终态/配置中 {}，忽略状态更新消息: newStatus={}", oldStatus, newStatus);
                 return;
             }
             
@@ -87,8 +91,16 @@ public class KafkaConsumerService {
                 workflow.setProgress(progress);
             }
 
-            if (errorMessage != null) {
+            if (errorMessage != null && !errorMessage.isEmpty()) {
                 workflow.setErrorMessage(errorMessage);
+            } else if (message != null && !message.isEmpty() && newStatus == WorkflowStatus.FAILED) {
+                workflow.setErrorMessage(message);
+            }
+
+            if (errorCode != null && !errorCode.isEmpty()) {
+                workflow.setErrorCode(errorCode);
+            } else if (newStatus == WorkflowStatus.FAILED && (errorCode == null || errorCode.isEmpty())) {
+                workflow.setErrorCode("E9999");
             }
 
             if (isBilling != null) {
@@ -113,6 +125,12 @@ public class KafkaConsumerService {
             if (currentTableTotalRows != null) {
                 workflow.setCurrentTableTotalRows(currentTableTotalRows);
             }
+            if (rpoMs != null) {
+                workflow.setRpoMs(rpoMs);
+            }
+            if (rtoMs != null) {
+                workflow.setRtoMs(rtoMs);
+            }
 
             String migrationMode = workflow.getMigrationMode();
             boolean isFullAndIncre = "fullAndIncre".equals(migrationMode);
@@ -136,7 +154,8 @@ public class KafkaConsumerService {
             workflowRepository.save(workflow);
             logger.info("任务状态已更新: taskId={}, status={}", workflow.getId(), workflow.getStatus());
 
-            String logMessage = buildStatusLogMessage(newStatus, oldStatus, progress, errorMessage, 
+            String logMessage = buildStatusLogMessage(newStatus, oldStatus, progress, 
+                workflow.getErrorMessage(), errorCode,
                 totalTables, completedTables, currentTable, currentTableProgress);
             WorkflowLog.LogLevel logLevel = determineLogLevel(newStatus);
             
@@ -154,6 +173,10 @@ public class KafkaConsumerService {
             update.setCurrentTableProgress(workflow.getCurrentTableProgress());
             update.setCurrentTableRows(workflow.getCurrentTableRows());
             update.setCurrentTableTotalRows(workflow.getCurrentTableTotalRows());
+            update.setErrorMessage(workflow.getErrorMessage());
+            update.setErrorCode(workflow.getErrorCode());
+            update.setRpoMs(workflow.getRpoMs());
+            update.setRtoMs(workflow.getRtoMs());
 
             messagingTemplate.convertAndSend("/topic/task-status", update);
             messagingTemplate.convertAndSendToUser(
@@ -196,9 +219,13 @@ public class KafkaConsumerService {
         return Boolean.valueOf(String.valueOf(value));
     }
 
-    private String buildStatusLogMessage(WorkflowStatus newStatus, WorkflowStatus oldStatus, Integer progress, String errorMessage,
+    private String buildStatusLogMessage(WorkflowStatus newStatus, WorkflowStatus oldStatus, Integer progress, String errorMessage, String errorCode,
             Integer totalTables, Integer completedTables, String currentTable, Integer currentTableProgress) {
         switch (newStatus) {
+            case CONFIGURING:
+                return "任务配置中";
+            case RECEIVED:
+                return "Agent已接收任务，准备执行";
             case STARTING:
                 return "任务启动中";
             case FULL_MIGRATING:
@@ -220,9 +247,9 @@ public class KafkaConsumerService {
             case COMPLETED:
                 return "任务执行完成";
             case FAILED:
-                return errorMessage != null && !errorMessage.isEmpty() 
-                    ? String.format("任务执行失败: %s", errorMessage)
-                    : "任务执行失败";
+                String errorDetail = errorMessage != null && !errorMessage.isEmpty() ? errorMessage : "未知错误";
+                String errorCodeStr = errorCode != null && !errorCode.isEmpty() ? "[" + errorCode + "] " : "";
+                return String.format("任务执行失败: %s%s", errorCodeStr, errorDetail);
             case PAUSED:
                 return "任务已暂停";
             default:

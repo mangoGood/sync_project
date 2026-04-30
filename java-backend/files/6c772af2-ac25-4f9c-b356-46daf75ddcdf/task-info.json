@@ -1,9 +1,0 @@
-{
-  "taskId" : "6c772af2-ac25-4f9c-b356-46daf75ddcdf",
-  "taskName" : "11",
-  "userId" : 2,
-  "sourceConnection" : "mysql://root:rootpassword@192.168.107.6:3306/myapp_db",
-  "targetConnection" : "mysql://root:rootpassword@192.168.107.6:3307/myapp_db",
-  "createdAt" : null,
-  "messageType" : "TASK_CREATED"
-}

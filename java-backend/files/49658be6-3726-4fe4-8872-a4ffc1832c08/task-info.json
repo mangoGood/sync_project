@@ -1,9 +1,0 @@
-{
-  "taskId" : "49658be6-3726-4fe4-8872-a4ffc1832c08",
-  "taskName" : "19",
-  "userId" : 1,
-  "sourceConnection" : "1",
-  "targetConnection" : "2",
-  "createdAt" : null,
-  "messageType" : "TASK_CREATED"
-}

@@ -15,6 +15,9 @@ public class TaskCreatedMessage {
     private String currentStatus;
     private Map<String, Object> syncObjects;
     private String sourceDbName;
+    private String targetDbName;
+    private String sourceType;
+    private String targetType;
 
     public TaskCreatedMessage() {
         this.messageType = "TASK_CREATED";
@@ -106,5 +109,29 @@ public class TaskCreatedMessage {
 
     public void setSourceDbName(String sourceDbName) {
         this.sourceDbName = sourceDbName;
+    }
+
+    public String getTargetDbName() {
+        return targetDbName;
+    }
+
+    public void setTargetDbName(String targetDbName) {
+        this.targetDbName = targetDbName;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public String getTargetType() {
+        return targetType;
+    }
+
+    public void setTargetType(String targetType) {
+        this.targetType = targetType;
     }
 }

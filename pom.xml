@@ -6,19 +6,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.migration</groupId>
-    <artifactId>mysql-migration</artifactId>
+    <artifactId>migration</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>MySQL Migration</name>
-    <description>MySQL migration modules</description>
+    <name>Database Migration</name>
+    <description>Database migration modules</description>
 
     <modules>
-        <module>mysql-migration-common</module>
-        <module>mysql-migration-full</module>
-        <module>mysql-migration-binlog</module>
-        <module>mysql-migration-increment</module>
-        <module>mysql-migration-agent</module>
+        <module>migration-common</module>
+        <module>migration-thl</module>
+        <module>migration-full</module>
+        <module>migration-capture</module>
+        <module>migration-extract</module>
+        <module>migration-increment</module>
+        <module>migration-agent</module>
     </modules>
 
     <properties>
@@ -27,6 +29,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring.boot.version>3.1.5</spring.boot.version>
         <mysql.connector.version>8.0.33</mysql.connector.version>
+        <postgresql.version>42.7.10</postgresql.version>
         <binlog.version>0.29.2</binlog.version>
         <h2.version>2.2.224</h2.version>
         <slf4j.version>2.0.9</slf4j.version>
@@ -44,28 +47,48 @@
             </dependency>
             <dependency>
                 <groupId>com.migration</groupId>
-                <artifactId>mysql-migration-common</artifactId>
+                <artifactId>migration-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.migration</groupId>
-                <artifactId>mysql-migration-full</artifactId>
+                <artifactId>migration-thl</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.migration</groupId>
-                <artifactId>mysql-migration-binlog</artifactId>
+                <artifactId>migration-full</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.migration</groupId>
-                <artifactId>mysql-migration-agent</artifactId>
+                <artifactId>migration-capture</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.migration</groupId>
+                <artifactId>migration-extract</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.migration</groupId>
+                <artifactId>migration-increment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.migration</groupId>
+                <artifactId>migration-agent</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.connector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.zendesk</groupId>

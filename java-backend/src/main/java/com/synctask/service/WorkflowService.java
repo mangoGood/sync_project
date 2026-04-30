@@ -36,33 +36,78 @@ public class WorkflowService {
     private KafkaProducerService kafkaProducerService;
 
     @Transactional
-    public Workflow createWorkflow(String name, String sourceConnection, String targetConnection, 
-                                   String migrationMode, String syncObjects, String sourceDbName, Long userId) {
+    public Workflow createWorkflow(String name, String sourceType, String targetType, Long userId) {
         Workflow workflow = new Workflow();
         workflow.setId(UUID.randomUUID().toString());
         workflow.setName(name);
-        workflow.setSourceConnection(sourceConnection != null ? sourceConnection : "default-source");
-        workflow.setTargetConnection(targetConnection != null ? targetConnection : "default-target");
-        workflow.setMigrationMode(migrationMode != null ? migrationMode : "full");
-        workflow.setSyncObjects(syncObjects);
-        workflow.setSourceDbName(sourceDbName);
-        workflow.setStatus(WorkflowStatus.PENDING);
+        workflow.setSourceType(sourceType != null ? sourceType : "mysql");
+        workflow.setTargetType(targetType != null ? targetType : "mysql");
+        workflow.setStatus(WorkflowStatus.CONFIGURING);
         workflow.setUserId(userId);
         workflow.setProgress(0);
-        workflow.setIsBilling(true);
+        workflow.setIsBilling(false);
 
         Workflow savedWorkflow = workflowRepository.save(workflow);
+        addLog(savedWorkflow.getId(), WorkflowLog.LogLevel.INFO, "任务创建成功，状态: 配置中");
+        return savedWorkflow;
+    }
+
+    @Transactional
+    public Workflow updateConfig(String workflowId, Long userId, String sourceConnection, String targetConnection,
+                                  String migrationMode, String syncObjects, String sourceDbName,
+                                  String targetDbName, String sourceType, String targetType) {
+        Workflow workflow = getWorkflowById(workflowId, userId);
         
-        addLog(savedWorkflow.getId(), WorkflowLog.LogLevel.INFO, "任务创建成功，状态: 创建中");
-        
-        try {
-            kafkaProducerService.sendTaskCreatedMessage(savedWorkflow);
-            addLog(savedWorkflow.getId(), WorkflowLog.LogLevel.INFO, "任务消息已发送到 Kafka topic: sync-task-created，等待任务执行服务处理");
-        } catch (Exception e) {
-            addLog(savedWorkflow.getId(), WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+        if (workflow.getStatus() != WorkflowStatus.CONFIGURING) {
+            throw new RuntimeException("只能修改配置中的任务，当前状态: " + workflow.getStatus().name());
         }
         
-        return savedWorkflow;
+        if (sourceConnection != null) workflow.setSourceConnection(sourceConnection);
+        if (targetConnection != null) workflow.setTargetConnection(targetConnection);
+        if (migrationMode != null) workflow.setMigrationMode(migrationMode);
+        if (syncObjects != null) workflow.setSyncObjects(syncObjects);
+        if (sourceDbName != null) workflow.setSourceDbName(sourceDbName);
+        if (targetDbName != null) workflow.setTargetDbName(targetDbName);
+        if (sourceType != null) workflow.setSourceType(sourceType);
+        if (targetType != null) workflow.setTargetType(targetType);
+        
+        addLog(workflowId, WorkflowLog.LogLevel.INFO, "任务配置已更新");
+        return workflowRepository.save(workflow);
+    }
+
+    @Transactional
+    public Workflow launchWorkflow(String workflowId, Long userId) {
+        Workflow workflow = getWorkflowById(workflowId, userId);
+        
+        if (workflow.getStatus() != WorkflowStatus.CONFIGURING) {
+            throw new RuntimeException("只能启动配置中的任务，当前状态: " + workflow.getStatus().name());
+        }
+        
+        if (workflow.getSourceConnection() == null || workflow.getSourceConnection().isEmpty() ||
+            workflow.getTargetConnection() == null || workflow.getTargetConnection().isEmpty()) {
+            throw new RuntimeException("请先完成连接信息配置");
+        }
+        if (workflow.getSyncObjects() == null || workflow.getSyncObjects().isEmpty()) {
+            throw new RuntimeException("请先选择同步对象");
+        }
+        if (workflow.getMigrationMode() == null || workflow.getMigrationMode().isEmpty()) {
+            throw new RuntimeException("请先选择同步模式");
+        }
+        
+        workflow.setStatus(WorkflowStatus.PENDING);
+        workflow.setIsBilling(true);
+        workflowRepository.save(workflow);
+        
+        addLog(workflowId, WorkflowLog.LogLevel.INFO, "任务启动中，状态: 启动中");
+        
+        try {
+            kafkaProducerService.sendTaskCreatedMessage(workflow);
+            addLog(workflowId, WorkflowLog.LogLevel.INFO, "任务消息已发送到 Kafka topic: sync-task-created，等待任务执行服务处理");
+        } catch (Exception e) {
+            addLog(workflowId, WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+        }
+        
+        return workflow;
     }
 
     public Page<Workflow> getWorkflowsByUserId(Long userId, int page, int pageSize, String sortBy, String sortDirection) {
@@ -148,6 +193,8 @@ public class WorkflowService {
         message.setCreatedAt(workflow.getCreatedAt());
         message.setMessageType("stop");
         message.setCurrentStatus(currentStatus);
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
         
         try {
             kafkaProducerService.sendControlMessage(message);
@@ -175,6 +222,8 @@ public class WorkflowService {
         message.setMigrationMode(workflow.getMigrationMode());
         message.setCreatedAt(workflow.getCreatedAt());
         message.setMessageType("resume");
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
         
         try {
             kafkaProducerService.sendControlMessage(message);
@@ -198,6 +247,8 @@ public class WorkflowService {
         message.setCreatedAt(workflow.getCreatedAt());
         message.setMessageType("terminate");
         message.setCurrentStatus(workflow.getStatus().name());
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
         
         try {
             kafkaProducerService.sendControlMessage(message);
@@ -218,8 +269,8 @@ public class WorkflowService {
         Workflow workflow = getWorkflowById(id, userId);
         
         WorkflowStatus status = workflow.getStatus();
-        if (status != WorkflowStatus.COMPLETED && status != WorkflowStatus.FAILED && status != WorkflowStatus.FULL_COMPLETED) {
-            throw new RuntimeException("只能删除已完成或失败的任务，当前状态: " + status.name());
+        if (status != WorkflowStatus.COMPLETED && status != WorkflowStatus.FAILED && status != WorkflowStatus.FULL_COMPLETED && status != WorkflowStatus.CONFIGURING) {
+            throw new RuntimeException("只能删除已完成、失败或配置中的任务，当前状态: " + status.name());
         }
         
         workflow.setIsDeleted(true);
@@ -235,38 +286,79 @@ public class WorkflowService {
             throw new RuntimeException("只能重试失败的任务，当前状态: " + workflow.getStatus().name());
         }
         
-        workflow.setStatus(WorkflowStatus.PENDING);
-        workflow.setProgress(0);
-        workflow.setIsBilling(true);
-        workflow.setErrorMessage(null);
-        workflow.setCompletedAt(null);
-        workflow.setTotalTables(null);
-        workflow.setCompletedTables(null);
-        workflow.setCurrentTable(null);
-        workflow.setCurrentTableProgress(null);
-        workflow.setCurrentTableRows(null);
-        workflow.setCurrentTableTotalRows(null);
-        workflowRepository.save(workflow);
+        boolean fullSyncCompleted = "fullAndIncre".equals(workflow.getMigrationMode()) 
+            && workflow.getProgress() != null 
+            && workflow.getProgress() == 100;
         
-        addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试中，状态重置为 PENDING");
-        
-        TaskCreatedMessage message = new TaskCreatedMessage();
-        message.setTaskId(workflow.getId());
-        message.setTaskName(workflow.getName());
-        message.setUserId(workflow.getUserId());
-        message.setSourceConnection(workflow.getSourceConnection());
-        message.setTargetConnection(workflow.getTargetConnection());
-        message.setMigrationMode(workflow.getMigrationMode());
-        message.setSyncObjects(parseSyncObjects(workflow.getSyncObjects()));
-        message.setSourceDbName(workflow.getSourceDbName());
-        message.setCreatedAt(workflow.getCreatedAt());
-        message.setMessageType("TASK_CREATED");
-        
-        try {
-            kafkaProducerService.sendTaskCreatedMessage(workflow);
-            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试消息已发送到 Kafka，等待任务执行服务处理");
-        } catch (Exception e) {
-            addLog(workflow.getId(), WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+        if (fullSyncCompleted) {
+            workflow.setStatus(WorkflowStatus.STARTING);
+            workflow.setIsBilling(true);
+            workflow.setErrorMessage(null);
+            workflow.setErrorCode(null);
+            workflow.setCompletedAt(null);
+            workflowRepository.save(workflow);
+            
+            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务恢复中，全量同步已完成，将从增量位点继续同步");
+            
+            TaskCreatedMessage message = new TaskCreatedMessage();
+            message.setTaskId(workflow.getId());
+            message.setTaskName(workflow.getName());
+            message.setUserId(workflow.getUserId());
+            message.setSourceConnection(workflow.getSourceConnection());
+            message.setTargetConnection(workflow.getTargetConnection());
+            message.setMigrationMode(workflow.getMigrationMode());
+            message.setSyncObjects(parseSyncObjects(workflow.getSyncObjects()));
+            message.setSourceDbName(workflow.getSourceDbName());
+            message.setTargetDbName(workflow.getTargetDbName());
+            message.setCreatedAt(workflow.getCreatedAt());
+            message.setMessageType("resume");
+            message.setCurrentStatus("INCREMENT_RUNNING");
+            message.setSourceType(workflow.getSourceType());
+            message.setTargetType(workflow.getTargetType());
+            
+            try {
+                kafkaProducerService.sendControlMessage(message);
+                addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务恢复消息已发送到 Kafka（跳过全量同步，从增量位点继续）");
+            } catch (Exception e) {
+                addLog(workflow.getId(), WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+            }
+        } else {
+            workflow.setStatus(WorkflowStatus.PENDING);
+            workflow.setProgress(0);
+            workflow.setIsBilling(true);
+            workflow.setErrorMessage(null);
+            workflow.setErrorCode(null);
+            workflow.setCompletedAt(null);
+            workflow.setTotalTables(null);
+            workflow.setCompletedTables(null);
+            workflow.setCurrentTable(null);
+            workflow.setCurrentTableProgress(null);
+            workflow.setCurrentTableRows(null);
+            workflow.setCurrentTableTotalRows(null);
+            workflowRepository.save(workflow);
+            
+            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试中，状态重置为 PENDING");
+            
+            TaskCreatedMessage message = new TaskCreatedMessage();
+            message.setTaskId(workflow.getId());
+            message.setTaskName(workflow.getName());
+            message.setUserId(workflow.getUserId());
+            message.setSourceConnection(workflow.getSourceConnection());
+            message.setTargetConnection(workflow.getTargetConnection());
+            message.setMigrationMode(workflow.getMigrationMode());
+            message.setSyncObjects(parseSyncObjects(workflow.getSyncObjects()));
+            message.setSourceDbName(workflow.getSourceDbName());
+            message.setCreatedAt(workflow.getCreatedAt());
+            message.setMessageType("TASK_CREATED");
+            message.setSourceType(workflow.getSourceType());
+            message.setTargetType(workflow.getTargetType());
+            
+            try {
+                kafkaProducerService.sendTaskCreatedMessage(workflow);
+                addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务重试消息已发送到 Kafka，等待任务执行服务处理");
+            } catch (Exception e) {
+                addLog(workflow.getId(), WorkflowLog.LogLevel.WARNING, "Kafka 消息发送失败: " + e.getMessage());
+            }
         }
     }
     

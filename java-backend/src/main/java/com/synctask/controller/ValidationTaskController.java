@@ -52,7 +52,7 @@ public class ValidationTaskController {
             Long userId = getUserId(authentication);
             Page<ValidationTask> tasks = validationTaskService.getValidationTasks(userId, page, size);
             
-            List<Map<String, Object>> content = tasks.getContent().stream().map(this::toMap).collect(Collectors.toList());
+            List<Map<String, Object>> content = tasks.getContent().stream().map(this::toMapLite).collect(Collectors.toList());
             
             Map<String, Object> response = new HashMap<>();
             response.put("content", content);
@@ -79,17 +79,26 @@ public class ValidationTaskController {
 
     @PostMapping
     public ResponseEntity<?> createValidationTask(
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, Object> request,
             Authentication authentication) {
         try {
             Long userId = getUserId(authentication);
-            String workflowId = request.get("workflowId");
+            String workflowId = (String) request.get("workflowId");
+            String compareType = (String) request.get("compareType");
             
             if (workflowId == null || workflowId.isEmpty()) {
                 return ResponseEntity.ok(Map.of("success", false, "message", "请选择同步任务"));
             }
             
-            ValidationTask task = validationTaskService.createValidationTask(workflowId, userId);
+            if (compareType == null || compareType.isEmpty()) {
+                compareType = "ROW_COUNT";
+            }
+
+            if (!"ROW_COUNT".equals(compareType) && !"CONTENT".equals(compareType)) {
+                return ResponseEntity.ok(Map.of("success", false, "message", "不支持的对比类型: " + compareType));
+            }
+            
+            ValidationTask task = validationTaskService.createValidationTask(workflowId, userId, compareType);
             return ResponseEntity.ok(Map.of("success", true, "data", toMap(task)));
         } catch (Exception e) {
             return ResponseEntity.ok(Map.of("success", false, "message", e.getMessage()));
@@ -114,12 +123,34 @@ public class ValidationTaskController {
         throw new RuntimeException("未授权");
     }
 
+    private Map<String, Object> toMapLite(ValidationTask task) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", task.getId());
+        map.put("name", task.getName());
+        map.put("workflowId", task.getWorkflowId());
+        map.put("workflowName", task.getWorkflowName());
+        map.put("compareType", task.getCompareType());
+        map.put("status", task.getStatus().name());
+        map.put("totalTables", task.getTotalTables());
+        map.put("passedTables", task.getPassedTables());
+        map.put("failedTables", task.getFailedTables());
+        map.put("totalRows", task.getTotalRows());
+        map.put("mismatchedRows", task.getMismatchedRows());
+        map.put("errorMessage", task.getErrorMessage());
+        map.put("createdAt", task.getCreatedAt());
+        map.put("startedAt", task.getStartedAt());
+        map.put("completedAt", task.getCompletedAt());
+        return map;
+    }
+
     private Map<String, Object> toMap(ValidationTask task) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", task.getId());
         map.put("name", task.getName());
         map.put("workflowId", task.getWorkflowId());
         map.put("workflowName", task.getWorkflowName());
+        map.put("compareType", task.getCompareType());
+        map.put("compareResult", task.getCompareResult());
         map.put("status", task.getStatus().name());
         map.put("totalTables", task.getTotalTables());
         map.put("passedTables", task.getPassedTables());

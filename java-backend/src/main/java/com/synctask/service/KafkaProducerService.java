@@ -38,6 +38,9 @@ public class KafkaProducerService {
         message.setMigrationMode(workflow.getMigrationMode());
         message.setCreatedAt(workflow.getCreatedAt());
         message.setSourceDbName(workflow.getSourceDbName());
+        message.setTargetDbName(workflow.getTargetDbName());
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {
@@ -74,6 +77,9 @@ public class KafkaProducerService {
         message.setMigrationMode(workflow.getMigrationMode());
         message.setCreatedAt(workflow.getCreatedAt());
         message.setSourceDbName(workflow.getSourceDbName());
+        message.setTargetDbName(workflow.getTargetDbName());
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {

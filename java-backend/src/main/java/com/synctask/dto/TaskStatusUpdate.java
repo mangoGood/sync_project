@@ -31,6 +31,18 @@ public class TaskStatusUpdate {
     @JsonProperty("current_table_total_rows")
     private Long currentTableTotalRows;
 
+    @JsonProperty("error_message")
+    private String errorMessage;
+
+    @JsonProperty("error_code")
+    private String errorCode;
+
+    @JsonProperty("rpo_ms")
+    private Long rpoMs;
+
+    @JsonProperty("rto_ms")
+    private Long rtoMs;
+
     public String getTaskId() {
         return taskId;
     }
@@ -117,5 +129,37 @@ public class TaskStatusUpdate {
 
     public void setCurrentTableTotalRows(Long currentTableTotalRows) {
         this.currentTableTotalRows = currentTableTotalRows;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public Long getRpoMs() {
+        return rpoMs;
+    }
+
+    public void setRpoMs(Long rpoMs) {
+        this.rpoMs = rpoMs;
+    }
+
+    public Long getRtoMs() {
+        return rtoMs;
+    }
+
+    public void setRtoMs(Long rtoMs) {
+        this.rtoMs = rtoMs;
     }
 }
