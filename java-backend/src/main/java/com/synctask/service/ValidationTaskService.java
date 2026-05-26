@@ -104,7 +104,8 @@ public class ValidationTaskService {
     public List<Workflow> getIncrementalWorkflows(Long userId) {
         List<Workflow> workflows = workflowRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
         return workflows.stream()
-            .filter(w -> w.getStatus() == WorkflowStatus.INCREMENT_RUNNING)
+            .filter(w -> w.getStatus() == WorkflowStatus.INCREMENT_RUNNING
+                || ("DR".equals(w.getTaskType()) && w.getStatus() == WorkflowStatus.FULL_COMPLETED))
             .toList();
     }
 
@@ -121,10 +122,21 @@ public class ValidationTaskService {
     @Transactional
     public ValidationTask createValidationTask(String workflowId, Long userId, String compareType) {
         Workflow workflow = workflowRepository.findByIdAndUserIdAndIsDeletedFalse(workflowId, userId)
-            .orElseThrow(() -> new RuntimeException("同步任务不存在"));
+            .orElseThrow(() -> new RuntimeException("任务不存在"));
 
-        if (workflow.getStatus() != WorkflowStatus.INCREMENT_RUNNING) {
-            throw new RuntimeException("只能为增量同步中的任务创建对比任务");
+        boolean isDrTask = "DR".equals(workflow.getTaskType());
+        boolean isIncrementRunning = workflow.getStatus() == WorkflowStatus.INCREMENT_RUNNING;
+        boolean isDrRunning = isDrTask && workflow.getStatus() == WorkflowStatus.FULL_COMPLETED;
+
+        if (!isIncrementRunning && !isDrRunning) {
+            throw new RuntimeException("只能为增量同步中或灾备中的任务创建对比任务");
+        }
+
+        List<ValidationTask> runningTasks = validationTaskRepository
+            .findByWorkflowIdAndStatusInAndIsDeletedFalse(workflowId,
+                Arrays.asList(ValidationTask.ValidationStatus.PENDING, ValidationTask.ValidationStatus.RUNNING));
+        if (!runningTasks.isEmpty()) {
+            throw new RuntimeException("该任务已有对比任务正在执行中，请等待完成后再创建");
         }
 
         if ("CONTENT".equals(compareType)) {
@@ -145,6 +157,7 @@ public class ValidationTaskService {
         task.setTargetConnection(workflow.getTargetConnection());
         task.setSyncObjects(workflow.getSyncObjects());
         task.setCompareType(compareType);
+        task.setTaskType(workflow.getTaskType() != null ? workflow.getTaskType() : "SYNC");
         task.setStatus(ValidationTask.ValidationStatus.PENDING);
 
         validationTaskRepository.save(task);
@@ -194,6 +207,26 @@ public class ValidationTaskService {
 
             Map<String, List<String>> syncObjectsMap = parseSyncObjectsSimple(task.getSyncObjects());
 
+            boolean isDrTask = "DR".equals(task.getTaskType());
+            if (isDrTask || syncObjectsMap.isEmpty()) {
+                ParsedConnection sourceConn = parseConnection(task.getSourceConnection());
+                boolean sourceIsPg = "postgresql".equalsIgnoreCase(sourceType);
+                try (Connection sourceDb = DriverManager.getConnection(
+                        buildJdbcUrl(sourceConn.type, sourceConn.host, sourceConn.port, null),
+                        sourceConn.username, sourceConn.password)) {
+                    List<String> allDatabases = getAllDatabaseNames(sourceDb, sourceIsPg);
+                    addLog(taskId, ValidationTaskLog.LogLevel.INFO,
+                        (isDrTask ? "灾备任务，对比源库和目标库的所有数据库: " : "sync_objects 为空，自动获取源库所有数据库: ") + allDatabases);
+                    syncObjectsMap.clear();
+                    for (String dbName : allDatabases) {
+                        List<String> tableNames = getTableNames(sourceDb, dbName, sourceIsPg);
+                        if (!tableNames.isEmpty()) {
+                            syncObjectsMap.put(dbName, tableNames);
+                        }
+                    }
+                }
+            }
+
             ContentCompareSession session = contentCompareService.startCompare(
                 task.getSourceConnection(), task.getTargetConnection(),
                 sourceType, targetType, syncObjectsMap);
@@ -231,13 +264,29 @@ public class ValidationTaskService {
                     ContentCompareSession.TableCompareTask diffResult =
                         contentCompareService.findDiffs(session.getSessionId(), i, 100);
                     int diffCount = diffResult.getDiffs().size();
-                    totalDiffs += diffCount;
-                    failedTables++;
-                    tr.put("status", "MISMATCH");
-                    tr.put("diffCount", diffCount);
-                    tr.put("diffs", diffResult.getDiffs());
-                    addLog(taskId, ValidationTaskLog.LogLevel.WARNING,
-                        "表 " + t.getSourceTable() + " 数据不一致，差异行数: " + diffCount);
+                    if ("ERROR".equals(diffResult.getStatus())) {
+                        failedTables++;
+                        tr.put("status", "ERROR");
+                        tr.put("diffCount", 0);
+                        tr.put("diffs", Collections.emptyList());
+                        addLog(taskId, ValidationTaskLog.LogLevel.ERROR,
+                            "表 " + t.getSourceTable() + " 差异查找失败，可能是特殊数据类型导致查询异常");
+                    } else if (diffCount == 0) {
+                        passedTables++;
+                        tr.put("status", "MATCH");
+                        tr.put("diffCount", 0);
+                        tr.put("diffs", Collections.emptyList());
+                        addLog(taskId, ValidationTaskLog.LogLevel.INFO,
+                            "表 " + t.getSourceTable() + " 校验和不一致但逐行对比数据一致（CHECKSUM TABLE 对浮点/BIT/BLOB等类型可能产生误报）");
+                    } else {
+                        totalDiffs += diffCount;
+                        failedTables++;
+                        tr.put("status", "MISMATCH");
+                        tr.put("diffCount", diffCount);
+                        tr.put("diffs", diffResult.getDiffs());
+                        addLog(taskId, ValidationTaskLog.LogLevel.WARNING,
+                            "表 " + t.getSourceTable() + " 数据不一致，差异行数: " + diffCount);
+                    }
                 }
                 tableResults.add(tr);
             }
@@ -321,16 +370,21 @@ public class ValidationTaskService {
                 buildJdbcUrl(targetConn.type, targetConn.host, targetConn.port, targetConn.database),
                 targetConn.username, targetConn.password)) {
 
-            if (syncObjects.isEmpty()) {
+            boolean isDrTask = "DR".equals(task.getTaskType());
+            if (isDrTask || syncObjects.isEmpty()) {
                 boolean sourceIsPg = "postgresql".equalsIgnoreCase(sourceConn.type);
-                List<String> tableNames = getTableNames(sourceDb, sourceConn.database, sourceIsPg);
-                if (!tableNames.isEmpty()) {
-                    Map<String, List<String>> tableMap = new HashMap<>();
-                    tableMap.put("tables", tableNames);
-                    syncObjects.put(sourceConn.database, tableMap);
+                List<String> allDatabases = getAllDatabaseNames(sourceDb, sourceIsPg);
+                addLog(taskId, ValidationTaskLog.LogLevel.INFO,
+                    (isDrTask ? "灾备任务，对比源库和目标库的所有数据库: " : "sync_objects 为空，自动获取源库所有数据库: ") + allDatabases);
+                syncObjects.clear();
+                for (String dbName : allDatabases) {
+                    List<String> tableNames = getTableNames(sourceDb, dbName, sourceIsPg);
+                    if (!tableNames.isEmpty()) {
+                        Map<String, List<String>> tableMap = new HashMap<>();
+                        tableMap.put("tables", tableNames);
+                        syncObjects.put(dbName, tableMap);
+                    }
                 }
-                addLog(taskId, ValidationTaskLog.LogLevel.INFO, 
-                    "sync_objects 为空，自动获取源库表列表: " + tableNames);
             }
 
             for (Map.Entry<String, Map<String, List<String>>> dbEntry : syncObjects.entrySet()) {
@@ -616,6 +670,8 @@ public class ValidationTaskService {
         return columns;
     }
 
+    private static final Set<String> IGNORED_TABLES = Set.of("__sync_heartbeat");
+
     private List<String> getTableNames(Connection conn, String dbName, boolean isPg) throws SQLException {
         List<String> tables = new ArrayList<>();
         DatabaseMetaData metaData = conn.getMetaData();
@@ -623,17 +679,51 @@ public class ValidationTaskService {
         if (isPg) {
             try (ResultSet rs = metaData.getTables(dbName, "public", "%", types)) {
                 while (rs.next()) {
-                    tables.add(rs.getString("TABLE_NAME"));
+                    String tableName = rs.getString("TABLE_NAME");
+                    if (!IGNORED_TABLES.contains(tableName.toLowerCase())) {
+                        tables.add(tableName);
+                    }
                 }
             }
         } else {
             try (ResultSet rs = metaData.getTables(dbName, null, "%", types)) {
                 while (rs.next()) {
-                    tables.add(rs.getString("TABLE_NAME"));
+                    String tableName = rs.getString("TABLE_NAME");
+                    if (!IGNORED_TABLES.contains(tableName.toLowerCase())) {
+                        tables.add(tableName);
+                    }
                 }
             }
         }
         return tables;
+    }
+
+    private List<String> getAllDatabaseNames(Connection conn, boolean isPg) throws SQLException {
+        List<String> databases = new ArrayList<>();
+        if (isPg) {
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT schema_name FROM information_schema.schemata " +
+                     "WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') " +
+                     "AND schema_name NOT LIKE 'pg_temp_%'")) {
+                while (rs.next()) {
+                    databases.add(rs.getString(1));
+                }
+            }
+        } else {
+            try (ResultSet rs = conn.getMetaData().getCatalogs()) {
+                while (rs.next()) {
+                    String db = rs.getString("TABLE_CAT");
+                    if (db != null && !db.equalsIgnoreCase("information_schema")
+                        && !db.equalsIgnoreCase("mysql")
+                        && !db.equalsIgnoreCase("performance_schema")
+                        && !db.equalsIgnoreCase("sys")) {
+                        databases.add(db);
+                    }
+                }
+            }
+        }
+        return databases;
     }
 
     @Transactional

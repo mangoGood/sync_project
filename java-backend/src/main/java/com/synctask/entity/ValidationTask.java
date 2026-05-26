@@ -35,6 +35,9 @@ public class ValidationTask {
     @Column(name = "compare_type")
     private String compareType = "ROW_COUNT";
 
+    @Column(name = "task_type", length = 20)
+    private String taskType = "SYNC";
+
     @Column(name = "compare_result", columnDefinition = "LONGTEXT")
     private String compareResult;
 
@@ -143,6 +146,9 @@ public class ValidationTask {
 
     public String getCompareType() { return compareType; }
     public void setCompareType(String compareType) { this.compareType = compareType; }
+
+    public String getTaskType() { return taskType; }
+    public void setTaskType(String taskType) { this.taskType = taskType; }
 
     public String getCompareResult() { return compareResult; }
     public void setCompareResult(String compareResult) { this.compareResult = compareResult; }

@@ -18,6 +18,7 @@ public class TaskCreatedMessage {
     private String targetDbName;
     private String sourceType;
     private String targetType;
+    private String taskType;
 
     public TaskCreatedMessage() {
         this.messageType = "TASK_CREATED";
@@ -133,5 +134,13 @@ public class TaskCreatedMessage {
 
     public void setTargetType(String targetType) {
         this.targetType = targetType;
+    }
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
     }
 }

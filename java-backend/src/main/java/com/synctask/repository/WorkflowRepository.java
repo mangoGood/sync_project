@@ -37,4 +37,18 @@ public interface WorkflowRepository extends JpaRepository<Workflow, String> {
     Page<Workflow> findByUserIdAndKeywordAndStatus(@Param("userId") Long userId, @Param("keyword") String keyword, @Param("status") WorkflowStatus status, Pageable pageable);
     
     List<Workflow> findByUserIdAndStatusAndIsDeletedFalse(Long userId, WorkflowStatus status);
+
+    @Query("SELECT w FROM Workflow w WHERE w.userId = :userId AND w.isDeleted = false AND w.taskType = :taskType")
+    Page<Workflow> findByUserIdAndTaskType(@Param("userId") Long userId, @Param("taskType") String taskType, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.userId = :userId AND w.isDeleted = false AND w.taskType = :taskType AND " +
+           "(LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(w.id) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Workflow> findByUserIdAndTaskTypeAndKeyword(@Param("userId") Long userId, @Param("taskType") String taskType, @Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.userId = :userId AND w.isDeleted = false AND w.taskType = :taskType AND w.status = :status")
+    Page<Workflow> findByUserIdAndTaskTypeAndStatus(@Param("userId") Long userId, @Param("taskType") String taskType, @Param("status") WorkflowStatus status, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.userId = :userId AND w.isDeleted = false AND w.taskType = :taskType AND " +
+           "(LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(w.id) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND w.status = :status")
+    Page<Workflow> findByUserIdAndTaskTypeAndKeywordAndStatus(@Param("userId") Long userId, @Param("taskType") String taskType, @Param("keyword") String keyword, @Param("status") WorkflowStatus status, Pageable pageable);
 }

@@ -27,7 +27,7 @@ public class MigrationAgentThread implements Runnable {
     private static final String INCREMENT_JAR_PATH = "migration-increment/target/migration-increment-1.0.0.jar";
 
     private static final long CAPTURE_MONITOR_INTERVAL = 30000;
-    private static final long INCREMENT_MONITOR_INTERVAL = 30000;
+    private static final long INCREMENT_MONITOR_INTERVAL = 10000;
     private static final long PROGRESS_MONITOR_INTERVAL = 3000;
 
     private final TaskMessage taskMessage;
@@ -107,6 +107,7 @@ public class MigrationAgentThread implements Runnable {
 
         try {
             if (skipFullMigration) {
+                Thread.interrupted();
                 lastSuccessfulStatus = "INCREMENT_RUNNING";
                 sendStatus("INCREMENT_RUNNING", "从增量同步阶段恢复", 100);
 
@@ -461,16 +462,30 @@ public class MigrationAgentThread implements Runnable {
             captureProcess = new ProcessManager(CAPTURE_JAR_PATH, "CaptureMain-" + taskId);
             captureProcess.setTaskId(taskId);
             captureProcess.start();
+            logger.info("[{}] capture 进程已提交启动，等待初始化...", threadName);
 
-            Thread.sleep(2000);
+            for (int i = 0; i < 6; i++) {
+                try { Thread.sleep(5000); } catch (InterruptedException e) {
+                    logger.warn("[{}] capture 等待被中断 (attempt {}), stopped={}", threadName, i+1, stopped.get());
+                    Thread.interrupted();
+                    if (stopped.get()) {
+                        logger.info("[{}] capture 等待中止，任务已停止", threadName);
+                        return false;
+                    }
+                }
+
+                if (captureProcess.isRunning()) {
+                    logger.info("[{}] capture 进程启动成功 (after {}s)", threadName, (i+1)*5);
+                    break;
+                }
+                logger.info("[{}] capture 进程未就绪，继续等待... ({}s elapsed)", threadName, (i+1)*5);
+            }
 
             if (!captureProcess.isRunning()) {
-                logger.error("[{}] capture 进程启动失败", threadName);
+                logger.error("[{}] capture 进程启动失败 (waited 30s)", threadName);
                 sendStatus("FAILED", "capture 进程启动失败", 0);
                 return false;
             }
-
-            logger.info("[{}] capture 进程启动成功", threadName);
 
             captureMonitorThread = new Thread(() -> {
                 while (running.get() && captureProcess != null) {
@@ -520,17 +535,28 @@ public class MigrationAgentThread implements Runnable {
             extractProcess = new ProcessManager(EXTRACT_JAR_PATH, "ContinuousExtractMain-" + taskId);
             extractProcess.setTaskId(taskId);
             extractProcess.start();
+            logger.info("[{}] extract 进程已提交启动，等待初始化...", threadName);
 
-            Thread.sleep(2000);
+            for (int i = 0; i < 6; i++) {
+                try { Thread.sleep(5000); } catch (InterruptedException e) {
+                    logger.warn("[{}] extract 等待被中断 (attempt {}), stopped={}", threadName, i+1, stopped.get());
+                    Thread.interrupted();
+                    if (stopped.get()) {
+                        logger.info("[{}] extract 等待中止，任务已停止", threadName);
+                        return false;
+                    }
+                }
 
-            if (!extractProcess.isRunning()) {
-                logger.error("[{}] extract 进程启动失败", threadName);
-                sendStatus("FAILED", "extract 进程启动失败", 0);
-                return false;
+                if (extractProcess.isRunning()) {
+                    logger.info("[{}] extract 进程启动成功 (after {}s)", threadName, (i+1)*5);
+                    return true;
+                }
+                logger.info("[{}] extract 进程未就绪，继续等待... ({}s elapsed)", threadName, (i+1)*5);
             }
 
-            logger.info("[{}] extract 进程启动成功", threadName);
-            return true;
+            logger.error("[{}] extract 进程启动失败 (waited 30s)", threadName);
+            sendStatus("FAILED", "extract 进程启动失败", 0);
+            return false;
 
         } catch (Exception e) {
             logger.error("[{}] 启动 extract 进程失败", threadName, e);
@@ -658,11 +684,27 @@ public class MigrationAgentThread implements Runnable {
             incrementProcess = new ProcessManager(INCREMENT_JAR_PATH, "ContinuousIncrementMain-" + taskId);
             incrementProcess.setTaskId(taskId);
             incrementProcess.start();
+            logger.info("[{}] increment 进程已提交启动，等待初始化...", threadName);
 
-            Thread.sleep(2000);
+            for (int i = 0; i < 6; i++) {
+                try { Thread.sleep(5000); } catch (InterruptedException e) {
+                    logger.warn("[{}] increment 等待被中断 (attempt {}), stopped={}", threadName, i+1, stopped.get());
+                    Thread.interrupted();
+                    if (stopped.get()) {
+                        logger.info("[{}] increment 等待中止，任务已停止", threadName);
+                        return false;
+                    }
+                }
+
+                if (incrementProcess.isRunning()) {
+                    logger.info("[{}] increment 进程启动成功 (after {}s)", threadName, (i+1)*5);
+                    break;
+                }
+                logger.info("[{}] increment 进程未就绪，继续等待... ({}s elapsed)", threadName, (i+1)*5);
+            }
 
             if (!incrementProcess.isRunning()) {
-                logger.error("[{}] 增量同步进程启动失败", threadName);
+                logger.error("[{}] 增量同步进程启动失败 (waited 30s)", threadName);
                 sendStatus("FAILED", "增量同步进程启动失败", 100);
                 return false;
             }
@@ -839,6 +881,10 @@ public class MigrationAgentThread implements Runnable {
 
         Long rpoMs = readMetricFile("./files/" + taskId + "/binlog_output/rpo_metric");
         Long rtoMs = readMetricFile("./files/" + taskId + "/binlog_output/rto_metric");
+        Long calculatedRpo = calculateRpo();
+        if (calculatedRpo != null) {
+            rpoMs = calculatedRpo;
+        }
         statusMessage.setRpoMs(rpoMs);
         statusMessage.setRtoMs(rtoMs);
 
@@ -865,7 +911,34 @@ public class MigrationAgentThread implements Runnable {
                 }
             }
         } catch (Exception e) {
-            // ignore
+        }
+        return null;
+    }
+
+    private Long readMetricTimestamp(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (!file.exists()) return null;
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
+                String line = reader.readLine();
+                if (line != null && !line.isEmpty()) {
+                    String[] parts = line.split("\\|");
+                    if (parts.length >= 3) {
+                        return Long.parseLong(parts[2].trim());
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    private Long calculateRpo() {
+        Long lastSourceEventTs = readMetricTimestamp("./files/" + taskId + "/binlog_output/rpo_metric");
+        Long lastAppliedSourceTs = readMetricTimestamp("./files/" + taskId + "/binlog_output/rto_metric");
+        if (lastSourceEventTs != null && lastAppliedSourceTs != null && lastSourceEventTs > 0 && lastAppliedSourceTs > 0) {
+            long rpo = lastSourceEventTs - lastAppliedSourceTs;
+            return rpo >= 0 ? rpo : 0L;
         }
         return null;
     }

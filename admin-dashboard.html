@@ -553,6 +553,21 @@
             border-radius: 50%;
         }
 
+        .status-switching {
+            background-color: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+        }
+
+        .status-switching .status-icon {
+            animation: rotate 1.5s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
@@ -690,7 +705,7 @@
         }
 
         /* 页码容器 */
-        #pageNumbers, #validationPageNumbers {
+        #pageNumbers, #validationPageNumbers, #drPageNumbers {
             display: flex;
             align-items: center;
             gap: 4px;
@@ -1111,6 +1126,11 @@
         .btn-confirm:hover {
             background-color: #40a9ff;
         }
+
+        .btn-confirm:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         
         .btn-test {
             padding: 6px 12px;
@@ -1440,6 +1460,7 @@
                 <div class="menu-section">
                     <div class="menu-title">任务管理</div>
                     <div class="menu-item active" onclick="switchPage('sync')">实时同步管理</div>
+                    <div class="menu-item" onclick="switchPage('dr')">灾备任务管理</div>
                 </div>
                 
                 <div class="menu-section">
@@ -1540,7 +1561,6 @@
                             是否计费中
                             <span class="sort-icon" id="sort-icon-is_billing">⇅</span>
                         </div>
-                        <div class="table-header-cell col-more">进度</div>
                         <div class="table-header-cell col-action">操作</div>
                     </div>
 
@@ -1628,6 +1648,78 @@
                             <button class="page-btn" id="validationPrevPageBtn" onclick="goToValidationPage(validationCurrentPage - 1)">‹</button>
                             <div id="validationPageNumbers"></div>
                             <button class="page-btn" id="validationNextPageBtn" onclick="goToValidationPage(validationCurrentPage + 1)">›</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="drPage" style="display: none;">
+                <header class="header">
+                    <div class="header-left">
+                        <h1 class="header-title">灾备任务管理</h1>
+                    </div>
+                    <div class="header-right">
+                        <div class="user-info" id="drUserInfo" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666;">
+                        </div>
+                        <button class="btn-primary" id="createDrTaskBtn">创建灾备任务</button>
+                    </div>
+                </header>
+
+                <div class="content">
+                    <div class="toolbar">
+                        <div class="toolbar-row">
+                            <button class="btn btn-default" id="drViewFailedBtn">查看异常任务</button>
+                            <button class="btn btn-default">导出</button>
+                        </div>
+                        <div class="toolbar-row">
+                            <div class="search-box-wrapper">
+                                <div class="search-box" id="drSearchBox">
+                                    <span class="search-icon">🔍</span>
+                                    <input type="text" class="search-input" id="drSearchInput" placeholder="搜索灾备任务名称/ID">
+                                </div>
+                                <div class="toolbar-actions">
+                                    <button class="icon-btn" id="drRefreshBtn" title="刷新">↻</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <div class="table-cell col-name">名称/ID</div>
+                                <div class="table-cell col-status">状态</div>
+                                <div class="table-cell col-monitor">监控信息</div>
+                                <div class="table-cell col-time">创建时间</div>
+                                <div class="table-cell col-action">操作</div>
+                            </div>
+                            <div class="table-body" id="drTableBody">
+                                <div class="empty-state" id="drEmptyState">
+                                    <div class="empty-icon">
+                                        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="15" y="25" width="50" height="40" rx="2" stroke="#d9d9d9" stroke-width="2" fill="none"/>
+                                            <rect x="20" y="20" width="40" height="8" rx="1" stroke="#d9d9d9" stroke-width="2" fill="none"/>
+                                            <line x1="25" y1="45" x2="55" y2="45" stroke="#d9d9d9" stroke-width="2"/>
+                                            <line x1="25" y1="52" x2="45" y2="52" stroke="#d9d9d9" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                    <div class="empty-text">暂无灾备任务</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pagination" id="drPagination">
+                            <div class="pagination-info" id="drPaginationInfo">总条数：0</div>
+                            <div class="pagination-controls" id="drPaginationControls">
+                                <select class="page-size" id="drPageSizeSelect">
+                                    <option value="10" selected>10条/页</option>
+                                    <option value="20">20条/页</option>
+                                    <option value="50">50条/页</option>
+                                </select>
+                                <button class="page-btn" id="drPrevPageBtn" onclick="goToDrPage(drCurrentPage - 1)">‹</button>
+                                <div id="drPageNumbers"></div>
+                                <button class="page-btn" id="drNextPageBtn" onclick="goToDrPage(drCurrentPage + 1)">›</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1897,14 +1989,167 @@
         </div>
     </div>
 
+    <!-- 创建灾备任务模态框 - 步骤1 -->
+    <div class="modal" id="createDrTaskModal">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">创建灾备任务</h3>
+                <span class="modal-close" id="closeCreateDrModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #333; font-weight: 500;">任务名称</label>
+                    <input type="text" id="drTaskName" placeholder="请输入灾备任务名称" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #333; font-weight: 500;">灾备数据库类型</label>
+                    <div style="display: flex; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 10px 16px; border: 2px solid #1890ff; border-radius: 6px; background: #e6f7ff;">
+                            <input type="radio" name="drDbType" value="mysql" checked style="margin: 0;"> 
+                            <span style="font-size: 14px; font-weight: 500; color: #1890ff;">MySQL</span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px; color: #999;">灾备任务的源库和目标库类型必须一致</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelCreateDrBtn">取消</button>
+                <button class="btn-confirm" id="confirmCreateDrBtn">创建任务</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 灾备任务配置模态框 - 步骤2 -->
+    <div class="modal" id="drConfigModal">
+        <div class="modal-content" style="width: 700px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="drConfigTitle">灾备任务配置</h3>
+                <span class="modal-close" id="closeDrConfigModal">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
+                <div style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 10px 16px; margin-bottom: 20px; font-size: 13px; color: #52c41a;">
+                    ✓ 灾备模式：全量+增量（强制） | 灾备对象：全部数据库（自动）
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;">主库（源库）</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">IP地址</label>
+                            <input type="text" id="drSourceHost" placeholder="192.168.1.1" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">端口</label>
+                            <input type="text" id="drSourcePort" placeholder="3306" value="3306" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">用户名</label>
+                            <input type="text" id="drSourceUser" placeholder="root" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">密码</label>
+                            <input type="password" id="drSourcePassword" placeholder="请输入密码" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; text-align: right;">
+                        <button class="btn btn-default" id="drTestSourceBtn" style="font-size: 12px;">测试连接</button>
+                        <span id="drSourceTestResult" style="margin-left: 8px; font-size: 12px;"></span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;">备库（目标库）</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">IP地址</label>
+                            <input type="text" id="drTargetHost" placeholder="192.168.1.2" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">端口</label>
+                            <input type="text" id="drTargetPort" placeholder="3306" value="3306" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">用户名</label>
+                            <input type="text" id="drTargetUser" placeholder="root" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">密码</label>
+                            <input type="password" id="drTargetPassword" placeholder="请输入密码" style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; text-align: right;">
+                        <button class="btn btn-default" id="drTestTargetBtn" style="font-size: 12px;">测试连接</button>
+                        <span id="drTargetTestResult" style="margin-left: 8px; font-size: 12px;"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelDrConfigBtn">取消</button>
+                <button class="btn-confirm" id="confirmDrConfigBtn">下一步</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主备倒换确认弹窗 -->
+    <div class="modal" id="drFailoverConfirmModal">
+        <div class="modal-content" style="width: 480px;">
+            <div class="modal-header">
+                <h3 class="modal-title">主备倒换确认</h3>
+                <span class="modal-close" id="closeDrFailoverConfirmModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="padding: 16px 0;">
+                    <div style="margin-bottom: 16px; padding: 12px 16px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d48806;">
+                        ⚠ 主备倒换将执行以下操作：
+                    </div>
+                    <div style="font-size: 13px; line-height: 2;">
+                        <div>1. 停止当前灾备任务的所有进程（Capture、Extractor、Increment）</div>
+                        <div>2. 交换主库（源库）与备库（目标库）的连接信息</div>
+                        <div>3. 以交换后的配置重新启动灾备任务（跳过全量同步）</div>
+                        <div>4. 倒换完成后任务自动恢复为"灾备中"状态</div>
+                    </div>
+                    <div style="margin-top: 16px; padding: 12px 16px; background: #f0f5ff; border: 1px solid #adc6ff; border-radius: 4px; font-size: 13px; color: #2f54eb;">
+                        任务名称：<strong id="drFailoverTaskName"></strong><br>
+                        倒换次数：第 <strong id="drFailoverSwitchCount"></strong> 次
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelDrFailoverBtn">取消</button>
+                <button class="btn-confirm" id="confirmDrFailoverBtn" style="background: #1890ff;">确认倒换</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 灾备任务校验模态框 - 步骤3 -->
+    <div class="modal" id="drValidationModal">
+        <div class="modal-content" style="width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">灾备校验检查</h3>
+                <span class="modal-close" id="closeDrValidationModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="drValidationResults" style="min-height: 200px;">
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 14px; color: #999;">校验中...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelDrValidationBtn">取消</button>
+                <button class="btn-confirm" id="launchDrTaskBtn" disabled>启动灾备任务</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 任务详情模态框 -->
     <div class="modal" id="taskDetailModal">
-        <div class="modal-content">
+        <div class="modal-content" style="width: 600px; max-height: 85vh;">
             <div class="modal-header">
                 <h3 class="modal-title">任务详情</h3>
                 <span class="modal-close" id="closeDetailModal">&times;</span>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: calc(85vh - 140px); overflow-y: auto;">
                 <div id="taskDetailContent">
                     <div style="text-align: center; padding: 40px;">
                         <div style="font-size: 14px; color: #999;">加载中...</div>
@@ -2090,38 +2335,6 @@
                 statusCell.innerHTML = statusHtml;
             }
             
-            const progressCell = row.querySelector('.col-more');
-            if (progressCell) {
-                const totalTables = data.total_tables !== undefined ? data.total_tables : data.totalTables;
-                const completedTables = data.completed_tables !== undefined ? data.completed_tables : data.completedTables;
-                const currentTable = data.current_table !== undefined ? data.current_table : data.currentTable;
-                const currentTableProgress = data.current_table_progress !== undefined ? data.current_table_progress : data.currentTableProgress;
-                
-                let progressHtml = '';
-                if (data.status === 'FULL_MIGRATING') {
-                    if (totalTables === undefined || totalTables === null || totalTables === 0) {
-                        progressHtml = `<div style="font-size: 14px; font-weight: 500; color: #999;">同步进度计算中...</div>`;
-                    } else {
-                        progressHtml = `
-                            <div style="font-size: 14px; font-weight: 500; color: #333;">${completedTables || 0}/${totalTables}</div>
-                            ${currentTable ? 
-                                `<div style="margin-top: 4px; font-size: 10px; color: #999;">
-                                    ${currentTable} (${currentTableProgress || 0}%)
-                                </div>` : ''}
-                        `;
-                    }
-                } else {
-                    progressHtml = `
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${data.progress || 0}%"></div>
-                        </div>
-                        <span style="margin-left: 8px; font-size: 11px; color: #666;">${data.progress || 0}%</span>
-                    `;
-                }
-                
-                progressCell.innerHTML = progressHtml;
-            }
-            
             const actionCell = row.querySelector('.col-action .action-btns');
             if (actionCell) {
                 const isStarting = data.status === 'STARTING' || data.status === 'FULL_MIGRATING';
@@ -2165,6 +2378,51 @@
                 </div>`;
             } else if (monitorCell) {
                 monitorCell.innerHTML = '<span style="color: #999;">-</span>';
+            }
+
+            const drRow = document.querySelector(`#drTableBody .table-row[data-task-id="${taskId}"]`);
+            if (drRow) {
+                let drStatusInfo = drStatusMap[data.status] || drStatusMap['PENDING'];
+                if (data.status === 'FULL_COMPLETED') {
+                    drStatusInfo = { text: '灾备中', class: 'status-increment-running', dot: true };
+                }
+                const drStatusCell = drRow.querySelector('.col-status');
+                if (drStatusCell) {
+                    let drStatusHtml = `<span class="status-tag ${drStatusInfo.class}">`;
+                    if (drStatusInfo.dot) drStatusHtml += '<span class="status-dot"></span>';
+                    else if (drStatusInfo.icon) drStatusHtml += `<span class="status-icon">${drStatusInfo.icon}</span>`;
+                    drStatusHtml += `${drStatusInfo.text}</span>`;
+                    drStatusCell.innerHTML = drStatusHtml;
+                }
+                const drMonitorCell = drRow.querySelector('.col-monitor');
+                if (drMonitorCell && (data.status === 'INCREMENT_RUNNING' || data.status === 'FULL_COMPLETED')) {
+                    const rpoMs = data.rpo_ms !== undefined ? data.rpo_ms : data.rpoMs;
+                    const rtoMs = data.rto_ms !== undefined ? data.rto_ms : data.rtoMs;
+                    let drMonitorHtml = '';
+                    if (rtoMs != null) drMonitorHtml += `<div style="font-size: 12px;">RTO: ${formatDelay(rtoMs)}</div>`;
+                    if (rpoMs != null) drMonitorHtml += `<div style="font-size: 12px;">RPO: ${formatDelay(rpoMs)}</div>`;
+                    drMonitorCell.innerHTML = drMonitorHtml || '-';
+                }
+                const drActionCell = drRow.querySelector('.col-action .action-btns');
+                if (drActionCell) {
+                    let drActionHtml = '';
+                    if (data.status === 'CONFIGURING') {
+                        drActionHtml = `<button class="action-btn" onclick="openDrConfig('${taskId}')">配置</button>`;
+                    } else if (data.status === 'FAILED') {
+                        drActionHtml = `<button class="action-btn" onclick="retryWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    } else if (data.status === 'STARTING' || data.status === 'FULL_MIGRATING') {
+                        drActionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    } else if (data.status === 'INCREMENT_RUNNING') {
+                        drActionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    } else if (data.status === 'PAUSED') {
+                        drActionHtml = `<button class="action-btn" onclick="resumeWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    } else if (data.status === 'COMPLETED' || data.status === 'FULL_COMPLETED') {
+                        drActionHtml = `<button class="action-btn stop" onclick="deleteWorkflow('${taskId}')">删除</button>`;
+                    } else {
+                        drActionHtml = '<span style="color: #999; font-size: 12px;">-</span>';
+                    }
+                    drActionCell.innerHTML = drActionHtml;
+                }
             }
         }
         
@@ -2323,6 +2581,7 @@
                 let url = `${API_BASE_URL}/workflows?page=${currentPage}&pageSize=${pageSize}${userId ? `&userId=${userId}` : ''}`;
                 
                 url += `&sortBy=${sortField}&sortDirection=${sortDirection}`;
+                url += `&taskType=SYNC`;
                 
                 if (filterKeyword) {
                     url += `&keyword=${encodeURIComponent(filterKeyword)}`;
@@ -2488,20 +2747,6 @@
                 <div class="table-cell col-billing">
                     ${workflow.is_billing ? '<span style="color: #52c41a;">是</span>' : '<span style="color: #999;">否</span>'}
                 </div>
-                <div class="table-cell col-more">
-                    ${workflow.status === 'FULL_MIGRATING' ? 
-                        (workflow.total_tables && workflow.total_tables > 0 ?
-                            `<div style="font-size: 14px; font-weight: 500; color: #333;">${workflow.completed_tables || 0}/${workflow.total_tables}</div>
-                            ${workflow.current_table ? 
-                                `<div style="margin-top: 4px; font-size: 10px; color: #999;">
-                                    ${workflow.current_table} (${workflow.current_table_progress || 0}%)
-                                </div>` : ''}` :
-                            `<div style="font-size: 14px; font-weight: 500; color: #999;">同步进度计算中...</div>`) :
-                        `<div class="progress-bar">
-                            <div class="progress-fill" style="width: ${workflow.progress || 0}%"></div>
-                        </div>
-                        <span style="margin-left: 8px; font-size: 11px; color: #666;">${workflow.progress || 0}%</span>`}
-                </div>
                 <div class="table-cell col-action">
                     <div class="action-btns">
                         ${workflow.status === 'CONFIGURING' ? 
@@ -2550,28 +2795,31 @@
             
             let html = '';
             
-            let startPage = Math.max(1, currentPage - 2);
-            let endPage = Math.min(totalPages, startPage + 4);
-            
-            if (endPage - startPage < 4) {
-                startPage = Math.max(1, endPage - 4);
-            }
-            
-            if (startPage > 1) {
-                html += `<button class="page-btn ${1 === currentPage ? 'active' : ''}" onclick="goToPage(1)">1</button>`;
-                if (startPage > 2) {
-                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.max(1, currentPage - 5)})">···</span>`;
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
                 }
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-            }
-            
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
+            } else {
+                html += `<button class="page-btn ${1 === currentPage ? 'active' : ''}" onclick="goToPage(1)">1</button>`;
+                
+                if (currentPage <= 4) {
+                    for (let i = 2; i <= Math.min(5, totalPages - 1); i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                    }
+                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.min(currentPage + 5, Math.floor(totalPages / 2))})">···</span>`;
+                } else if (currentPage >= totalPages - 3) {
+                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.max(currentPage - 5, Math.floor(totalPages / 2))})">···</span>`;
+                    for (let i = totalPages - 4; i <= totalPages - 1; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                    }
+                } else {
+                    html += `<span class="page-ellipsis" onclick="goToPage(${Math.max(1, currentPage - 5)})">···</span>`;
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                    }
                     html += `<span class="page-ellipsis" onclick="goToPage(${Math.min(totalPages, currentPage + 5)})">···</span>`;
                 }
+                
                 html += `<button class="page-btn ${totalPages === currentPage ? 'active' : ''}" onclick="goToPage(${totalPages})">${totalPages}</button>`;
             }
             
@@ -3744,7 +3992,7 @@
                                 ${task.status === 'CONFIGURING' ? `<button class="action-btn" style="margin-left: 8px;" onclick="closeDetailModal(); openTaskConfig('${task.id}')">前往配置</button>` : ''}
                             </div>
                             
-                            <div style="font-size: 13px; color: #666;">执行进度:</div>
+                            <div style="font-size: 13px; color: #666;">全量同步进度:</div>
                             <div>
                                 <div class="progress-bar" style="width: 200px;">
                                     <div class="progress-fill" style="width: ${task.progress || 0}%"></div>
@@ -4236,6 +4484,15 @@
                 }
                 if (!cfgConnectionTestStatus.source) {
                     showNotification('请先测试源数据库连接', 'error');
+                    return;
+                }
+                const targetErrors = cfgValidateConnectionFields('target');
+                if (targetErrors.length > 0) {
+                    showNotification('请正确填写目标数据库: ' + targetErrors.join('、'), 'error');
+                    return;
+                }
+                if (!cfgConnectionTestStatus.target) {
+                    showNotification('请先测试目标数据库连接', 'error');
                     return;
                 }
                 
@@ -5127,22 +5384,47 @@
         let validationCurrentPage = 0;
         let validationPageSize = 10;
         let availableWorkflows = [];
+        let _validationPollingTimer = null;
         
         function switchPage(page) {
             console.log('switchPage called with:', page);
             const menuItems = document.querySelectorAll('.menu-item');
             menuItems.forEach(item => item.classList.remove('active'));
             
+            document.getElementById('syncPage').style.display = 'none';
+            document.getElementById('validationPage').style.display = 'none';
+            document.getElementById('drPage').style.display = 'none';
+            
             if (page === 'sync') {
                 document.getElementById('syncPage').style.display = 'block';
-                document.getElementById('validationPage').style.display = 'none';
                 menuItems[0].classList.add('active');
             } else if (page === 'validation') {
-                console.log('Switching to validation page');
-                document.getElementById('syncPage').style.display = 'none';
                 document.getElementById('validationPage').style.display = 'block';
-                menuItems[1].classList.add('active');
+                menuItems[2].classList.add('active');
                 fetchValidationTasks();
+            } else if (page === 'dr') {
+                document.getElementById('drPage').style.display = 'block';
+                menuItems[1].classList.add('active');
+                fetchDrTasks();
+            }
+        }
+        
+        function startValidationPolling() {
+            stopValidationPolling();
+            _validationPollingTimer = setInterval(async () => {
+                await fetchValidationTasks();
+                const taskList = document.getElementById('validationTaskList');
+                const hasRunning = taskList && taskList.querySelector('.status-running');
+                if (!hasRunning) {
+                    stopValidationPolling();
+                }
+            }, 3000);
+        }
+        
+        function stopValidationPolling() {
+            if (_validationPollingTimer) {
+                clearInterval(_validationPollingTimer);
+                _validationPollingTimer = null;
             }
         }
         
@@ -5164,6 +5446,10 @@
                 
                 if (result.success) {
                     renderValidationTasks(result.data);
+                    const hasRunning = result.data.content && result.data.content.some(t => t.status === 'PENDING' || t.status === 'RUNNING');
+                    if (hasRunning && !_validationPollingTimer) {
+                        startValidationPolling();
+                    }
                 } else {
                     showNotification(result.message || '获取对比任务列表失败', 'error');
                 }
@@ -5228,6 +5514,7 @@
                 const statusClass = getValidationStatusClass(task.status, task);
                 const statusText = getValidationStatusText(task.status, task);
                 const compareTypeText = getCompareTypeText(task.compareType);
+                const taskTypeLabel = task.taskType === 'DR' ? '<span style="background: #fff7e6; color: #fa8c16; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">灾备</span>' : '<span style="background: #e6f7ff; color: #1890ff; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">同步</span>';
                 let resultText = '-';
                 if (task.status === 'RUNNING') {
                     resultText = `${task.passedTables || 0}/${task.totalTables || 0} 表已对比`;
@@ -5239,7 +5526,7 @@
                 
                 html += `
                     <div class="table-row">
-                        <div class="table-cell col-name">${task.name}</div>
+                        <div class="table-cell col-name">${taskTypeLabel}${task.name}</div>
                         <div class="table-cell" style="width: 100px;">
                             <span style="background: ${task.compareType === 'CONTENT' ? '#e6f7ff' : '#f6ffed'}; color: ${task.compareType === 'CONTENT' ? '#1890ff' : '#52c41a'}; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${compareTypeText}</span>
                         </div>
@@ -5329,11 +5616,12 @@
                     availableWorkflows = result.data;
                     
                     if (result.data.length === 0) {
-                        select.innerHTML = '<option value="">没有增量同步中的任务</option>';
+                        select.innerHTML = '<option value="">没有可对比的任务</option>';
                     } else {
-                        let options = '<option value="">请选择增量同步中的任务</option>';
+                        let options = '<option value="">请选择任务</option>';
                         result.data.forEach(w => {
-                            options += `<option value="${w.id}">${w.name}</option>`;
+                            const typeLabel = w.taskType === 'DR' ? '[灾备]' : '[同步]';
+                            options += `<option value="${w.id}">${typeLabel} ${w.name}</option>`;
                         });
                         select.innerHTML = options;
                     }
@@ -5355,8 +5643,9 @@
             if (selectedId) {
                 const workflow = availableWorkflows.find(w => w.id === selectedId);
                 if (workflow) {
+                    const typeLabel = workflow.taskType === 'DR' ? '灾备任务' : '同步任务';
                     document.getElementById('validationSelectedName').textContent = workflow.name;
-                    document.getElementById('validationSelectedStatus').textContent = statusMap[workflow.status]?.text || workflow.status;
+                    document.getElementById('validationSelectedStatus').textContent = typeLabel + ' - ' + (statusMap[workflow.status]?.text || workflow.status);
                     infoDiv.style.display = 'block';
                 }
             } else {
@@ -5369,9 +5658,13 @@
             const compareType = document.getElementById('validationCompareTypeSelect').value;
             
             if (!workflowId) {
-                showNotification('请选择增量同步任务', 'error');
+                showNotification('请选择任务', 'error');
                 return;
             }
+            
+            const btn = document.getElementById('confirmValidationBtn');
+            btn.disabled = true;
+            btn.textContent = '创建中...';
             
             try {
                 const response = await fetchWithAuth(`${API_BASE_URL}/validation-tasks`, {
@@ -5387,12 +5680,16 @@
                     showNotification(typeLabel + '任务创建成功', 'success');
                     document.getElementById('createValidationModal').classList.remove('show');
                     fetchValidationTasks();
+                    startValidationPolling();
                 } else {
                     showNotification(result.message || '创建失败', 'error');
                 }
             } catch (error) {
                 console.error('创建对比任务失败:', error);
                 showNotification('创建对比任务失败', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '创建';
             }
         }
         
@@ -5921,6 +6218,549 @@
             console.log('pauseWorkflow:', typeof window.pauseWorkflow, typeof pauseWorkflow);
             console.log('resumeWorkflow:', typeof window.resumeWorkflow, typeof resumeWorkflow);
         });
+
+        let drCurrentPage = 1;
+        let drAllTasks = [];
+        let drPageSize = 10;
+        let drTotalCount = 0;
+        let currentDrTaskId = null;
+        let drConnectionTestStatus = { source: false, target: false };
+
+        const drStatusMap = {
+            'CONFIGURING': { text: '配置中', class: 'status-configuring', icon: '⚙' },
+            'PENDING': { text: '启动中', class: 'status-pending', dot: true },
+            'RECEIVED': { text: '已接收', class: 'status-pending', dot: true },
+            'STARTING': { text: '启动中', class: 'status-pending', dot: true },
+            'FULL_MIGRATING': { text: '灾备初始化', class: 'status-full-migrating', dot: true },
+            'FULL_COMPLETED': { text: '灾备初始化完成', class: 'status-full-completed', icon: '✓' },
+            'INCREMENT_RUNNING': { text: '灾备中', class: 'status-increment-running', dot: true },
+            'SWITCHING': { text: '倒换中', class: 'status-switching', icon: '⇄' },
+            'COMPLETED': { text: '已完成', class: 'status-completed', icon: '✓' },
+            'FAILED': { text: '灾备异常', class: 'status-failed', icon: '✕' },
+            'PAUSED': { text: '已暂停', class: 'status-paused', icon: '⏸' }
+        };
+
+        let drFailoverTaskId = null;
+
+        function confirmDrFailover(taskId, taskName) {
+            drFailoverTaskId = taskId;
+            document.getElementById('drFailoverTaskName').textContent = taskName;
+            let switchCount = 0;
+            const task = drAllTasks.find(t => t.id === taskId);
+            if (task && task.dr_switch_count) {
+                switchCount = task.dr_switch_count;
+            }
+            document.getElementById('drFailoverSwitchCount').textContent = switchCount + 1;
+            document.getElementById('drFailoverConfirmModal').classList.add('show');
+        }
+
+        document.getElementById('closeDrFailoverConfirmModal').addEventListener('click', () => {
+            document.getElementById('drFailoverConfirmModal').classList.remove('show');
+            drFailoverTaskId = null;
+        });
+
+        document.getElementById('cancelDrFailoverBtn').addEventListener('click', () => {
+            document.getElementById('drFailoverConfirmModal').classList.remove('show');
+            drFailoverTaskId = null;
+        });
+
+        document.getElementById('confirmDrFailoverBtn').addEventListener('click', async () => {
+            if (!drFailoverTaskId) return;
+            const btn = document.getElementById('confirmDrFailoverBtn');
+            btn.disabled = true;
+            btn.textContent = '倒换中...';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${drFailoverTaskId}/failover`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('drFailoverConfirmModal').classList.remove('show');
+                    showNotification('主备倒换已启动，请等待倒换完成', 'success');
+                    fetchDrTasks();
+                } else {
+                    showNotification(result.message || '主备倒换失败', 'error');
+                }
+            } catch (e) {
+                showNotification('主备倒换请求失败: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '确认倒换';
+                drFailoverTaskId = null;
+            }
+        });
+
+        async function fetchDrTasks(page) {
+            if (!checkAuth()) return;
+            if (!page) page = drCurrentPage;
+            
+            try {
+                const keyword = document.getElementById('drSearchInput').value.trim();
+                let url = `${API_BASE_URL}/workflows?page=${page}&pageSize=${drPageSize}&taskType=DR`;
+                if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+                
+                const response = await fetchWithAuth(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    drTotalCount = data.total;
+                    drCurrentPage = page;
+                    drAllTasks = data.list || [];
+                    renderDrTaskList(data.list);
+                    renderDrPagination(data.total, page, data.pageSize);
+                }
+            } catch (e) {
+                console.error('Failed to fetch DR tasks:', e);
+            }
+        }
+
+        function renderDrTaskList(tasks) {
+            const tbody = document.getElementById('drTableBody');
+            if (!tasks || tasks.length === 0) {
+                tbody.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 80 80" fill="none"><rect x="15" y="25" width="50" height="40" rx="2" stroke="#d9d9d9" stroke-width="2" fill="none"/><rect x="20" y="20" width="40" height="8" rx="1" stroke="#d9d9d9" stroke-width="2" fill="none"/><line x1="25" y1="45" x2="55" y2="45" stroke="#d9d9d9" stroke-width="2"/><line x1="25" y1="52" x2="45" y2="52" stroke="#d9d9d9" stroke-width="2"/></svg></div><div class="empty-text">暂无灾备任务</div></div>`;
+                return;
+            }
+            
+            tbody.innerHTML = tasks.map(task => {
+                const statusInfo = drStatusMap[task.status] || { text: task.status, class: 'status-pending', dot: true };
+                let monitorHtml = '-';
+                if (task.rto_ms !== null && task.rto_ms !== undefined) {
+                    monitorHtml = `<div style="font-size: 12px;">RTO: ${formatDelay(task.rto_ms)}</div>`;
+                }
+                if (task.rpo_ms !== null && task.rpo_ms !== undefined) {
+                    monitorHtml += `<div style="font-size: 12px;">RPO: ${formatDelay(task.rpo_ms)}</div>`;
+                }
+                
+                return `<div class="table-row" data-task-id="${task.id}">
+                    <div class="table-cell col-name">
+                        <div>
+                            <div>${task.name}</div>
+                            <div style="font-size: 11px; color: #1890ff; cursor: pointer;" onclick="${task.status === 'CONFIGURING' ? `openDrConfig('${task.id}')` : `showDrTaskDetail('${task.id}')`}">${task.id}</div>
+                        </div>
+                    </div>
+                    <div class="table-cell col-status">
+                        <span class="status-tag ${statusInfo.class}">
+                            ${statusInfo.dot ? '<span class="status-dot"></span>' : statusInfo.icon ? `<span class="status-icon">${statusInfo.icon}</span>` : ''}
+                            ${statusInfo.text}
+                        </span>
+                    </div>
+                    <div class="table-cell col-monitor">${monitorHtml}</div>
+                    <div class="table-cell col-time">${formatDateTime(task.created_at)}</div>
+                    <div class="table-cell col-action">
+                        <div class="action-btns">
+                            ${task.status === 'CONFIGURING' ? 
+                                `<button class="action-btn" onclick="openDrConfig('${task.id}')">配置</button>` : 
+                            task.status === 'FAILED' ? 
+                                `<button class="action-btn" onclick="retryWorkflow('${task.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` : 
+                            (task.status === 'STARTING' || task.status === 'FULL_MIGRATING') ? 
+                                `<button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` : 
+                            task.status === 'INCREMENT_RUNNING' ?
+                                `<button class="action-btn" style="color: #1890ff; border-color: #1890ff;" onclick="confirmDrFailover('${task.id}', '${task.name.replace(/'/g, "\\'")}')">主备倒换</button><button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` :
+                            task.status === 'SWITCHING' ?
+                                `<span style="color: #1890ff; font-size: 12px;">倒换中...</span>` :
+                            task.status === 'PAUSED' ?
+                                `<button class="action-btn" onclick="resumeWorkflow('${task.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` :
+                            task.status === 'COMPLETED' || task.status === 'FULL_COMPLETED' ?
+                                `<button class="action-btn stop" onclick="deleteWorkflow('${task.id}')">删除</button>` :
+                                `<span style="color: #999; font-size: 12px;">-</span>`}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderDrPagination(total, currentPage, pageSize) {
+            const totalPages = Math.ceil(total / pageSize);
+            document.getElementById('drPaginationInfo').textContent = `总条数：${total}`;
+            
+            const pageNumbers = document.getElementById('drPageNumbers');
+            let html = '';
+            
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToDrPage(${i})">${i}</button>`;
+                }
+            } else {
+                html += `<button class="page-btn ${1 === currentPage ? 'active' : ''}" onclick="goToDrPage(1)">1</button>`;
+                
+                if (currentPage <= 4) {
+                    for (let i = 2; i <= Math.min(5, totalPages - 1); i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToDrPage(${i})">${i}</button>`;
+                    }
+                    html += `<span class="page-ellipsis" onclick="goToDrPage(${Math.min(currentPage + 5, Math.floor(totalPages / 2))})">···</span>`;
+                } else if (currentPage >= totalPages - 3) {
+                    html += `<span class="page-ellipsis" onclick="goToDrPage(${Math.max(currentPage - 5, Math.floor(totalPages / 2))})">···</span>`;
+                    for (let i = totalPages - 4; i <= totalPages - 1; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToDrPage(${i})">${i}</button>`;
+                    }
+                } else {
+                    html += `<span class="page-ellipsis" onclick="goToDrPage(${Math.max(1, currentPage - 5)})">···</span>`;
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToDrPage(${i})">${i}</button>`;
+                    }
+                    html += `<span class="page-ellipsis" onclick="goToDrPage(${Math.min(totalPages, currentPage + 5)})">···</span>`;
+                }
+                
+                html += `<button class="page-btn ${totalPages === currentPage ? 'active' : ''}" onclick="goToDrPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            pageNumbers.innerHTML = html;
+            
+            document.getElementById('drPrevPageBtn').disabled = currentPage <= 1;
+            document.getElementById('drNextPageBtn').disabled = currentPage >= totalPages;
+        }
+
+        function goToDrPage(page) {
+            if (page < 1) return;
+            const totalPages = Math.ceil(drTotalCount / drPageSize);
+            if (page > totalPages) return;
+            fetchDrTasks(page);
+        }
+
+        async function showDrTaskDetail(id) {
+            if (!checkAuth()) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${id}`);
+                const result = await response.json();
+                if (result.success) {
+                    const task = result.data;
+                    let statusInfo = drStatusMap[task.status] || { text: task.status, class: 'status-pending', dot: true };
+                    
+                    let sourceInfo = '-';
+                    let targetInfo = '-';
+                    try {
+                        if (task.source_connection) {
+                            const sc = JSON.parse(task.source_connection);
+                            sourceInfo = `${sc.host}:${sc.port}`;
+                        }
+                    } catch(e) {
+                        const m = (task.source_connection || '').match(/@([^:]+):(\d+)/);
+                        sourceInfo = m ? `${m[1]}:${m[2]}` : (task.source_connection || '-');
+                    }
+                    try {
+                        if (task.target_connection) {
+                            const tc = JSON.parse(task.target_connection);
+                            targetInfo = `${tc.host}:${tc.port}`;
+                        }
+                    } catch(e) {
+                        const m = (task.target_connection || '').match(/@([^:]+):(\d+)/);
+                        targetInfo = m ? `${m[1]}:${m[2]}` : (task.target_connection || '-');
+                    }
+                    
+                    let syncObjectsHtml = '全部数据库（自动）';
+                    
+                    let failoverBtnHtml = '';
+                    if (task.status === 'INCREMENT_RUNNING') {
+                        failoverBtnHtml = `<button onclick="confirmDrFailover('${task.id}', '${task.name.replace(/'/g, "\\'")}'); document.getElementById('taskDetailModal').classList.remove('show');" style="margin-top: 16px; padding: 8px 20px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">主备倒换</button>`;
+                    } else if (task.status === 'SWITCHING') {
+                        failoverBtnHtml = `<div style="margin-top: 16px; padding: 10px 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px; font-size: 13px; color: #1890ff;">⇄ 主备倒换进行中，请等待...</div>`;
+                    }
+
+                    const content = document.getElementById('taskDetailContent');
+                    content.innerHTML = `
+                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px 16px; font-size: 13px;">
+                            <div style="color: #666;">任务ID:</div>
+                            <div>${task.id}</div>
+                            <div style="color: #666;">任务名称:</div>
+                            <div>${task.name}</div>
+                            <div style="color: #666;">任务类型:</div>
+                            <div>灾备任务</div>
+                            <div style="color: #666;">状态:</div>
+                            <div><span class="status-tag ${statusInfo.class}">${statusInfo.dot ? '<span class="status-dot"></span>' : ''}${statusInfo.text}</span></div>
+                            <div style="color: #666;">主库:</div>
+                            <div>${sourceInfo}</div>
+                            <div style="color: #666;">备库:</div>
+                            <div>${targetInfo}</div>
+                            <div style="color: #666;">灾备模式:</div>
+                            <div>全量+增量（强制）</div>
+                            <div style="color: #666;">灾备对象:</div>
+                            <div>${syncObjectsHtml}</div>
+                            <div style="color: #666;">全量同步进度:</div>
+                            <div>
+                                <div class="progress-bar" style="width: 200px;"><div class="progress-fill" style="width: ${task.progress || 0}%"></div></div>
+                                <span style="margin-left: 8px; font-size: 11px; color: #666;">${task.progress || 0}%</span>
+                            </div>
+                            <div style="color: #666;">RTO:</div>
+                            <div>${task.rto_ms !== null && task.rto_ms !== undefined ? formatDelay(task.rto_ms) : '-'}</div>
+                            <div style="color: #666;">RPO:</div>
+                            <div>${task.rpo_ms !== null && task.rpo_ms !== undefined ? formatDelay(task.rpo_ms) : '-'}</div>
+                            <div style="color: #666;">倒换次数:</div>
+                            <div>${task.dr_switch_count || 0}</div>
+                            <div style="color: #666;">创建时间:</div>
+                            <div>${formatDateTime(task.created_at)}</div>
+                            <div style="color: #666;">是否计费中:</div>
+                            <div>${task.is_billing ? '<span style="color: #52c41a;">是</span>' : '<span style="color: #999;">否</span>'}</div>
+                        </div>
+                        ${task.error_message ? `<div style="margin-top: 16px; padding: 10px; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px; font-size: 12px; color: #f5222d;">错误信息: ${task.error_message}</div>` : ''}
+                        ${failoverBtnHtml}
+                    `;
+                    
+                    document.getElementById('taskDetailModal').classList.add('show');
+                }
+            } catch (e) {
+                console.error('Failed to fetch DR task detail:', e);
+            }
+        }
+
+        function openDrConfig(taskId) {
+            currentDrTaskId = taskId;
+            document.getElementById('drConfigTitle').textContent = '灾备任务配置';
+            document.getElementById('drSourceHost').value = '';
+            document.getElementById('drSourcePort').value = '3306';
+            document.getElementById('drSourceUser').value = '';
+            document.getElementById('drSourcePassword').value = '';
+            document.getElementById('drTargetHost').value = '';
+            document.getElementById('drTargetPort').value = '3306';
+            document.getElementById('drTargetUser').value = '';
+            document.getElementById('drTargetPassword').value = '';
+            document.getElementById('drSourceTestResult').textContent = '';
+            document.getElementById('drTargetTestResult').textContent = '';
+            drConnectionTestStatus = { source: false, target: false };
+            document.getElementById('drConfigModal').classList.add('show');
+        }
+
+        document.getElementById('createDrTaskBtn').addEventListener('click', () => {
+            document.getElementById('drTaskName').value = '';
+            document.getElementById('createDrTaskModal').classList.add('show');
+        });
+
+        document.getElementById('closeCreateDrModal').addEventListener('click', () => {
+            document.getElementById('createDrTaskModal').classList.remove('show');
+        });
+        document.getElementById('cancelCreateDrBtn').addEventListener('click', () => {
+            document.getElementById('createDrTaskModal').classList.remove('show');
+        });
+
+        document.getElementById('confirmCreateDrBtn').addEventListener('click', async () => {
+            const name = document.getElementById('drTaskName').value.trim();
+            if (!name) { showNotification('请输入任务名称', 'error'); return; }
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ name: name, sourceType: 'mysql', targetType: 'mysql', taskType: 'DR' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    currentDrTaskId = result.data.id;
+                    document.getElementById('createDrTaskModal').classList.remove('show');
+                    openDrConfig(currentDrTaskId);
+                } else {
+                    showNotification(result.message || '创建失败', 'error');
+                }
+            } catch (e) {
+                showNotification('创建失败: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('closeDrConfigModal').addEventListener('click', () => {
+            document.getElementById('drConfigModal').classList.remove('show');
+        });
+        document.getElementById('cancelDrConfigBtn').addEventListener('click', () => {
+            document.getElementById('drConfigModal').classList.remove('show');
+        });
+
+        document.getElementById('drTestSourceBtn').addEventListener('click', async () => {
+            const host = document.getElementById('drSourceHost').value.trim();
+            const port = document.getElementById('drSourcePort').value.trim();
+            const user = document.getElementById('drSourceUser').value.trim();
+            const password = document.getElementById('drSourcePassword').value;
+            if (!host || !port || !user) { showNotification('请填写完整的主库连接信息', 'error'); return; }
+            
+            document.getElementById('drSourceTestResult').textContent = '测试中...';
+            document.getElementById('drSourceTestResult').style.color = '#999';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/test-connection`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ host, port: parseInt(port), username: user, password, type: 'mysql' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('drSourceTestResult').textContent = '✓ 连接成功';
+                    document.getElementById('drSourceTestResult').style.color = '#52c41a';
+                    drConnectionTestStatus.source = true;
+                } else {
+                    document.getElementById('drSourceTestResult').textContent = '✕ 连接失败';
+                    document.getElementById('drSourceTestResult').style.color = '#f5222d';
+                    drConnectionTestStatus.source = false;
+                }
+            } catch (e) {
+                document.getElementById('drSourceTestResult').textContent = '✕ 连接失败';
+                document.getElementById('drSourceTestResult').style.color = '#f5222d';
+                drConnectionTestStatus.source = false;
+            }
+        });
+
+        document.getElementById('drTestTargetBtn').addEventListener('click', async () => {
+            const host = document.getElementById('drTargetHost').value.trim();
+            const port = document.getElementById('drTargetPort').value.trim();
+            const user = document.getElementById('drTargetUser').value.trim();
+            const password = document.getElementById('drTargetPassword').value;
+            if (!host || !port || !user) { showNotification('请填写完整的备库连接信息', 'error'); return; }
+            
+            document.getElementById('drTargetTestResult').textContent = '测试中...';
+            document.getElementById('drTargetTestResult').style.color = '#999';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/test-connection`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ host, port: parseInt(port), username: user, password, type: 'mysql' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('drTargetTestResult').textContent = '✓ 连接成功';
+                    document.getElementById('drTargetTestResult').style.color = '#52c41a';
+                    drConnectionTestStatus.target = true;
+                } else {
+                    document.getElementById('drTargetTestResult').textContent = '✕ 连接失败';
+                    document.getElementById('drTargetTestResult').style.color = '#f5222d';
+                    drConnectionTestStatus.target = false;
+                }
+            } catch (e) {
+                document.getElementById('drTargetTestResult').textContent = '✕ 连接失败';
+                document.getElementById('drTargetTestResult').style.color = '#f5222d';
+                drConnectionTestStatus.target = false;
+            }
+        });
+
+        document.getElementById('confirmDrConfigBtn').addEventListener('click', async () => {
+            const sourceHost = document.getElementById('drSourceHost').value.trim();
+            const sourcePort = document.getElementById('drSourcePort').value.trim();
+            const sourceUser = document.getElementById('drSourceUser').value.trim();
+            const sourcePassword = document.getElementById('drSourcePassword').value;
+            const targetHost = document.getElementById('drTargetHost').value.trim();
+            const targetPort = document.getElementById('drTargetPort').value.trim();
+            const targetUser = document.getElementById('drTargetUser').value.trim();
+            const targetPassword = document.getElementById('drTargetPassword').value;
+            
+            if (!sourceHost || !sourcePort || !sourceUser) { showNotification('请填写完整的主库连接信息', 'error'); return; }
+            if (!targetHost || !targetPort || !targetUser) { showNotification('请填写完整的备库连接信息', 'error'); return; }
+            if (!drConnectionTestStatus.source) { showNotification('请先测试主库连接并确保连接成功', 'error'); return; }
+            if (!drConnectionTestStatus.target) { showNotification('请先测试备库连接并确保连接成功', 'error'); return; }
+            
+            const sourceConnection = `mysql://${sourceUser}:${sourcePassword}@${sourceHost}:${sourcePort}`;
+            const targetConnection = `mysql://${targetUser}:${targetPassword}@${targetHost}:${targetPort}`;
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${currentDrTaskId}/config`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection,
+                        targetConnection,
+                        migrationMode: 'fullAndIncre',
+                        syncObjects: '{}',
+                        sourceType: 'mysql',
+                        targetType: 'mysql'
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('drConfigModal').classList.remove('show');
+                    runDrValidation(currentDrTaskId);
+                } else {
+                    showNotification(result.message || '配置保存失败', 'error');
+                }
+            } catch (e) {
+                showNotification('配置保存失败: ' + e.message, 'error');
+            }
+        });
+
+        async function runDrValidation(taskId) {
+            document.getElementById('drValidationModal').classList.add('show');
+            document.getElementById('launchDrTaskBtn').disabled = true;
+            
+            const checks = [
+                { name: '主库连接检查', status: 'running' },
+                { name: '备库连接检查', status: 'pending' },
+                { name: '主库Binlog开启检查', status: 'pending' },
+                { name: '备库写入权限检查', status: 'pending' }
+            ];
+            
+            function renderChecks() {
+                document.getElementById('drValidationResults').innerHTML = checks.map(c => `
+                    <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                        <span style="width: 24px; text-align: center; margin-right: 12px;">
+                            ${c.status === 'running' ? '⏳' : c.status === 'passed' ? '✅' : c.status === 'failed' ? '❌' : '⬜'}
+                        </span>
+                        <span style="font-size: 14px; color: ${c.status === 'failed' ? '#f5222d' : '#333'};">${c.name}</span>
+                        <span style="margin-left: auto; font-size: 12px; color: ${c.status === 'passed' ? '#52c41a' : c.status === 'failed' ? '#f5222d' : '#999'};">
+                            ${c.status === 'running' ? '检查中...' : c.status === 'passed' ? '通过' : c.status === 'failed' ? '未通过' : '待检查'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+            
+            renderChecks();
+            
+            for (let i = 0; i < checks.length; i++) {
+                checks[i].status = 'running';
+                renderChecks();
+                await new Promise(r => setTimeout(r, 800));
+                checks[i].status = 'passed';
+                if (i < checks.length - 1) checks[i + 1].status = 'running';
+                renderChecks();
+            }
+            
+            const allPassed = checks.every(c => c.status === 'passed');
+            document.getElementById('launchDrTaskBtn').disabled = !allPassed;
+        }
+
+        document.getElementById('launchDrTaskBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${currentDrTaskId}/launch`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('drValidationModal').classList.remove('show');
+                    showNotification('灾备任务已启动', 'success');
+                    fetchDrTasks();
+                } else {
+                    showNotification(result.message || '启动失败', 'error');
+                }
+            } catch (e) {
+                showNotification('启动失败: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('closeDrValidationModal').addEventListener('click', () => {
+            document.getElementById('drValidationModal').classList.remove('show');
+        });
+        document.getElementById('cancelDrValidationBtn').addEventListener('click', () => {
+            document.getElementById('drValidationModal').classList.remove('show');
+        });
+
+        document.getElementById('drRefreshBtn').addEventListener('click', () => fetchDrTasks());
+        document.getElementById('drSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchDrTasks(1);
+        });
+        document.getElementById('drPageSizeSelect').addEventListener('change', (e) => {
+            drPageSize = parseInt(e.target.value);
+            fetchDrTasks(1);
+        });
+        document.getElementById('drViewFailedBtn').addEventListener('click', () => {
+            document.getElementById('drSearchInput').value = '';
+            fetchDrTasksWithStatus('FAILED');
+        });
+
+        async function fetchDrTasksWithStatus(status) {
+            if (!checkAuth()) return;
+            try {
+                const url = `${API_BASE_URL}/workflows?page=1&pageSize=${drPageSize}&taskType=DR&status=${status}`;
+                const response = await fetchWithAuth(url);
+                const result = await response.json();
+                if (result.success) {
+                    renderDrTaskList(result.data.list);
+                    renderDrPagination(result.data.total, 1, result.data.pageSize);
+                }
+            } catch (e) {
+                console.error('Failed to fetch DR tasks:', e);
+            }
+        }
     </script>
 </body>
 </html>

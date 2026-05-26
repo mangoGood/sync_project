@@ -345,6 +345,8 @@ public class ContinuousExtractMain {
                     if (multiRow != null && multiRow) {
                         @SuppressWarnings("unchecked")
                         java.util.List<String> rowsData = (java.util.List<String>) event.getMetadata().get("rows_data");
+                        @SuppressWarnings("unchecked")
+                        java.util.List<String> rowsDataBefore = (java.util.List<String>) event.getMetadata().get("rows_data_before");
                         if (rowsData != null && rowsData.size() > 1) {
                             for (int i = 0; i < rowsData.size(); i++) {
                                 THLEvent rowEvent = new THLEvent();
@@ -355,11 +357,14 @@ public class ContinuousExtractMain {
                                 
                                 for (java.util.Map.Entry<String, Object> entry : event.getMetadata().entrySet()) {
                                     String key = entry.getKey();
-                                    if (!"rows_data".equals(key) && !"multi_row".equals(key)) {
+                                    if (!"rows_data".equals(key) && !"multi_row".equals(key) && !"rows_data_before".equals(key)) {
                                         rowEvent.addMetadata(key, entry.getValue());
                                     }
                                 }
                                 rowEvent.addMetadata("row_data", rowsData.get(i));
+                                if (rowsDataBefore != null && i < rowsDataBefore.size()) {
+                                    rowEvent.addMetadata("row_data_before", rowsDataBefore.get(i));
+                                }
                                 
                                 thlWriter.writeEvent(rowEvent);
                                 eventCount++;

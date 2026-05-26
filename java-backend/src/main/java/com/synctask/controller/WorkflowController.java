@@ -26,11 +26,13 @@ public class WorkflowController {
             Authentication authentication) {
         try {
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            String taskType = request.getTaskType() != null ? request.getTaskType() : "SYNC";
             Workflow workflow = workflowService.createWorkflow(
                     request.getName(),
                     request.getSourceType(),
                     request.getTargetType(),
-                    userPrincipal.getId()
+                    userPrincipal.getId(),
+                    taskType
             );
             return ResponseEntity.ok(new ApiResponse(true, "任务创建成功", convertToMap(workflow)));
         } catch (Exception e) {
@@ -84,11 +86,12 @@ public class WorkflowController {
             @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String taskType,
             Authentication authentication) {
         try {
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             Page<Workflow> workflowPage = workflowService.getWorkflowsByUserIdAndFilters(
-                    userPrincipal.getId(), keyword, status, page, pageSize, sortBy, sortDirection
+                    userPrincipal.getId(), keyword, status, taskType, page, pageSize, sortBy, sortDirection
             );
 
             List<Map<String, Object>> list = new ArrayList<>();
@@ -223,6 +226,19 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/{id}/failover")
+    public ResponseEntity<?> failoverWorkflow(
+            @PathVariable String id,
+            Authentication authentication) {
+        try {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            Workflow workflow = workflowService.failoverWorkflow(id, userPrincipal.getId());
+            return ResponseEntity.ok(new ApiResponse(true, "主备倒换已启动", convertToMap(workflow)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
     private Map<String, Object> convertToMap(Workflow workflow) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", workflow.getId());
@@ -251,6 +267,9 @@ public class WorkflowController {
         map.put("target_type", workflow.getTargetType());
         map.put("rpo_ms", workflow.getRpoMs());
         map.put("rto_ms", workflow.getRtoMs());
+        map.put("task_type", workflow.getTaskType());
+        map.put("dr_status", workflow.getDrStatus());
+        map.put("dr_switch_count", workflow.getDrSwitchCount());
         return map;
     }
 
@@ -258,6 +277,7 @@ public class WorkflowController {
         private String name;
         private String sourceType;
         private String targetType;
+        private String taskType;
 
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
@@ -265,6 +285,8 @@ public class WorkflowController {
         public void setSourceType(String sourceType) { this.sourceType = sourceType; }
         public String getTargetType() { return targetType; }
         public void setTargetType(String targetType) { this.targetType = targetType; }
+        public String getTaskType() { return taskType; }
+        public void setTaskType(String taskType) { this.taskType = taskType; }
     }
 
     public static class UpdateConfigRequest {

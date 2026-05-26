@@ -33,6 +33,7 @@ public class ValidationTaskController {
                 map.put("id", w.getId());
                 map.put("name", w.getName());
                 map.put("status", w.getStatus().name());
+                map.put("taskType", w.getTaskType() != null ? w.getTaskType() : "SYNC");
                 map.put("createdAt", w.getCreatedAt());
                 return map;
             }).collect(Collectors.toList());
@@ -130,6 +131,7 @@ public class ValidationTaskController {
         map.put("workflowId", task.getWorkflowId());
         map.put("workflowName", task.getWorkflowName());
         map.put("compareType", task.getCompareType());
+        map.put("taskType", task.getTaskType() != null ? task.getTaskType() : "SYNC");
         map.put("status", task.getStatus().name());
         map.put("totalTables", task.getTotalTables());
         map.put("passedTables", task.getPassedTables());
@@ -150,6 +152,7 @@ public class ValidationTaskController {
         map.put("workflowId", task.getWorkflowId());
         map.put("workflowName", task.getWorkflowName());
         map.put("compareType", task.getCompareType());
+        map.put("taskType", task.getTaskType() != null ? task.getTaskType() : "SYNC");
         map.put("compareResult", task.getCompareResult());
         map.put("status", task.getStatus().name());
         map.put("totalTables", task.getTotalTables());

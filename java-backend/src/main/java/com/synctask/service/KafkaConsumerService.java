@@ -84,6 +84,16 @@ public class KafkaConsumerService {
                 logger.info("任务已处于终态/配置中 {}，忽略状态更新消息: newStatus={}", oldStatus, newStatus);
                 return;
             }
+
+            if (oldStatus == WorkflowStatus.SWITCHING && newStatus != WorkflowStatus.SWITCHING && newStatus != WorkflowStatus.INCREMENT_RUNNING && newStatus != WorkflowStatus.FAILED) {
+                logger.info("任务正在倒换中 {}，忽略非增量同步状态更新: newStatus={}", oldStatus, newStatus);
+                return;
+            }
+
+            if (oldStatus == WorkflowStatus.SWITCHING || newStatus == WorkflowStatus.SWITCHING) {
+                logger.info("倒换相关状态变更 {} -> {}，重新从数据库读取最新连接信息", oldStatus, newStatus);
+                workflow = workflowRepository.findById(taskId).orElse(workflow);
+            }
             
             workflow.setStatus(newStatus);
 
@@ -149,6 +159,34 @@ public class KafkaConsumerService {
                 }
             } else if (newStatus == WorkflowStatus.INCREMENT_RUNNING) {
                 workflow.setIsBilling(true);
+            }
+
+            if ("DR".equals(workflow.getTaskType())) {
+                if (newStatus == WorkflowStatus.FULL_MIGRATING) {
+                    workflow.setDrStatus("DR_INITIALIZING");
+                } else if (newStatus == WorkflowStatus.INCREMENT_RUNNING) {
+                    if (oldStatus == WorkflowStatus.SWITCHING && workflow.getDrSwitchStartTime() != null) {
+                        long switchRtoMs = java.time.Duration.between(workflow.getDrSwitchStartTime(), java.time.LocalDateTime.now()).toMillis();
+                        workflow.setRtoMs(switchRtoMs);
+                        logger.info("主备倒换完成，RTO={}ms (从{}到{})", switchRtoMs, workflow.getDrSwitchStartTime(), java.time.LocalDateTime.now());
+                    }
+                    workflow.setDrStatus("DR_RUNNING");
+                } else if (newStatus == WorkflowStatus.FAILED) {
+                    workflow.setDrStatus("DR_ERROR");
+                } else if (newStatus == WorkflowStatus.SWITCHING) {
+                    workflow.setDrStatus("SWITCHING");
+                }
+            }
+
+            if ("DR".equals(workflow.getTaskType()) && (oldStatus == WorkflowStatus.SWITCHING || newStatus == WorkflowStatus.SWITCHING)) {
+                Workflow latestWorkflow = workflowRepository.findById(taskId).orElse(workflow);
+                workflow.setSourceConnection(latestWorkflow.getSourceConnection());
+                workflow.setTargetConnection(latestWorkflow.getTargetConnection());
+                workflow.setSourceType(latestWorkflow.getSourceType());
+                workflow.setTargetType(latestWorkflow.getTargetType());
+                workflow.setSourceDbName(latestWorkflow.getSourceDbName());
+                workflow.setTargetDbName(latestWorkflow.getTargetDbName());
+                logger.info("倒换期间保护连接信息: source={}, target={}", latestWorkflow.getSourceConnection(), latestWorkflow.getTargetConnection());
             }
 
             workflowRepository.save(workflow);

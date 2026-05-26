@@ -1183,12 +1183,13 @@ public class THLToSqlConverter {
                     cleanSql = cleanSql + ";";
                 }
                 if (isPostgresql) {
-                    statements.add("SET search_path TO " + quoteIdentifier(effectiveDb) + "; " + cleanSql);
+                    statements.add("SET search_path TO " + quoteIdentifier(effectiveDb) + ";");
+                    statements.add(cleanSql);
                 } else {
-                    String atomicSql = "USE `" + effectiveDb + "`; " + cleanSql;
-                    statements.add(atomicSql);
+                    statements.add("USE `" + effectiveDb + "`;");
+                    statements.add(cleanSql);
                 }
-                logger.info("Generated atomic {} for database: {} (DDL type: {})",
+                logger.info("Generated {} for database: {} (DDL type: {})",
                         isPostgresql ? "SET search_path+DDL" : "USE+DDL", effectiveDb, classification.getDdlSubType());
             } else {
                 String cleanSql = sql.trim();

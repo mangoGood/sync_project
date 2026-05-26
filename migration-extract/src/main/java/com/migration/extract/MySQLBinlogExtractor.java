@@ -162,6 +162,20 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
             thlEvent = pipeline.process(thlEvent);
         }
 
+        if (thlEvent != null) {
+            Boolean multiRow = (Boolean) thlEvent.getMetadata().get("multi_row");
+            if (multiRow != null && multiRow) {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> rowsData = (java.util.List<String>) thlEvent.getMetadata().get("rows_data");
+                if (rowsData != null && rowsData.size() > 1) {
+                    long reservedSeqno = seqno - 1 + rowsData.size() - 1;
+                    seqno = reservedSeqno + 1;
+                    logger.debug("Reserved seqno range for multi-row event: {} to {} ({} rows)", 
+                            thlEvent.getSeqno(), reservedSeqno, rowsData.size());
+                }
+            }
+        }
+
         return thlEvent;
     }
 
@@ -311,14 +325,31 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
                         }
                     }
                 } else if ("UPDATE".equals(operation)) {
-                    String[] beforeAfter = extractBeforeAfterValues(eventData);
-                    if (beforeAfter[1] != null) {
-                        List<String> afterValues = parseValueList(beforeAfter[1], columnCount);
-                        thlEvent.addMetadata("row_data", formatRowData(afterValues, columnTypes, columnFullTypes, columnNames, enumValuesMap));
-                    }
-                    if (beforeAfter[0] != null) {
-                        List<String> beforeValues = parseValueList(beforeAfter[0], columnCount);
-                        thlEvent.addMetadata("row_data_before", formatRowData(beforeValues, columnTypes, columnFullTypes, columnNames, enumValuesMap));
+                    List<String[]> allBeforeAfter = extractAllBeforeAfterValues(eventData);
+                    if (!allBeforeAfter.isEmpty()) {
+                        List<String> formattedAfterRows = new ArrayList<>();
+                        List<String> formattedBeforeRows = new ArrayList<>();
+                        for (String[] beforeAfter : allBeforeAfter) {
+                            if (beforeAfter[1] != null) {
+                                List<String> afterValues = parseValueList(beforeAfter[1], columnCount);
+                                formattedAfterRows.add(formatRowData(afterValues, columnTypes, columnFullTypes, columnNames, enumValuesMap));
+                            }
+                            if (beforeAfter[0] != null) {
+                                List<String> beforeValues = parseValueList(beforeAfter[0], columnCount);
+                                formattedBeforeRows.add(formatRowData(beforeValues, columnTypes, columnFullTypes, columnNames, enumValuesMap));
+                            }
+                        }
+                        if (!formattedAfterRows.isEmpty()) {
+                            thlEvent.addMetadata("row_data", formattedAfterRows.get(0));
+                            thlEvent.addMetadata("rows_data", formattedAfterRows);
+                        }
+                        if (!formattedBeforeRows.isEmpty()) {
+                            thlEvent.addMetadata("row_data_before", formattedBeforeRows.get(0));
+                            thlEvent.addMetadata("rows_data_before", formattedBeforeRows);
+                        }
+                        if (formattedAfterRows.size() > 1) {
+                            thlEvent.addMetadata("multi_row", true);
+                        }
                     }
                 }
             }
@@ -416,6 +447,46 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
             }
 
             result[1] = eventData.substring(startIdx, endIdx - 1);
+        }
+
+        return result;
+    }
+
+    private List<String[]> extractAllBeforeAfterValues(String eventData) {
+        List<String[]> result = new ArrayList<>();
+        int searchFrom = 0;
+
+        while (searchFrom < eventData.length()) {
+            int beforeIdx = eventData.indexOf("before=[", searchFrom);
+            if (beforeIdx < 0) break;
+
+            int beforeStart = beforeIdx + "before=[".length();
+            int bracketCount = 1;
+            int beforeEnd = beforeStart;
+            while (beforeEnd < eventData.length() && bracketCount > 0) {
+                char c = eventData.charAt(beforeEnd);
+                if (c == '[') bracketCount++;
+                else if (c == ']') bracketCount--;
+                beforeEnd++;
+            }
+            String beforeVal = eventData.substring(beforeStart, beforeEnd - 1);
+
+            int afterIdx = eventData.indexOf("after=[", beforeEnd);
+            if (afterIdx < 0) break;
+
+            int afterStart = afterIdx + "after=[".length();
+            bracketCount = 1;
+            int afterEnd = afterStart;
+            while (afterEnd < eventData.length() && bracketCount > 0) {
+                char c = eventData.charAt(afterEnd);
+                if (c == '[') bracketCount++;
+                else if (c == ']') bracketCount--;
+                afterEnd++;
+            }
+            String afterVal = eventData.substring(afterStart, afterEnd - 1);
+
+            result.add(new String[]{beforeVal, afterVal});
+            searchFrom = afterEnd;
         }
 
         return result;
@@ -785,6 +856,16 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
             thlEvent.addMetadata("sql", sqlMatcher.group(1));
         } else {
             thlEvent.addMetadata("sql", eventData);
+        }
+        java.util.regex.Matcher dbMatcher = java.util.regex.Pattern.compile("database='([^']*)'").matcher(eventData);
+        if (dbMatcher.find()) {
+            String database = dbMatcher.group(1);
+            thlEvent.addMetadata("database_name", database);
+            String sql = thlEvent.getMetadata().getOrDefault("sql", "").toString();
+            String ddlDatabase = DdlDatabaseExtractor.extractDatabase(sql, database, "");
+            if (ddlDatabase != null && !ddlDatabase.isEmpty()) {
+                thlEvent.addMetadata("ddl_database", ddlDatabase);
+            }
         }
     }
 

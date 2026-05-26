@@ -42,6 +42,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
     private String outputDir;
     private String taskId;
     private long serverId;
+    private String heartbeatDatabase;
 
     private BinaryLogClient client;
     private BufferedWriter writer;
@@ -58,6 +59,9 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
     private volatile long clockOffsetMs = 0;
     private volatile long lastRpoMs = -1;
     private volatile long lastHeartbeatSourceTs = -1;
+    private volatile long lastSourceEventTs = -1;
+    private volatile long lastRpoReportTime = 0;
+    private static final long RPO_REPORT_INTERVAL_MS = 3000;
     private final Map<Long, String> tableIdToNameMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
@@ -73,13 +77,50 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         maxEventsPerFile = Long.parseLong(props.getProperty("capture.max.events.per.file", "10000"));
         serverId = Long.parseLong(props.getProperty("capture.server.id", "65535"));
 
+        heartbeatDatabase = props.getProperty("source.db.database", "");
+        if (heartbeatDatabase == null || heartbeatDatabase.isEmpty()) {
+            String jdbcUrl = props.getProperty("source.db.jdbc.url", "");
+            if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
+                String urlPart = jdbcUrl.contains("?") ? jdbcUrl.substring(0, jdbcUrl.indexOf('?')) : jdbcUrl;
+                int lastSlash = urlPart.lastIndexOf('/');
+                if (lastSlash > 0 && lastSlash < urlPart.length() - 1) {
+                    String dbFromUrl = urlPart.substring(lastSlash + 1);
+                    if (!dbFromUrl.isEmpty()) {
+                        heartbeatDatabase = dbFromUrl;
+                    }
+                }
+            }
+        }
+        if (heartbeatDatabase == null || heartbeatDatabase.isEmpty()) {
+            String syncObjects = props.getProperty("migration.sync.objects", "");
+            if (syncObjects == null || syncObjects.isEmpty()) {
+                syncObjects = props.getProperty("sync.objects", "");
+            }
+            if (syncObjects != null && !syncObjects.isEmpty() && syncObjects.startsWith("{")) {
+                int firstQuote = syncObjects.indexOf('"');
+                int secondQuote = syncObjects.indexOf('"', firstQuote + 1);
+                if (firstQuote >= 0 && secondQuote > firstQuote) {
+                    heartbeatDatabase = syncObjects.substring(firstQuote + 1, secondQuote);
+                }
+            }
+        }
+        if (heartbeatDatabase == null || heartbeatDatabase.isEmpty()) {
+            String tables = props.getProperty("source.db.tables", "");
+            if (tables != null && !tables.isEmpty()) {
+                String firstTable = tables.split(",")[0].trim();
+                if (firstTable.contains(".")) {
+                    heartbeatDatabase = firstTable.substring(0, firstTable.indexOf('.'));
+                }
+            }
+        }
+
         if (binlogFile.isEmpty()) {
             binlogFile = null;
             binlogPosition = 0;
         }
 
-        logger.info("Capture initialized - host={}:{} user={} outputDir={} taskId={} binlogFile={} binlogPosition={}",
-                host, port, user, outputDir, taskId, binlogFile, binlogPosition);
+        logger.info("Capture initialized - host={}:{} user={} outputDir={} taskId={} binlogFile={} binlogPosition={} heartbeatDatabase={}",
+                host, port, user, outputDir, taskId, binlogFile, binlogPosition, heartbeatDatabase);
     }
 
     @Override
@@ -125,10 +166,10 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
             }
         });
 
-        client.connect();
-
         initClockOffset();
         startHeartbeat();
+
+        client.connect();
 
         logger.info("Binlog capture started successfully for task: {}", taskId);
     }
@@ -191,11 +232,26 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                 long now = System.currentTimeMillis();
                 lastRpoMs = now - timestamp + clockOffsetMs;
                 lastHeartbeatSourceTs = timestamp;
+                lastSourceEventTs = timestamp;
                 writeRpoMetric(lastRpoMs);
                 if (eventCounter.get() % 5000 == 0) {
                     logger.info("RPO heartbeat detected: sourceTstamp={}, rpoMs={}, clockOffsetMs={}", timestamp, lastRpoMs, clockOffsetMs);
                 }
                 return;
+            }
+
+            boolean isDataEvent = (eventData instanceof WriteRowsEventData)
+                    || (eventData instanceof UpdateRowsEventData)
+                    || (eventData instanceof DeleteRowsEventData);
+            if (isDataEvent) {
+                lastSourceEventTs = timestamp;
+                long now = System.currentTimeMillis();
+                long currentRpoMs = now - timestamp + clockOffsetMs;
+                if (currentRpoMs >= 0 && (eventCounter.get() % 100 == 0 || now - lastRpoReportTime > RPO_REPORT_INTERVAL_MS)) {
+                    lastRpoMs = currentRpoMs;
+                    lastRpoReportTime = now;
+                    writeRpoMetric(currentRpoMs);
+                }
             }
 
             StringBuilder sb = new StringBuilder();
@@ -444,12 +500,13 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
 
     private void startHeartbeat() {
         try {
-            String url = "jdbc:mysql://" + host + ":" + port + "/?useSSL=false&serverTimezone=UTC";
+            String db = (heartbeatDatabase != null && !heartbeatDatabase.isEmpty()) ? heartbeatDatabase : "mysql";
+            String url = "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false&serverTimezone=UTC";
             heartbeatConnection = DriverManager.getConnection(url, user, password);
 
             try (Statement stmt = heartbeatConnection.createStatement()) {
                 stmt.execute("CREATE TABLE IF NOT EXISTS " + HEARTBEAT_TABLE + " (id INT PRIMARY KEY, ts BIGINT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
-                logger.info("Heartbeat table ensured: {}", HEARTBEAT_TABLE);
+                logger.info("Heartbeat table ensured: {}.{}", db, HEARTBEAT_TABLE);
             }
         } catch (Exception e) {
             logger.warn("Failed to initialize heartbeat table: {}", e.getMessage());
@@ -474,7 +531,8 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                     logger.warn("Heartbeat write failed: {}", e.getMessage());
                     try {
                         if (heartbeatConnection != null && !heartbeatConnection.isValid(2)) {
-                            String url = "jdbc:mysql://" + host + ":" + port + "/?useSSL=false&serverTimezone=UTC";
+                            String db = (heartbeatDatabase != null && !heartbeatDatabase.isEmpty()) ? heartbeatDatabase : "mysql";
+                            String url = "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false&serverTimezone=UTC";
                             heartbeatConnection = DriverManager.getConnection(url, user, password);
                             logger.info("Heartbeat connection re-established");
                         }
@@ -517,7 +575,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         }
         File metricFile = new File(dir, "rpo_metric");
         try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(metricFile, false))) {
-            pw.println(System.currentTimeMillis() + "|" + rpoMs);
+            pw.println(System.currentTimeMillis() + "|" + rpoMs + "|" + lastSourceEventTs);
         } catch (IOException e) {
             logger.warn("Failed to write RPO metric: {}", e.getMessage());
         }

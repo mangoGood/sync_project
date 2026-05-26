@@ -8,6 +8,8 @@ import com.synctask.entity.WorkflowLog;
 import com.synctask.entity.WorkflowStatus;
 import com.synctask.repository.WorkflowLogRepository;
 import com.synctask.repository.WorkflowRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,7 @@ import java.util.UUID;
 @Service
 public class WorkflowService {
     
+    private static final Logger logger = LoggerFactory.getLogger(WorkflowService.class);
     private static final Gson gson = new Gson();
     
     @Autowired
@@ -36,7 +39,7 @@ public class WorkflowService {
     private KafkaProducerService kafkaProducerService;
 
     @Transactional
-    public Workflow createWorkflow(String name, String sourceType, String targetType, Long userId) {
+    public Workflow createWorkflow(String name, String sourceType, String targetType, Long userId, String taskType) {
         Workflow workflow = new Workflow();
         workflow.setId(UUID.randomUUID().toString());
         workflow.setName(name);
@@ -46,6 +49,12 @@ public class WorkflowService {
         workflow.setUserId(userId);
         workflow.setProgress(0);
         workflow.setIsBilling(false);
+        workflow.setTaskType(taskType != null ? taskType : "SYNC");
+
+        if ("DR".equals(taskType)) {
+            workflow.setMigrationMode("fullAndIncre");
+            workflow.setDrStatus("DR_CONFIGURING");
+        }
 
         Workflow savedWorkflow = workflowRepository.save(workflow);
         addLog(savedWorkflow.getId(), WorkflowLog.LogLevel.INFO, "任务创建成功，状态: 配置中");
@@ -87,11 +96,16 @@ public class WorkflowService {
             workflow.getTargetConnection() == null || workflow.getTargetConnection().isEmpty()) {
             throw new RuntimeException("请先完成连接信息配置");
         }
-        if (workflow.getSyncObjects() == null || workflow.getSyncObjects().isEmpty()) {
-            throw new RuntimeException("请先选择同步对象");
-        }
-        if (workflow.getMigrationMode() == null || workflow.getMigrationMode().isEmpty()) {
-            throw new RuntimeException("请先选择同步模式");
+        
+        boolean isDrTask = "DR".equals(workflow.getTaskType());
+        
+        if (!isDrTask) {
+            if (workflow.getSyncObjects() == null || workflow.getSyncObjects().isEmpty()) {
+                throw new RuntimeException("请先选择同步对象");
+            }
+            if (workflow.getMigrationMode() == null || workflow.getMigrationMode().isEmpty()) {
+                throw new RuntimeException("请先选择同步模式");
+            }
         }
         
         workflow.setStatus(WorkflowStatus.PENDING);
@@ -119,7 +133,7 @@ public class WorkflowService {
         return workflowRepository.findByUserId(userId, pageable);
     }
     
-    public Page<Workflow> getWorkflowsByUserIdAndFilters(Long userId, String keyword, String status, int page, int pageSize, String sortBy, String sortDirection) {
+    public Page<Workflow> getWorkflowsByUserIdAndFilters(Long userId, String keyword, String status, String taskType, int page, int pageSize, String sortBy, String sortDirection) {
         String fieldName = mapSortField(sortBy);
         
         Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -128,6 +142,21 @@ public class WorkflowService {
         
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         boolean hasStatus = status != null && !status.trim().isEmpty();
+        boolean hasTaskType = taskType != null && !taskType.trim().isEmpty();
+        
+        if (hasTaskType) {
+            if (hasKeyword && hasStatus) {
+                WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
+                return workflowRepository.findByUserIdAndTaskTypeAndKeywordAndStatus(userId, taskType, keyword.trim(), workflowStatus, pageable);
+            } else if (hasKeyword) {
+                return workflowRepository.findByUserIdAndTaskTypeAndKeyword(userId, taskType, keyword.trim(), pageable);
+            } else if (hasStatus) {
+                WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
+                return workflowRepository.findByUserIdAndTaskTypeAndStatus(userId, taskType, workflowStatus, pageable);
+            } else {
+                return workflowRepository.findByUserIdAndTaskType(userId, taskType, pageable);
+            }
+        }
         
         if (hasKeyword && hasStatus) {
             WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
@@ -210,6 +239,7 @@ public class WorkflowService {
     @Transactional
     public void resumeWorkflow(String id, Long userId) {
         Workflow workflow = getWorkflowById(id, userId);
+        String previousStatus = workflow.getStatus().name();
         workflow.setStatus(WorkflowStatus.STARTING);
         workflowRepository.save(workflow);
         
@@ -222,8 +252,12 @@ public class WorkflowService {
         message.setMigrationMode(workflow.getMigrationMode());
         message.setCreatedAt(workflow.getCreatedAt());
         message.setMessageType("resume");
+        message.setCurrentStatus(previousStatus);
         message.setSourceType(workflow.getSourceType());
         message.setTargetType(workflow.getTargetType());
+        message.setSourceDbName(workflow.getSourceDbName());
+        message.setTargetDbName(workflow.getTargetDbName());
+        message.setTaskType(workflow.getTaskType());
         
         try {
             kafkaProducerService.sendControlMessage(message);
@@ -380,5 +414,129 @@ public class WorkflowService {
         log.setLevel(level);
         log.setMessage(message);
         workflowLogRepository.save(log);
+    }
+
+    @Transactional
+    public Workflow failoverWorkflow(String workflowId, Long userId) {
+        Workflow workflow = getWorkflowById(workflowId, userId);
+
+        if (!"DR".equals(workflow.getTaskType())) {
+            throw new RuntimeException("只有灾备任务才能执行主备倒换");
+        }
+
+        if (workflow.getStatus() != WorkflowStatus.INCREMENT_RUNNING && workflow.getStatus() != WorkflowStatus.SWITCHING) {
+            throw new RuntimeException("只有灾备中的任务才能执行主备倒换，当前状态: " + workflow.getStatus().name());
+        }
+
+        String originalSource = workflow.getSourceConnection();
+        String originalTarget = workflow.getTargetConnection();
+        String originalSourceType = workflow.getSourceType();
+        String originalTargetType = workflow.getTargetType();
+        String originalSourceDbName = workflow.getSourceDbName();
+        String originalTargetDbName = workflow.getTargetDbName();
+
+        workflow.setSourceConnection(originalTarget);
+        workflow.setTargetConnection(originalSource);
+        workflow.setSourceType(originalTargetType);
+        workflow.setTargetType(originalSourceType);
+        workflow.setSourceDbName(originalTargetDbName);
+        workflow.setTargetDbName(originalSourceDbName);
+
+        workflow.setStatus(WorkflowStatus.SWITCHING);
+        workflow.setDrStatus("SWITCHING");
+        workflow.setDrSwitchCount(workflow.getDrSwitchCount() != null ? workflow.getDrSwitchCount() + 1 : 1);
+        workflow.setDrSwitchStartTime(java.time.LocalDateTime.now());
+        workflowRepository.save(workflow);
+
+        addLog(workflowId, WorkflowLog.LogLevel.INFO, "主备倒换开始，源库与目标库连接信息已交换，倒换次数: " + workflow.getDrSwitchCount());
+
+        final TaskCreatedMessage message = new TaskCreatedMessage();
+        message.setTaskId(workflow.getId());
+        message.setTaskName(workflow.getName());
+        message.setUserId(workflow.getUserId());
+        message.setSourceConnection(workflow.getSourceConnection());
+        message.setTargetConnection(workflow.getTargetConnection());
+        message.setMigrationMode(workflow.getMigrationMode());
+        message.setSyncObjects(parseSyncObjects(workflow.getSyncObjects()));
+        message.setSourceDbName(workflow.getSourceDbName());
+        message.setTargetDbName(workflow.getTargetDbName());
+        message.setCreatedAt(workflow.getCreatedAt());
+        message.setMessageType("failover");
+        message.setCurrentStatus("INCREMENT_RUNNING");
+        message.setSourceType(workflow.getSourceType());
+        message.setTargetType(workflow.getTargetType());
+        message.setTaskType(workflow.getTaskType());
+
+        final String logWorkflowId = workflowId;
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+            new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    new Thread(() -> {
+                        boolean httpSuccess = false;
+                        try {
+                            httpSuccess = callAgentFailoverApi(message);
+                            if (httpSuccess) {
+                                addLog(logWorkflowId, WorkflowLog.LogLevel.INFO, "主备倒换命令已通过Agent HTTP API直接发送成功");
+                            }
+                        } catch (Exception e) {
+                            addLog(logWorkflowId, WorkflowLog.LogLevel.WARNING, "Agent HTTP API 调用失败: " + e.getMessage());
+                        }
+
+                        if (!httpSuccess) {
+                            try {
+                                kafkaProducerService.sendControlMessage(message);
+                                addLog(logWorkflowId, WorkflowLog.LogLevel.INFO, "主备倒换命令已通过Kafka发送（HTTP API不可用时的降级方案）");
+                            } catch (Exception e) {
+                                addLog(logWorkflowId, WorkflowLog.LogLevel.WARNING, "Kafka 主备倒换消息发送失败: " + e.getMessage());
+                            }
+                        }
+                    }, "FailoverNotifier-" + workflowId).start();
+                }
+            }
+        );
+
+        return workflow;
+    }
+
+    private boolean callAgentFailoverApi(TaskCreatedMessage message) {
+        String agentUrl = "http://localhost:8083/api/agent/failover";
+        try {
+            java.net.URL url = new java.net.URL(agentUrl);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(30000);
+            conn.setDoOutput(true);
+
+            com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonSerializer<java.time.LocalDateTime>) (src, typeOfSrc, context) ->
+                    context.serialize(src.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
+                .create();
+            String jsonBody = gson.toJson(message);
+
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 200) {
+                try (java.io.InputStream is = conn.getInputStream()) {
+                    String response = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    logger.info("Agent failover API response: {}", response);
+                }
+                return true;
+            } else {
+                logger.warn("Agent failover API returned status: {}", responseCode);
+                return false;
+            }
+        } catch (java.net.ConnectException e) {
+            logger.warn("Agent HTTP API not available at {}: {}", agentUrl, e.getMessage());
+            return false;
+        } catch (Exception e) {
+            logger.warn("Error calling Agent failover API: {}", e.getMessage());
+            return false;
+        }
     }
 }

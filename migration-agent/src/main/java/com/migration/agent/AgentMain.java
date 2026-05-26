@@ -6,6 +6,7 @@ import com.migration.agent.model.RecoveryTask;
 import com.migration.agent.model.TaskMessage;
 import com.migration.agent.model.TaskStateInfo;
 import com.migration.agent.model.TaskStatusMessage;
+import com.migration.agent.service.AgentHttpServer;
 import com.migration.agent.service.ConfigService;
 import com.migration.agent.service.KafkaConsumerService;
 import com.migration.agent.service.KafkaProducerService;
@@ -59,6 +60,9 @@ public class AgentMain {
     private final ConcurrentHashMap<String, MigrationAgentThread> migrationAgentThreads = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Thread> migrationAgentThreadWrappers = new ConcurrentHashMap<>();
     private final Set<String> pausedTasks = ConcurrentHashMap.newKeySet();
+    private final Set<String> failoverInProgress = ConcurrentHashMap.newKeySet();
+    
+    private AgentHttpServer httpServer;
     
     public static void main(String[] args) {
         AgentMain agent = new AgentMain();
@@ -82,6 +86,9 @@ public class AgentMain {
             this::handleTaskMessage);
         
         kafkaConsumer.start();
+        
+        httpServer = new AgentHttpServer(this);
+        httpServer.start();
         
         taskExecutor = Executors.newCachedThreadPool(r -> {
             Thread t = new Thread(r);
@@ -188,6 +195,10 @@ public class AgentMain {
             kafkaConsumer.stop();
         }
         
+        if (httpServer != null) {
+            httpServer.stop();
+        }
+        
         logger.info("Agent stopped");
     }
     
@@ -205,6 +216,8 @@ public class AgentMain {
             taskExecutor.submit(() -> handleResumeMessage(taskMessage));
         } else if ("delete".equals(messageType)) {
             taskExecutor.submit(() -> handleDeleteMessage(taskMessage));
+        } else if ("failover".equals(messageType)) {
+            taskExecutor.submit(() -> handleFailoverMessage(taskMessage));
         } else {
             taskExecutor.submit(() -> processTask(taskMessage, taskId, taskMessage.getMigrationMode()));
         }
@@ -369,7 +382,126 @@ public class AgentMain {
             sendStatus(taskId, "FAILED", "Error resuming task: " + e.getMessage(), 0);
         }
     }
-    
+
+    private void handleFailoverMessage(TaskMessage taskMessage) {
+        String taskId = taskMessage.getTaskId();
+        logger.info("Handling failover message (Kafka) for task: {}", taskId);
+
+        if (!failoverInProgress.add(taskId)) {
+            logger.warn("Failover already in progress for task: {}, ignoring duplicate Kafka message", taskId);
+            return;
+        }
+
+        try {
+            sendStatus(taskId, "SWITCHING", "Failover in progress, stopping current processes", 100);
+
+            stopMigrationAgentThread(taskId);
+            stopTaskById(taskId);
+            logger.info("All processes stopped for failover task: {}", taskId);
+
+            try { Thread.sleep(3000); } catch (InterruptedException e) { Thread.interrupted(); }
+            logger.info("Waited 3s for processes to fully terminate for failover task: {}", taskId);
+
+            taskStateService.deleteTaskState(taskId);
+            logger.info("Old task state from H2 deleted for failover task: {}", taskId);
+
+            java.io.File checkpointFile = new java.io.File("files/" + taskId + "/checkpoint/checkpoint");
+            if (checkpointFile.exists()) {
+                boolean deleted = checkpointFile.delete();
+                logger.info("Old checkpoint file deleted: {}, success: {}", checkpointFile.getAbsolutePath(), deleted);
+            }
+
+            java.io.File thlDir = new java.io.File("files/" + taskId + "/thl_output");
+            if (thlDir.exists()) {
+                java.io.File[] thlFiles = thlDir.listFiles();
+                if (thlFiles != null) {
+                    for (java.io.File f : thlFiles) {
+                        f.delete();
+                    }
+                }
+                logger.info("Old THL files cleaned for failover task: {}", taskId);
+            }
+
+            java.io.File binlogDir = new java.io.File("files/" + taskId + "/binlog_output");
+            if (binlogDir.exists()) {
+                java.io.File[] binlogFiles = binlogDir.listFiles();
+                if (binlogFiles != null) {
+                    for (java.io.File f : binlogFiles) {
+                        f.delete();
+                    }
+                }
+                logger.info("Old binlog files cleaned for failover task: {}", taskId);
+            }
+
+            String[] checkpointDbFiles = {
+                "files/" + taskId + "/checkpoint/checkpoint.mv.db",
+                "files/" + taskId + "/checkpoint/checkpoint.trace.db",
+                "files/" + taskId + "/checkpoint/checkpoint.lock.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.mv.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.trace.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.lock.db",
+                "files/" + taskId + "/checkpoint/.increment_progress"
+            };
+            for (String dbFile : checkpointDbFiles) {
+                java.io.File f = new java.io.File(dbFile);
+                if (f.exists()) {
+                    boolean deleted = f.delete();
+                    logger.info("Deleted checkpoint file: {}, success: {}", f.getAbsolutePath(), deleted);
+                }
+            }
+            logger.info("All checkpoint DB files deleted before config update for failover task: {}", taskId);
+
+            configService.updateConfig(taskMessage);
+            logger.info("Config updated for failover task: {} with swapped connections", taskId);
+
+            java.io.File configFile = new java.io.File("files/" + taskId + "/config.properties");
+            if (configFile.exists()) {
+                java.util.Properties configProps = new java.util.Properties();
+                try (java.io.InputStream cis = new java.io.FileInputStream(configFile)) {
+                    configProps.load(cis);
+                }
+                configProps.remove("capture.binlog.file");
+                configProps.remove("capture.binlog.position");
+                configProps.remove("checkpoint.binlog.file");
+                configProps.remove("checkpoint.binlog.position");
+                try (java.io.OutputStream cos = new java.io.FileOutputStream(configFile)) {
+                    configProps.store(cos, "Updated for failover - binlog position cleared");
+                }
+                logger.info("Cleared old binlog position in config for failover task: {}", taskId);
+            }
+
+            TaskStateInfo stateInfo = new TaskStateInfo(taskId);
+            stateInfo.setTaskName(taskMessage.getTaskName());
+            stateInfo.setUserId(taskMessage.getUserId());
+            stateInfo.setMigrationMode(taskMessage.getMigrationMode());
+            stateInfo.setSourceConnection(taskMessage.getSourceConnection());
+            stateInfo.setTargetConnection(taskMessage.getTargetConnection());
+            stateInfo.setSourceType(taskMessage.getSourceType() != null ? taskMessage.getSourceType() : "mysql");
+            stateInfo.setTargetType(taskMessage.getTargetType() != null ? taskMessage.getTargetType() : "mysql");
+            stateInfo.setStatus("SWITCHING");
+            stateInfo.setProgress(100);
+            stateInfo.setCreatedAt(taskMessage.getCreatedAt() != null ? taskMessage.getCreatedAt() : java.time.LocalDateTime.now());
+            taskStateService.saveTaskState(stateInfo);
+            logger.info("Saved H2 state for failover task: {} with status SWITCHING", taskId);
+
+            MigrationAgentThread agentThread = new MigrationAgentThread(taskMessage, kafkaProducer, taskStateService, true);
+            migrationAgentThreads.put(taskId, agentThread);
+
+            Thread threadWrapper = new Thread(agentThread, "MigrationAgentThread-Failover-" + taskId);
+            threadWrapper.setDaemon(true);
+            migrationAgentThreadWrappers.put(taskId, threadWrapper);
+            threadWrapper.start();
+
+            logger.info("Failover task {} restarted with skipFullMigration=true, capture/extractor/increment will start", taskId);
+
+        } catch (Exception e) {
+            logger.error("Error handling failover message for task: {}", taskId, e);
+            sendStatus(taskId, "FAILED", "Error during failover: " + e.getMessage(), 0);
+        } finally {
+            failoverInProgress.remove(taskId);
+        }
+    }
+
     private void stopMigrationAgentThread(String taskId) {
         MigrationAgentThread agentThread = migrationAgentThreads.remove(taskId);
         if (agentThread != null) {
@@ -656,6 +788,11 @@ public class AgentMain {
                 logger.info("Task {} was in INCREMENT_RUNNING state, resuming incremental sync from checkpoint", taskId);
                 startMigrationAgentThread(taskMessage, true);
                 break;
+
+            case "SWITCHING":
+                logger.info("Task {} was in SWITCHING state (failover in progress), resuming incremental sync with skipFullMigration", taskId);
+                startMigrationAgentThread(taskMessage, true);
+                break;
                 
             default:
                 logger.warn("Unknown status {} for task {}, restarting from beginning", status, taskId);
@@ -711,5 +848,222 @@ public class AgentMain {
         threadWrapper.start();
         
         logger.info("MigrationAgentThread started for recovered task: {}, skipFullMigration: {}", taskId, skipFullMigration);
+    }
+
+    public boolean isFailoverInProgress(String taskId) {
+        return failoverInProgress.contains(taskId);
+    }
+
+    public void handleFailoverDirect(TaskMessage taskMessage) {
+        String taskId = taskMessage.getTaskId();
+        logger.info("=== DIRECT FAILOVER (HTTP API) for task: {} ===", taskId);
+
+        if (!failoverInProgress.add(taskId)) {
+            logger.warn("Failover already in progress for task: {}, ignoring duplicate request", taskId);
+            return;
+        }
+
+        try {
+            sendStatus(taskId, "SWITCHING", "Failover in progress, stopping current processes", 100);
+
+            stopMigrationAgentThread(taskId);
+            stopTaskById(taskId);
+            logger.info("All processes stopped for failover task: {}", taskId);
+
+            taskStateService.deleteTaskState(taskId);
+            logger.info("Old task state from H2 deleted for failover task: {}", taskId);
+
+            java.io.File checkpointFile = new java.io.File("files/" + taskId + "/checkpoint/checkpoint");
+            if (checkpointFile.exists()) {
+                boolean deleted = checkpointFile.delete();
+                logger.info("Old checkpoint file deleted: {}, success: {}", checkpointFile.getAbsolutePath(), deleted);
+            }
+
+            java.io.File seqnoCheckpointFile = new java.io.File("files/" + taskId + "/checkpoint/seqno_checkpoint.json");
+            if (seqnoCheckpointFile.exists()) {
+                boolean deleted = seqnoCheckpointFile.delete();
+                logger.info("Old seqno checkpoint file deleted: {}, success: {}", seqnoCheckpointFile.getAbsolutePath(), deleted);
+            }
+
+            java.io.File thlDir = new java.io.File("files/" + taskId + "/thl_output");
+            if (thlDir.exists()) {
+                java.io.File[] thlFiles = thlDir.listFiles();
+                if (thlFiles != null) {
+                    for (java.io.File f : thlFiles) {
+                        f.delete();
+                    }
+                }
+                logger.info("Old THL files cleaned for failover task: {}", taskId);
+            }
+
+            java.io.File binlogDir = new java.io.File("files/" + taskId + "/binlog_output");
+            if (binlogDir.exists()) {
+                java.io.File[] binlogFiles = binlogDir.listFiles();
+                if (binlogFiles != null) {
+                    for (java.io.File f : binlogFiles) {
+                        f.delete();
+                    }
+                }
+                logger.info("Old binlog files cleaned for failover task: {}", taskId);
+            }
+
+            java.io.File progressDb = new java.io.File("files/" + taskId + "/migration_progress.mv.db");
+            if (progressDb.exists()) {
+                boolean deleted = progressDb.delete();
+                logger.info("Old migration progress DB deleted: {}, success: {}", progressDb.getAbsolutePath(), deleted);
+            }
+            java.io.File progressTrace = new java.io.File("files/" + taskId + "/migration_progress.trace.db");
+            if (progressTrace.exists()) {
+                progressTrace.delete();
+            }
+
+            String[] checkpointDbFiles = {
+                "files/" + taskId + "/checkpoint/checkpoint.mv.db",
+                "files/" + taskId + "/checkpoint/checkpoint.trace.db",
+                "files/" + taskId + "/checkpoint/checkpoint.lock.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.mv.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.trace.db",
+                "files/" + taskId + "/checkpoint/increment_checkpoint.lock.db",
+                "files/" + taskId + "/checkpoint/.increment_progress"
+            };
+            for (String dbFile : checkpointDbFiles) {
+                java.io.File f = new java.io.File(dbFile);
+                if (f.exists()) {
+                    boolean deleted = f.delete();
+                    logger.info("Deleted checkpoint file: {}, success: {}", f.getAbsolutePath(), deleted);
+                }
+            }
+            logger.info("All checkpoint DB files deleted before config update for failover task: {}", taskId);
+
+            configService.updateConfig(taskMessage);
+            logger.info("Config updated for failover task: {} with swapped connections", taskId);
+
+            java.io.File configFile = new java.io.File("files/" + taskId + "/config.properties");
+            if (configFile.exists()) {
+                java.util.Properties configProps = new java.util.Properties();
+                try (java.io.InputStream cis = new java.io.FileInputStream(configFile)) {
+                    configProps.load(cis);
+                }
+                configProps.remove("capture.binlog.file");
+                configProps.remove("capture.binlog.position");
+                configProps.remove("checkpoint.binlog.file");
+                configProps.remove("checkpoint.binlog.position");
+                try (java.io.OutputStream cos = new java.io.FileOutputStream(configFile)) {
+                    configProps.store(cos, "Updated for failover - binlog position cleared");
+                }
+                logger.info("Cleared old binlog position in config for failover task: {}", taskId);
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
+            TaskStateInfo stateInfo = new TaskStateInfo(taskId);
+            stateInfo.setTaskName(taskMessage.getTaskName());
+            stateInfo.setUserId(taskMessage.getUserId());
+            stateInfo.setMigrationMode(taskMessage.getMigrationMode());
+            stateInfo.setSourceConnection(taskMessage.getSourceConnection());
+            stateInfo.setTargetConnection(taskMessage.getTargetConnection());
+            stateInfo.setSourceType(taskMessage.getSourceType() != null ? taskMessage.getSourceType() : "mysql");
+            stateInfo.setTargetType(taskMessage.getTargetType() != null ? taskMessage.getTargetType() : "mysql");
+            stateInfo.setStatus("INCREMENT_RUNNING");
+            stateInfo.setProgress(100);
+            stateInfo.setCreatedAt(taskMessage.getCreatedAt() != null ? taskMessage.getCreatedAt() : java.time.LocalDateTime.now());
+            taskStateService.saveTaskState(stateInfo);
+            logger.info("Saved H2 state for failover task: {} with status INCREMENT_RUNNING", taskId);
+
+            MigrationAgentThread agentThread = new MigrationAgentThread(taskMessage, kafkaProducer, taskStateService, true);
+            migrationAgentThreads.put(taskId, agentThread);
+
+            Thread threadWrapper = new Thread(agentThread, "MigrationAgentThread-Failover-" + taskId);
+            threadWrapper.setDaemon(true);
+            migrationAgentThreadWrappers.put(taskId, threadWrapper);
+            threadWrapper.start();
+
+            logger.info("Failover task {} restarted with skipFullMigration=true", taskId);
+            sendStatus(taskId, "SWITCHING", "Failover processes starting, skipping full migration", 100);
+
+            new Thread(() -> {
+                try {
+                    Thread.sleep(30000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                failoverInProgress.remove(taskId);
+                logger.info("Failover initialization period completed for task: {}", taskId);
+            }, "FailoverInitGuard-" + taskId).start();
+
+        } catch (Exception e) {
+            logger.error("Error handling direct failover for task: {}", taskId, e);
+            sendStatus(taskId, "FAILED", "Error during failover: " + e.getMessage(), 0);
+            failoverInProgress.remove(taskId);
+        }
+    }
+
+    public void startIncrementDirect(TaskMessage taskMessage) {
+        String taskId = taskMessage.getTaskId();
+        logger.info("=== START INCREMENT DIRECT (HTTP API) for task: {} ===", taskId);
+
+        if (migrationAgentThreads.containsKey(taskId)) {
+            logger.warn("Task {} already has a running thread, stopping it first", taskId);
+            stopMigrationAgentThread(taskId);
+            stopTaskById(taskId);
+        }
+
+        try {
+            configService.updateConfig(taskMessage);
+            logger.info("Config updated for task: {}", taskId);
+
+            TaskStateInfo stateInfo = new TaskStateInfo(taskId);
+            stateInfo.setTaskName(taskMessage.getTaskName());
+            stateInfo.setUserId(taskMessage.getUserId());
+            stateInfo.setMigrationMode(taskMessage.getMigrationMode());
+            stateInfo.setSourceConnection(taskMessage.getSourceConnection());
+            stateInfo.setTargetConnection(taskMessage.getTargetConnection());
+            stateInfo.setSourceType(taskMessage.getSourceType() != null ? taskMessage.getSourceType() : "mysql");
+            stateInfo.setTargetType(taskMessage.getTargetType() != null ? taskMessage.getTargetType() : "mysql");
+            stateInfo.setStatus("INCREMENT_RUNNING");
+            stateInfo.setProgress(100);
+            stateInfo.setCreatedAt(taskMessage.getCreatedAt() != null ? taskMessage.getCreatedAt() : java.time.LocalDateTime.now());
+            taskStateService.saveTaskState(stateInfo);
+            logger.info("Saved H2 state for task: {} with status INCREMENT_RUNNING", taskId);
+
+            MigrationAgentThread agentThread = new MigrationAgentThread(taskMessage, kafkaProducer, taskStateService, true);
+            migrationAgentThreads.put(taskId, agentThread);
+
+            Thread threadWrapper = new Thread(agentThread, "MigrationAgentThread-Increment-" + taskId);
+            threadWrapper.setDaemon(true);
+            migrationAgentThreadWrappers.put(taskId, threadWrapper);
+            threadWrapper.start();
+
+            logger.info("Increment sync started for task: {} with skipFullMigration=true", taskId);
+
+        } catch (Exception e) {
+            logger.error("Error starting increment sync for task: {}", taskId, e);
+            sendStatus(taskId, "FAILED", "Error starting increment sync: " + e.getMessage(), 0);
+        }
+    }
+
+    public Map<String, Object> getAgentStatus() {
+        Map<String, Object> status = new java.util.HashMap<>();
+        status.put("activeTasks", migrationAgentThreads.size());
+        status.put("pausedTasks", pausedTasks.size());
+        status.put("captureProcesses", captureManagers.size());
+        status.put("extractProcesses", extractManagers.size());
+        status.put("incrementProcesses", incrementManagers.size());
+
+        java.util.List<Map<String, String>> taskList = new java.util.ArrayList<>();
+        for (Map.Entry<String, MigrationAgentThread> entry : migrationAgentThreads.entrySet()) {
+            Map<String, String> taskInfo = new java.util.HashMap<>();
+            taskInfo.put("taskId", entry.getKey());
+            taskInfo.put("running", String.valueOf(entry.getValue().isRunning()));
+            taskList.add(taskInfo);
+        }
+        status.put("tasks", taskList);
+
+        return status;
     }
 }

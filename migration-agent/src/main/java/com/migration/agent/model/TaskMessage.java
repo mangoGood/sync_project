@@ -23,6 +23,7 @@ public class TaskMessage implements Serializable {
     private String targetDbName;
     private String sourceType;
     private String targetType;
+    private String taskType;
 
     public static class DatabaseConfig {
         private String host;
@@ -198,5 +199,13 @@ public class TaskMessage implements Serializable {
 
     public void setTargetType(String targetType) {
         this.targetType = targetType;
+    }
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
     }
 }

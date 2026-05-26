@@ -19,4 +19,6 @@ public interface ValidationTaskRepository extends JpaRepository<ValidationTask, 
     Optional<ValidationTask> findByIdAndUserIdAndIsDeletedFalse(String id, Long userId);
     
     Optional<ValidationTask> findByIdAndIsDeletedFalse(String id);
+
+    List<ValidationTask> findByWorkflowIdAndStatusInAndIsDeletedFalse(String workflowId, List<ValidationTask.ValidationStatus> statuses);
 }

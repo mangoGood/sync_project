@@ -90,6 +90,18 @@ public class Workflow {
     @Column(name = "rto_ms")
     private Long rtoMs;
 
+    @Column(name = "task_type", length = 20)
+    private String taskType = "SYNC";
+
+    @Column(name = "dr_status", length = 20)
+    private String drStatus;
+
+    @Column(name = "dr_switch_count")
+    private Integer drSwitchCount = 0;
+
+    @Column(name = "dr_switch_start_time")
+    private java.time.LocalDateTime drSwitchStartTime;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -323,5 +335,37 @@ public class Workflow {
 
     public void setRtoMs(Long rtoMs) {
         this.rtoMs = rtoMs;
+    }
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
+    public String getDrStatus() {
+        return drStatus;
+    }
+
+    public void setDrStatus(String drStatus) {
+        this.drStatus = drStatus;
+    }
+
+    public Integer getDrSwitchCount() {
+        return drSwitchCount;
+    }
+
+    public void setDrSwitchCount(Integer drSwitchCount) {
+        this.drSwitchCount = drSwitchCount;
+    }
+
+    public java.time.LocalDateTime getDrSwitchStartTime() {
+        return drSwitchStartTime;
+    }
+
+    public void setDrSwitchStartTime(java.time.LocalDateTime drSwitchStartTime) {
+        this.drSwitchStartTime = drSwitchStartTime;
     }
 }

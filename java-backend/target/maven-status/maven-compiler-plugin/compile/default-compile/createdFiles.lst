@@ -29,6 +29,7 @@ com/synctask/dto/ValidationResult$CheckItem.class
 com/synctask/service/MetadataService$ConnectionTestResult.class
 com/synctask/dto/TaskStatusUpdate.class
 com/synctask/entity/WorkflowStatusConverter.class
+com/synctask/service/WorkflowService$2.class
 com/synctask/dto/ContentCompareSession.class
 com/synctask/repository/WorkflowRepository.class
 com/synctask/security/JwtTokenProvider.class

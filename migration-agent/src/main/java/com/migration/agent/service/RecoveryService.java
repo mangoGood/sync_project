@@ -30,7 +30,7 @@ public class RecoveryService {
                      "migration_mode, status, progress, created_at, sync_objects, source_db_name, " +
                      "source_type, target_type " +
                      "FROM workflows " +
-                     "WHERE status IN ('STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING') " +
+                     "WHERE status IN ('STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SWITCHING') " +
                      "AND is_deleted = 0 " +
                      "ORDER BY created_at ASC";
         

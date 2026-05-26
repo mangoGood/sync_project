@@ -500,13 +500,32 @@ public class ContentCompareService {
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (int i = 1; i <= colCount; i++) {
                     String colName = meta.getColumnLabel(i);
-                    Object value = rs.getObject(i);
+                    Object value = safeGetObject(rs, i, meta);
                     row.put(colName, value);
                 }
                 rows.add(row);
             }
         }
         return rows;
+    }
+
+    private Object safeGetObject(ResultSet rs, int colIndex, ResultSetMetaData meta) throws SQLException {
+        String colType = meta.getColumnTypeName(colIndex).toUpperCase();
+        try {
+            switch (colType) {
+                case "BIT":
+                    return rs.getBytes(colIndex);
+                case "TIME":
+                    return rs.getString(colIndex);
+                case "YEAR":
+                    return rs.getString(colIndex);
+                default:
+                    return rs.getObject(colIndex);
+            }
+        } catch (SQLException e) {
+            logger.debug("getObject failed for col {} type {}, falling back to getString: {}", colIndex, colType, e.getMessage());
+            return rs.getString(colIndex);
+        }
     }
 
     private Object parseSyncObjectsValue(Object value) {
@@ -537,6 +556,9 @@ public class ContentCompareService {
 
     private Object normalizeValue(Object val) {
         if (val == null) return null;
+        if (val instanceof java.math.BigInteger) return val.toString();
+        if (val instanceof java.math.BigDecimal) return ((java.math.BigDecimal) val).toPlainString();
+        if (val instanceof java.time.LocalDateTime) return val.toString();
         if (val instanceof java.sql.Timestamp) return val.toString();
         if (val instanceof java.sql.Date) return val.toString();
         if (val instanceof java.sql.Time) return val.toString();

@@ -38,8 +38,9 @@ public class ContinuousIncrementMain {
 
     private volatile long lastRtoMs = -1;
     private volatile long lastRtoReportTime = 0;
-    private static final long RTO_REPORT_INTERVAL_MS = 5000;
-    private static final int RTO_REPORT_EVENT_INTERVAL = 100;
+    private volatile long lastAppliedSourceTs = -1;
+    private static final long RTO_REPORT_INTERVAL_MS = 3000;
+    private static final int RTO_REPORT_EVENT_INTERVAL = 50;
 
     public static void main(String[] args) {
         logger.info("=== MySQL Migration Increment (Continuous) Starting ===");
@@ -223,6 +224,7 @@ public class ContinuousIncrementMain {
                         if (rtoMs >= 0) {
                             lastRtoMs = rtoMs;
                             lastRtoReportTime = System.currentTimeMillis();
+                            lastAppliedSourceTs = event.getSourceTstamp().getTime();
                             writeRtoMetric(rtoMs);
                             logger.debug("Heartbeat RTO: {}ms (seqno={})", rtoMs, event.getSeqno());
                         }
@@ -278,6 +280,7 @@ public class ContinuousIncrementMain {
                 if (event.getSourceTstamp() != null) {
                     long now = System.currentTimeMillis();
                     long rtoMs = now - event.getSourceTstamp().getTime();
+                    lastAppliedSourceTs = event.getSourceTstamp().getTime();
                     if (rtoMs >= 0 && (eventCount % RTO_REPORT_EVENT_INTERVAL == 0 || now - lastRtoReportTime > RTO_REPORT_INTERVAL_MS)) {
                         lastRtoMs = rtoMs;
                         lastRtoReportTime = now;
@@ -374,7 +377,7 @@ public class ContinuousIncrementMain {
         }
         File metricFile = new File(dir, "rto_metric");
         try (PrintWriter pw = new PrintWriter(new FileWriter(metricFile, false))) {
-            pw.println(System.currentTimeMillis() + "|" + rtoMs);
+            pw.println(System.currentTimeMillis() + "|" + rtoMs + "|" + lastAppliedSourceTs);
         } catch (IOException e) {
             logger.warn("Failed to write RTO metric: {}", e.getMessage());
         }

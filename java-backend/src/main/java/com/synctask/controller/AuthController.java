@@ -6,16 +6,44 @@ import com.synctask.dto.RegisterRequest;
 import com.synctask.entity.User;
 import com.synctask.service.AuthService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private AuthService authService;
+
+    private String translateLoginError(Exception e) {
+        if (e instanceof BadCredentialsException || e instanceof UsernameNotFoundException) {
+            return "用户名或密码错误";
+        } else if (e instanceof DisabledException) {
+            return "账号已被禁用";
+        } else if (e instanceof LockedException) {
+            return "账号已被锁定";
+        } else if (e instanceof AccountExpiredException) {
+            return "账号已过期";
+        } else if (e instanceof CredentialsExpiredException) {
+            return "密码已过期";
+        } else if (e instanceof AuthenticationException) {
+            logger.warn("Login authentication error: {}", e.getMessage());
+            return "认证失败，请稍后重试";
+        } else {
+            logger.error("Login unexpected error", e);
+            return "登录失败，请稍后重试";
+        }
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
@@ -33,7 +61,7 @@ public class AuthController {
             JwtResponse response = authService.login(request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "登录失败: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(new ApiResponse(false, translateLoginError(e)));
         }
     }
 
