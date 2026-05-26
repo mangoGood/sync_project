@@ -1,1 +1,6 @@
 *.class
+logs/
+*.log
+*.db
+target/
+files/
