@@ -48,6 +48,10 @@ public class PostgresWalCapture extends AbstractCapture<byte[]> {
     private volatile String currentLsn;
     private volatile long currentLsnNumeric;
 
+    // 背压控制：extract 通过信号文件通知 capture 暂停/恢复
+    private volatile boolean backpressurePaused = false;
+    private String backpressureSignalPath;
+
     @Override
     protected void doInitialize() throws Exception {
         host = props.getProperty("source.db.host", "localhost");
@@ -61,6 +65,8 @@ public class PostgresWalCapture extends AbstractCapture<byte[]> {
         maxEventsPerFile = Long.parseLong(props.getProperty("capture.max.events.per.file", "10000"));
         slotName = props.getProperty("capture.wal.slot.name", "migration_slot_" + taskId.replaceAll("[^a-z0-9_]", "_"));
         publicationName = props.getProperty("capture.wal.publication.name", "migration_pub_" + taskId.replaceAll("[^a-z0-9_]", "_"));
+
+        backpressureSignalPath = "files/" + taskId + "/backpressure.signal";
 
         if (startLsn.isEmpty()) {
             startLsn = null;
@@ -239,7 +245,58 @@ public class PostgresWalCapture extends AbstractCapture<byte[]> {
         replicateThread.setDaemon(true);
         replicateThread.start();
 
+        startBackpressureMonitor();
+
         logger.info("WAL replication stream started for slot: {}", slotName);
+    }
+
+    /**
+     * 检查背压信号文件，更新 backpressurePaused 状态。
+     * extract 进程在 THL 积压时写入 PAUSE 信号，积压解除后写入 RESUME。
+     */
+    private void checkBackpressureSignal() {
+        if (backpressureSignalPath == null) return;
+        File signalFile = new File(backpressureSignalPath);
+        if (!signalFile.exists()) {
+            backpressurePaused = false;
+            return;
+        }
+        try (BufferedReader reader = new BufferedReader(new FileReader(signalFile))) {
+            String firstLine = reader.readLine();
+            boolean shouldPause = firstLine != null && "PAUSE".equalsIgnoreCase(firstLine.trim());
+            if (shouldPause != backpressurePaused) {
+                backpressurePaused = shouldPause;
+                if (shouldPause) {
+                    logger.warn("收到背压暂停信号，暂停 WAL 事件处理");
+                } else {
+                    logger.info("收到背压恢复信号，恢复 WAL 事件处理");
+                }
+            }
+        } catch (IOException e) {
+            logger.debug("读取背压信号文件失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 启动后台线程定期检查背压信号，确保无事件时也能及时响应暂停/恢复。
+     */
+    private void startBackpressureMonitor() {
+        Thread monitor = new Thread(() -> {
+            while (running) {
+                try {
+                    checkBackpressureSignal();
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    logger.debug("背压监控异常: {}", e.getMessage());
+                }
+            }
+        }, "Backpressure-Monitor-" + taskId);
+        monitor.setDaemon(true);
+        monitor.start();
+        logger.info("背压监控线程已启动, taskId={}", taskId);
     }
 
     private boolean isReplicationSlotActive() {
@@ -385,6 +442,19 @@ public class PostgresWalCapture extends AbstractCapture<byte[]> {
 
     private void processWalMessage(ByteBuffer msgBuffer) {
         if (!running) return;
+
+        // 背压检查：如果 extract 发出暂停信号，则等待恢复
+        if (backpressurePaused) {
+            try {
+                while (backpressurePaused && running) {
+                    Thread.sleep(500);
+                    checkBackpressureSignal();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
 
         try {
             LogSequenceNumber receiveLsn = replicationStream.getLastReceiveLSN();

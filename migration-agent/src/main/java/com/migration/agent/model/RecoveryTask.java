@@ -19,6 +19,7 @@ public class RecoveryTask implements Serializable {
     private String sourceDbName;
     private String sourceType;
     private String targetType;
+    private String taskType;
 
     public String getTaskId() {
         return taskId;
@@ -124,6 +125,14 @@ public class RecoveryTask implements Serializable {
         this.targetType = targetType;
     }
 
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
     public TaskMessage toTaskMessage() {
         TaskMessage message = new TaskMessage();
         message.setTaskId(this.taskId);
@@ -136,6 +145,7 @@ public class RecoveryTask implements Serializable {
         message.setSourceDbName(this.sourceDbName);
         message.setSourceType(this.sourceType != null ? this.sourceType : "mysql");
         message.setTargetType(this.targetType != null ? this.targetType : "mysql");
+        message.setTaskType(this.taskType != null ? this.taskType : "SYNC");
         if (this.syncObjects != null && !this.syncObjects.isEmpty()) {
             try {
                 com.google.gson.Gson gson = new com.google.gson.Gson();

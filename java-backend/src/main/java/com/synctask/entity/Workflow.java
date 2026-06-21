@@ -102,6 +102,30 @@ public class Workflow {
     @Column(name = "dr_switch_start_time")
     private java.time.LocalDateTime drSwitchStartTime;
 
+    @Column(name = "increment_started")
+    private Boolean incrementStarted = false;
+
+    @Column(name = "kafka_bootstrap_servers", length = 500)
+    private String kafkaBootstrapServers;
+
+    @Column(name = "kafka_topic_prefix", length = 100)
+    private String kafkaTopicPrefix = "cdc";
+
+    @Column(name = "kafka_topic_strategy", length = 20)
+    private String kafkaTopicStrategy = "TABLE";
+
+    @Column(name = "subscribe_format", length = 20)
+    private String subscribeFormat = "DEBEZIUM_JSON";
+
+    @Column(name = "target_connections", columnDefinition = "TEXT")
+    private String targetConnections;
+
+    @Column(name = "fanout_enabled")
+    private Boolean fanoutEnabled = false;
+
+    @Column(name = "fanout_target_count")
+    private Integer fanoutTargetCount = 1;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -367,5 +391,69 @@ public class Workflow {
 
     public void setDrSwitchStartTime(java.time.LocalDateTime drSwitchStartTime) {
         this.drSwitchStartTime = drSwitchStartTime;
+    }
+
+    public Boolean getIncrementStarted() {
+        return incrementStarted;
+    }
+
+    public void setIncrementStarted(Boolean incrementStarted) {
+        this.incrementStarted = incrementStarted;
+    }
+
+    public String getKafkaBootstrapServers() {
+        return kafkaBootstrapServers;
+    }
+
+    public void setKafkaBootstrapServers(String kafkaBootstrapServers) {
+        this.kafkaBootstrapServers = kafkaBootstrapServers;
+    }
+
+    public String getKafkaTopicPrefix() {
+        return kafkaTopicPrefix;
+    }
+
+    public void setKafkaTopicPrefix(String kafkaTopicPrefix) {
+        this.kafkaTopicPrefix = kafkaTopicPrefix;
+    }
+
+    public String getKafkaTopicStrategy() {
+        return kafkaTopicStrategy;
+    }
+
+    public void setKafkaTopicStrategy(String kafkaTopicStrategy) {
+        this.kafkaTopicStrategy = kafkaTopicStrategy;
+    }
+
+    public String getSubscribeFormat() {
+        return subscribeFormat;
+    }
+
+    public void setSubscribeFormat(String subscribeFormat) {
+        this.subscribeFormat = subscribeFormat;
+    }
+
+    public String getTargetConnections() {
+        return targetConnections;
+    }
+
+    public void setTargetConnections(String targetConnections) {
+        this.targetConnections = targetConnections;
+    }
+
+    public Boolean getFanoutEnabled() {
+        return fanoutEnabled;
+    }
+
+    public void setFanoutEnabled(Boolean fanoutEnabled) {
+        this.fanoutEnabled = fanoutEnabled;
+    }
+
+    public Integer getFanoutTargetCount() {
+        return fanoutTargetCount;
+    }
+
+    public void setFanoutTargetCount(Integer fanoutTargetCount) {
+        this.fanoutTargetCount = fanoutTargetCount;
     }
 }

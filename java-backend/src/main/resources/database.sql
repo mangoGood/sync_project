@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS workflows (
     name VARCHAR(255) NOT NULL COMMENT '任务名称',
     source_connection VARCHAR(255) COMMENT '源连接信息',
     target_connection VARCHAR(255) COMMENT '目标连接信息',
-    status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SWITCHING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态',
+    status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SUBSCRIBE_RUNNING', 'SWITCHING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态',
     progress INT DEFAULT 0 COMMENT '进度百分比',
     user_id BIGINT NOT NULL COMMENT '用户ID',
-    migration_mode ENUM('full', 'fullAndIncre') DEFAULT 'full' COMMENT '迁移模式：full-全量同步，fullAndIncre-全量+增量同步',
+    migration_mode ENUM('full', 'fullAndIncre', 'subscribe') DEFAULT 'full' COMMENT '迁移模式：full-全量同步，fullAndIncre-全量+增量同步，subscribe-数据订阅',
     is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否软删除',
     sync_objects TEXT COMMENT '同步对象JSON，格式: {"db1":["t1","t2"]}',
     source_db_name VARCHAR(255) COMMENT '源数据库名',
@@ -116,13 +116,45 @@ VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi',
 ON DUPLICATE KEY UPDATE username=username;
 
 -- 插入测试用户账号 (密码: user123)
-INSERT INTO users (username, password, email, role, enabled) 
+INSERT INTO users (username, password, email, role, enabled)
 VALUES ('user1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'user1@example.com', 'USER', 1)
 ON DUPLICATE KEY UPDATE username=username;
+
+-- 创建审计日志表
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT '操作用户ID',
+    username VARCHAR(100) COMMENT '操作用户名',
+    action ENUM('CREATE_TASK','UPDATE_CONFIG','LAUNCH_TASK','PAUSE_TASK','RESUME_TASK','STOP_TASK','DELETE_TASK','RETRY_TASK','FAILOVER_TASK','LOGIN','LOGOUT') NOT NULL COMMENT '操作类型',
+    workflow_id VARCHAR(36) COMMENT '关联工作流ID',
+    workflow_name VARCHAR(200) COMMENT '工作流名称',
+    details TEXT COMMENT '操作详情(JSON)',
+    result ENUM('SUCCESS','FAILURE') NOT NULL DEFAULT 'SUCCESS' COMMENT '操作结果',
+    error_message VARCHAR(1000) COMMENT '错误信息',
+    client_ip VARCHAR(50) COMMENT '客户端IP',
+    user_agent VARCHAR(500) COMMENT 'User-Agent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    INDEX idx_audit_user_id (user_id),
+    INDEX idx_audit_workflow_id (workflow_id),
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 
 INSERT INTO users (username, password, email, role, enabled) 
 VALUES ('user2', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'user2@example.com', 'USER', 1)
 ON DUPLICATE KEY UPDATE username=username;
 
--- 迁移：为现有数据库添加 CONFIGURING 状态
-ALTER TABLE workflows MODIFY COLUMN status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SWITCHING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态';
+-- 迁移：为现有数据库添加 SUBSCRIBE_RUNNING 状态和 subscribe 迁移模式
+ALTER TABLE workflows MODIFY COLUMN status ENUM('CONFIGURING', 'PENDING', 'STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SUBSCRIBE_RUNNING', 'SWITCHING', 'COMPLETED', 'FAILED', 'PAUSED') DEFAULT 'CONFIGURING' COMMENT '任务状态';
+ALTER TABLE workflows MODIFY COLUMN migration_mode ENUM('full', 'fullAndIncre', 'subscribe') DEFAULT 'full' COMMENT '迁移模式：full-全量同步，fullAndIncre-全量+增量同步，subscribe-数据订阅';
+
+-- 迁移：添加订阅任务相关字段
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS kafka_bootstrap_servers VARCHAR(255) COMMENT 'Kafka连接地址';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS kafka_topic_prefix VARCHAR(100) DEFAULT 'cdc' COMMENT 'Kafka主题前缀';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS kafka_topic_strategy VARCHAR(20) DEFAULT 'TABLE' COMMENT 'Kafka主题策略: TABLE-按表分区';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS subscribe_format VARCHAR(20) DEFAULT 'DEBEZIUM_JSON' COMMENT '订阅消息格式';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS target_db_name VARCHAR(255) COMMENT '目标数据库名';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS increment_started TINYINT(1) DEFAULT 0 COMMENT '是否已开始增量同步';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS target_connections TEXT COMMENT '多目标库连接串JSON数组（fan-out）';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS fanout_enabled TINYINT(1) DEFAULT 0 COMMENT '是否启用多目标库分发';
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS fanout_target_count INT DEFAULT 1 COMMENT 'fan-out目标库数量';

@@ -25,7 +25,7 @@ public class TaskStateService {
         }
     }
     
-    private Connection getConnection(String taskId) throws SQLException {
+    protected Connection getConnection(String taskId) throws SQLException {
         String dbUrl = "jdbc:h2:./files/" + taskId + "/metadata;MODE=MySQL;AUTO_SERVER=TRUE";
         Connection conn = DriverManager.getConnection(dbUrl, DB_USER, DB_PASSWORD);
         

@@ -64,13 +64,16 @@ public class WorkflowService {
     @Transactional
     public Workflow updateConfig(String workflowId, Long userId, String sourceConnection, String targetConnection,
                                   String migrationMode, String syncObjects, String sourceDbName,
-                                  String targetDbName, String sourceType, String targetType) {
+                                  String targetDbName, String sourceType, String targetType,
+                                  String kafkaBootstrapServers, String kafkaTopicPrefix,
+                                  String kafkaTopicStrategy, String subscribeFormat,
+                                  Boolean fanoutEnabled, String targetConnections) {
         Workflow workflow = getWorkflowById(workflowId, userId);
-        
+
         if (workflow.getStatus() != WorkflowStatus.CONFIGURING) {
             throw new RuntimeException("只能修改配置中的任务，当前状态: " + workflow.getStatus().name());
         }
-        
+
         if (sourceConnection != null) workflow.setSourceConnection(sourceConnection);
         if (targetConnection != null) workflow.setTargetConnection(targetConnection);
         if (migrationMode != null) workflow.setMigrationMode(migrationMode);
@@ -79,7 +82,21 @@ public class WorkflowService {
         if (targetDbName != null) workflow.setTargetDbName(targetDbName);
         if (sourceType != null) workflow.setSourceType(sourceType);
         if (targetType != null) workflow.setTargetType(targetType);
-        
+        if (kafkaBootstrapServers != null) workflow.setKafkaBootstrapServers(kafkaBootstrapServers);
+        if (kafkaTopicPrefix != null) workflow.setKafkaTopicPrefix(kafkaTopicPrefix);
+        if (kafkaTopicStrategy != null) workflow.setKafkaTopicStrategy(kafkaTopicStrategy);
+        if (subscribeFormat != null) workflow.setSubscribeFormat(subscribeFormat);
+        if (fanoutEnabled != null) {
+            workflow.setFanoutEnabled(fanoutEnabled);
+            if (fanoutEnabled && targetConnections != null) {
+                workflow.setTargetConnections(targetConnections);
+                int count = countTargetConnections(targetConnections);
+                workflow.setFanoutTargetCount(count);
+            } else if (!fanoutEnabled) {
+                workflow.setFanoutTargetCount(1);
+            }
+        }
+
         addLog(workflowId, WorkflowLog.LogLevel.INFO, "任务配置已更新");
         return workflowRepository.save(workflow);
     }
@@ -92,20 +109,40 @@ public class WorkflowService {
             throw new RuntimeException("只能启动配置中的任务，当前状态: " + workflow.getStatus().name());
         }
         
-        if (workflow.getSourceConnection() == null || workflow.getSourceConnection().isEmpty() ||
-            workflow.getTargetConnection() == null || workflow.getTargetConnection().isEmpty()) {
-            throw new RuntimeException("请先完成连接信息配置");
+        if (workflow.getSourceConnection() == null || workflow.getSourceConnection().isEmpty()) {
+            throw new RuntimeException("请先完成源库连接信息配置");
+        }
+        
+        boolean isSubscribeTask = "SUBSCRIBE".equals(workflow.getTaskType());
+        
+        if (!isSubscribeTask) {
+            if (workflow.getTargetConnection() == null || workflow.getTargetConnection().isEmpty()) {
+                throw new RuntimeException("请先完成目标库连接信息配置");
+            }
+        }
+        
+        if (isSubscribeTask) {
+            if (workflow.getKafkaBootstrapServers() == null || workflow.getKafkaBootstrapServers().isEmpty()) {
+                throw new RuntimeException("请先配置Kafka连接地址");
+            }
         }
         
         boolean isDrTask = "DR".equals(workflow.getTaskType());
         
-        if (!isDrTask) {
+        if (!isDrTask && !isSubscribeTask) {
             if (workflow.getSyncObjects() == null || workflow.getSyncObjects().isEmpty()) {
                 throw new RuntimeException("请先选择同步对象");
             }
             if (workflow.getMigrationMode() == null || workflow.getMigrationMode().isEmpty()) {
                 throw new RuntimeException("请先选择同步模式");
             }
+        }
+        
+        if (isSubscribeTask) {
+            if (workflow.getSyncObjects() == null || workflow.getSyncObjects().isEmpty()) {
+                workflow.setSyncObjects("{\"_all\":true}");
+            }
+            workflow.setMigrationMode("subscribe");
         }
         
         workflow.setStatus(WorkflowStatus.PENDING);
@@ -320,11 +357,9 @@ public class WorkflowService {
             throw new RuntimeException("只能重试失败的任务，当前状态: " + workflow.getStatus().name());
         }
         
-        boolean fullSyncCompleted = "fullAndIncre".equals(workflow.getMigrationMode()) 
-            && workflow.getProgress() != null 
-            && workflow.getProgress() == 100;
+        boolean incrementStarted = Boolean.TRUE.equals(workflow.getIncrementStarted());
         
-        if (fullSyncCompleted) {
+        if (incrementStarted) {
             workflow.setStatus(WorkflowStatus.STARTING);
             workflow.setIsBilling(true);
             workflow.setErrorMessage(null);
@@ -332,7 +367,7 @@ public class WorkflowService {
             workflow.setCompletedAt(null);
             workflowRepository.save(workflow);
             
-            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务恢复中，全量同步已完成，将从增量位点继续同步");
+            addLog(workflow.getId(), WorkflowLog.LogLevel.INFO, "任务恢复中，增量同步曾已启动，将从增量位点继续同步");
             
             TaskCreatedMessage message = new TaskCreatedMessage();
             message.setTaskId(workflow.getId());
@@ -414,6 +449,19 @@ public class WorkflowService {
         log.setLevel(level);
         log.setMessage(message);
         workflowLogRepository.save(log);
+    }
+
+    /** 统计 targetConnections JSON 数组中的目标库数量 */
+    private int countTargetConnections(String targetConnectionsJson) {
+        if (targetConnectionsJson == null || targetConnectionsJson.trim().isEmpty()) return 0;
+        // 简单统计：通过 "host" 字段出现次数估算
+        int count = 0;
+        int idx = 0;
+        while ((idx = targetConnectionsJson.indexOf("\"host\"", idx)) != -1) {
+            count++;
+            idx += 6;
+        }
+        return Math.max(1, count);
     }
 
     @Transactional

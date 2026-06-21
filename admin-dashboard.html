@@ -6,6 +6,7 @@
     <title>实时同步管理</title>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -625,6 +626,17 @@
             color: #d46b08;
         }
 
+        .action-btn.monitor {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+
+        .action-btn.monitor:hover {
+            border-color: #096dd9;
+            color: #096dd9;
+            background-color: #e6f7ff;
+        }
+
         /* 空状态 */
         .empty-state {
             display: flex;
@@ -741,6 +753,11 @@
         .col-billing { flex: 1; }
         .col-more { flex: 2; }
         .col-action { width: 120px; text-align: right; }
+        /* 订阅任务列宽 */
+        .col-source { flex: 0.8; }
+        .col-kafka { flex: 1.5; }
+        .col-topic { flex: 1; }
+        .col-delay { flex: 1; }
 
         /* 模态框 */
         .modal {
@@ -1443,6 +1460,382 @@
         .token-expired-modal .btn-relogin:hover {
             background: #40a9ff;
         }
+
+        .metric-card {
+            background: #fff;
+            border-radius: 6px;
+            padding: 16px;
+            border: 1px solid #e8e8e8;
+            position: relative;
+        }
+
+        .metric-card-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .metric-card-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.2;
+        }
+
+        .metric-card-unit {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .metric-card-sparkline {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .metric-card-value.good { color: #52c41a; }
+        .metric-card-value.warn { color: #fa8c16; }
+        .metric-card-value.bad { color: #f5222d; }
+
+        .metric-chart-card {
+            background: #fff;
+            border-radius: 6px;
+            padding: 16px 20px;
+            border: 1px solid #e8e8e8;
+        }
+
+        /* ============ 高级监控 Tab 样式 ============ */
+        .adv-tabs {
+            display: flex;
+            border-bottom: 1px solid #e8e8e8;
+            margin-bottom: 16px;
+        }
+        .adv-tab {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .adv-tab:hover { color: #1890ff; }
+        .adv-tab.active {
+            color: #1890ff;
+            border-bottom-color: #1890ff;
+            font-weight: 500;
+        }
+        .adv-tab-content { display: none; }
+        .adv-tab-content.active { display: block; }
+
+        .adv-metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .adv-metric-card {
+            background: #fafafa;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .adv-metric-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .adv-metric-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .adv-metric-sub {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .adv-status-badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .adv-status-OK { color: #52c41a; background: #f6ffed; border: 1px solid #b7eb8f; }
+        .adv-status-WARNING { color: #faad14; background: #fffbe6; border: 1px solid #ffe58f; }
+        .adv-status-CRITICAL { color: #f5222d; background: #fff2f0; border: 1px solid #ffccc7; }
+        .adv-status-UNKNOWN { color: #999; background: #f5f5f5; border: 1px solid #d9d9d9; }
+
+        .adv-heatmap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .adv-heatmap-table th {
+            background: #fafafa;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .adv-heatmap-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .adv-heatmap-table tr:hover { background: #fafafa; }
+        .adv-heatmap-cell {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .adv-timeline {
+            border-left: 2px solid #1890ff;
+            margin-left: 8px;
+            padding-left: 16px;
+        }
+        .adv-timeline-item {
+            position: relative;
+            padding-bottom: 16px;
+        }
+        .adv-timeline-item:before {
+            content: '';
+            position: absolute;
+            left: -21px;
+            top: 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #1890ff;
+        }
+        .adv-timeline-time {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 2px;
+        }
+        .adv-timeline-content {
+            font-size: 13px;
+            color: #333;
+        }
+
+        .adv-empty {
+            text-align: center;
+            padding: 40px 0;
+            color: #999;
+            font-size: 13px;
+        }
+        .adv-empty-icon {
+            font-size: 36px;
+            opacity: 0.3;
+            margin-bottom: 8px;
+        }
+
+        .adv-link-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: #fafafa;
+            border-radius: 6px;
+            margin-bottom: 14px;
+        }
+        .adv-link-node {
+            padding: 6px 12px;
+            background: #fff;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .adv-link-node.ok { border-color: #52c41a; color: #52c41a; }
+        .adv-link-arrow { color: #999; font-size: 14px; }
+
+        .metric-chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+        .metric-chart-expandable {
+            cursor: pointer;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+
+        .metric-chart-expandable:hover {
+            border-color: #1890ff;
+            box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+        }
+
+        .chart-expand-hint {
+            font-size: 11px;
+            color: #1890ff;
+            font-weight: 400;
+            float: right;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .metric-chart-expandable:hover .chart-expand-hint {
+            opacity: 1;
+        }
+
+        .chart-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.15s ease;
+        }
+
+        .chart-modal-panel {
+            background: #fff;
+            border-radius: 10px;
+            width: 90vw;
+            max-width: 1200px;
+            height: 75vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+            animation: scaleIn 0.2s ease;
+        }
+
+        .chart-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e8e8e8;
+            flex-shrink: 0;
+        }
+
+        .chart-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .chart-modal-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-modal-controls .time-grain-btn {
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chart-modal-controls .time-grain-btn:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+
+        .chart-modal-controls .time-grain-btn.active {
+            background: #1890ff;
+            border-color: #1890ff;
+            color: #fff;
+        }
+
+        .chart-modal-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #999;
+            font-size: 20px;
+            transition: all 0.2s;
+            margin-left: 12px;
+        }
+
+        .chart-modal-close:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .chart-modal-body {
+            flex: 1;
+            padding: 16px 24px;
+            position: relative;
+            min-height: 0;
+        }
+
+        .chart-modal-body canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .metric-chart-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .process-status-item {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 12px 16px;
+            border: 1px solid #e8e8e8;
+            text-align: center;
+        }
+
+        .process-status-item .process-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .process-status-item .process-state {
+            font-size: 12px;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .process-status-item .process-state.running {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .process-status-item .process-state.stopped {
+            background: #fff1f0;
+            color: #f5222d;
+            border: 1px solid #ffa39e;
+        }
+
+        .process-status-item .process-state.starting {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+        }
+
+        .process-status-item .process-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
@@ -1461,11 +1854,22 @@
                     <div class="menu-title">任务管理</div>
                     <div class="menu-item active" onclick="switchPage('sync')">实时同步管理</div>
                     <div class="menu-item" onclick="switchPage('dr')">灾备任务管理</div>
+                    <div class="menu-item" onclick="switchPage('subscribe')">数据订阅管理</div>
                 </div>
                 
                 <div class="menu-section">
                     <div class="menu-title">其他</div>
                     <div class="menu-item" onclick="switchPage('validation')">数据对比任务管理</div>
+                </div>
+
+                <div class="menu-section">
+                    <div class="menu-title">监控</div>
+                    <div class="menu-item" onclick="switchPage('metrics')">实时监控指标</div>
+                </div>
+
+                <div class="menu-section">
+                    <div class="menu-title">安全</div>
+                    <div class="menu-item" onclick="switchPage('audit')">审计日志</div>
                 </div>
             </nav>
         </aside>
@@ -1653,6 +2057,111 @@
                 </div>
             </div>
 
+            <!-- 订阅任务页面 -->
+            <div id="subscribePage" style="display: none;">
+                <header class="header">
+                    <div class="header-left">
+                        <h1 class="header-title">数据订阅管理</h1>
+                    </div>
+                    <div class="header-right">
+                        <button class="btn-primary" id="createSubscribeTaskBtn">创建订阅任务</button>
+                    </div>
+                </header>
+
+                <div class="content">
+                    <div class="toolbar">
+                        <div class="toolbar-row">
+                            <button class="btn btn-default" id="subscribeViewFailedBtn">查看异常任务</button>
+                            <button class="btn btn-default">导出</button>
+                        </div>
+                        <div class="toolbar-row">
+                            <div class="search-box-wrapper">
+                                <div class="search-box" id="subscribeSearchBox">
+                                    <span class="search-icon">🔍</span>
+                                    <div class="filter-tags" id="subscribeFilterTags"></div>
+                                    <input type="text" class="search-input" id="subscribeSearchInput" placeholder="添加筛选条件">
+                                </div>
+                                <div class="filter-dropdown" id="subscribeFilterDropdown">
+                                    <div class="filter-option" data-filter="keyword">
+                                        <span class="filter-icon">📝</span>
+                                        <span>任务名称/ID</span>
+                                    </div>
+                                    <div class="filter-option" data-filter="status">
+                                        <span class="filter-icon">📊</span>
+                                        <span>状态</span>
+                                    </div>
+                                </div>
+                                <div class="status-dropdown" id="subscribeStatusDropdown">
+                                    <div class="status-option" data-status="CONFIGURING">配置中</div>
+                                    <div class="status-option" data-status="PENDING">启动中</div>
+                                    <div class="status-option" data-status="STARTING">启动中</div>
+                                    <div class="status-option" data-status="SUBSCRIBE_RUNNING">订阅中</div>
+                                    <div class="status-option" data-status="PAUSED">已暂停</div>
+                                    <div class="status-option" data-status="FAILED">异常</div>
+                                    <div class="status-option" data-status="COMPLETED">已完成</div>
+                                </div>
+                            </div>
+                            <div class="toolbar-actions">
+                                <button class="icon-btn" id="subscribeRefreshBtn" title="刷新" onclick="fetchSubscribeTasks()">↻</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-header">
+                            <div class="table-header-cell col-checkbox">
+                                <div class="checkbox"></div>
+                            </div>
+                            <div class="table-header-cell col-name">
+                                名称/ID
+                            </div>
+                            <div class="table-header-cell col-status">
+                                状态
+                            </div>
+                            <div class="table-header-cell col-source">
+                                源库类型
+                            </div>
+                            <div class="table-header-cell col-kafka">
+                                下游Kafka
+                            </div>
+                            <div class="table-header-cell col-topic">
+                                Topic策略
+                            </div>
+                            <div class="table-header-cell col-delay">
+                                订阅延迟
+                            </div>
+                            <div class="table-header-cell col-action">操作</div>
+                        </div>
+                        <div class="table-body" id="subscribeTableBody">
+                            <div class="empty-state" id="subscribeEmptyState">
+                                <div class="empty-icon">
+                                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="15" y="25" width="50" height="40" rx="2" stroke="#d9d9d9" stroke-width="2" fill="none"/>
+                                        <rect x="20" y="20" width="40" height="8" rx="1" stroke="#d9d9d9" stroke-width="2" fill="none"/>
+                                        <line x1="25" y1="45" x2="55" y2="45" stroke="#d9d9d9" stroke-width="2"/>
+                                        <line x1="25" y1="52" x2="45" y2="52" stroke="#d9d9d9" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="empty-text">暂无订阅任务</div>
+                            </div>
+                        </div>
+                        <div class="pagination">
+                            <div class="pagination-info" id="subscribePaginationInfo">总条数：0</div>
+                            <div class="pagination-controls" id="subscribePaginationControls">
+                                <select class="page-size" id="subscribePageSizeSelect">
+                                    <option value="10" selected>10条/页</option>
+                                    <option value="20">20条/页</option>
+                                    <option value="50">50条/页</option>
+                                </select>
+                                <button class="page-btn" id="subscribePrevPageBtn" onclick="subscribeGoToPage(subscribeCurrentPage - 1)">‹</button>
+                                <div id="subscribePageNumbers"></div>
+                                <button class="page-btn" id="subscribeNextPageBtn" onclick="subscribeGoToPage(subscribeCurrentPage + 1)">›</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="drPage" style="display: none;">
                 <header class="header">
                     <div class="header-left">
@@ -1720,6 +2229,148 @@
                                 <div id="drPageNumbers"></div>
                                 <button class="page-btn" id="drNextPageBtn" onclick="goToDrPage(drCurrentPage + 1)">›</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="metricsPage" style="display: none;">
+                <header class="header">
+                    <div class="header-left">
+                        <h1 class="header-title">实时监控指标</h1>
+                    </div>
+                    <div class="header-right">
+                        <div class="metrics-task-selector" id="metricsTaskSelector" style="position: relative; width: 320px;">
+                            <input type="text" id="metricsTaskSearch" class="form-input" placeholder="搜索任务名称..." style="width: 100%; padding: 5px 10px; font-size: 13px; box-sizing: border-box;" autocomplete="off">
+                            <div class="metrics-task-dropdown" id="metricsTaskDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; max-height: 280px; overflow-y: auto;">
+                            </div>
+                            <input type="hidden" id="metricsTaskSelect" value="">
+                        </div>
+                        <button class="btn-primary" onclick="refreshMetrics()" style="font-size: 13px;">刷新</button>
+                        <label style="font-size: 13px; color: #666; display: flex; align-items: center; gap: 4px;">
+                            <input type="checkbox" id="metricsAutoRefresh" onchange="toggleMetricsAutoRefresh()" checked> 自动刷新
+                        </label>
+                    </div>
+                </header>
+
+                <div class="content" style="padding: 16px 24px; overflow-y: auto; max-height: calc(100vh - 130px);">
+                    <div id="metricsEmpty" style="text-align: center; padding: 80px 0; color: #999; font-size: 14px;">
+                        <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📊</div>
+                        <div>请选择一个任务查看实时监控指标</div>
+                    </div>
+
+                    <div id="metricsContent" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px;">
+                            <div class="metric-card">
+                                <div class="metric-card-label">事件捕获速率</div>
+                                <div class="metric-card-value" id="metricCaptureRate">--</div>
+                                <div class="metric-card-unit">events/sec</div>
+                                <div class="metric-card-sparkline"><canvas id="sparkCaptureRate" width="120" height="30"></canvas></div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-card-label">端到端延迟</div>
+                                <div class="metric-card-value" id="metricE2eLatency">--</div>
+                                <div class="metric-card-unit">ms</div>
+                                <div class="metric-card-sparkline"><canvas id="sparkE2eLatency" width="120" height="30"></canvas></div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-card-label">队列深度</div>
+                                <div class="metric-card-value" id="metricQueueDepth">--</div>
+                                <div class="metric-card-unit">events</div>
+                                <div class="metric-card-sparkline"><canvas id="sparkQueueDepth" width="120" height="30"></canvas></div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-card-label">Checkpoint 滞后</div>
+                                <div class="metric-card-value" id="metricCheckpointLag">--</div>
+                                <div class="metric-card-unit">sec</div>
+                                <div class="metric-card-sparkline"><canvas id="sparkCheckpointLag" width="120" height="30"></canvas></div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-card-label">进程健康</div>
+                                <div class="metric-card-value" id="metricProcessHealth">--</div>
+                                <div class="metric-card-unit">&nbsp;</div>
+                                <div id="processHealthDetail" style="margin-top: 6px;"></div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div class="metric-chart-card metric-chart-expandable" onclick="openChartModal('captureRate','事件捕获速率趋势','事件/sec','#52c41a')">
+                                <div class="metric-chart-title">事件捕获速率趋势 <span class="chart-expand-hint">点击放大 ↗</span></div>
+                                <div class="metric-chart-container"><canvas id="chartCaptureRate"></canvas></div>
+                            </div>
+                            <div class="metric-chart-card metric-chart-expandable" onclick="openChartModal('e2eLatency','端到端延迟趋势','延迟(ms)','#1890ff')">
+                                <div class="metric-chart-title">端到端延迟趋势 <span class="chart-expand-hint">点击放大 ↗</span></div>
+                                <div class="metric-chart-container"><canvas id="chartE2eLatency"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div class="metric-chart-card">
+                                <div class="metric-chart-title">各阶段队列深度</div>
+                                <div class="metric-chart-container"><canvas id="chartQueueDepth"></canvas></div>
+                            </div>
+                            <div class="metric-chart-card">
+                                <div class="metric-chart-title">Checkpoint 滞后量趋势</div>
+                                <div class="metric-chart-container"><canvas id="chartCheckpointLag"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-chart-card">
+                            <div class="metric-chart-title">子进程健康状态</div>
+                            <div id="processStatusGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px 0;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 审计日志页面 -->
+            <div id="auditPage" style="display: none;">
+                <header class="header">
+                    <div class="header-left">
+                        <h1 class="header-title">审计日志</h1>
+                    </div>
+                    <div class="header-right">
+                        <select id="auditActionFilter" class="form-input" style="width: 180px; padding: 5px 10px; font-size: 13px;" onchange="fetchAuditLogs()">
+                            <option value="">全部操作</option>
+                            <option value="CREATE_TASK">创建任务</option>
+                            <option value="UPDATE_CONFIG">更新配置</option>
+                            <option value="LAUNCH_TASK">启动任务</option>
+                            <option value="PAUSE_TASK">暂停任务</option>
+                            <option value="RESUME_TASK">恢复任务</option>
+                            <option value="STOP_TASK">停止任务</option>
+                            <option value="DELETE_TASK">删除任务</option>
+                            <option value="RETRY_TASK">重试任务</option>
+                            <option value="FAILOVER_TASK">故障切换</option>
+                            <option value="LOGIN">登录</option>
+                            <option value="LOGOUT">登出</option>
+                        </select>
+                        <button class="btn-primary" onclick="fetchAuditLogs()" style="font-size: 13px;">刷新</button>
+                    </div>
+                </header>
+                <div style="padding: 20px;">
+                    <div style="background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #fafafa; border-bottom: 1px solid #e8e8e8;">
+                                    <th style="padding: 12px; text-align: left;">时间</th>
+                                    <th style="padding: 12px; text-align: left;">用户</th>
+                                    <th style="padding: 12px; text-align: left;">操作</th>
+                                    <th style="padding: 12px; text-align: left;">任务名称</th>
+                                    <th style="padding: 12px; text-align: left;">结果</th>
+                                    <th style="padding: 12px; text-align: left;">详情</th>
+                                    <th style="padding: 12px; text-align: left;">IP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditLogTableBody">
+                                <tr><td colspan="7" style="padding: 24px; text-align: center; color: #999;">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="auditPagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px; color: #666;">
+                        <span id="auditPageInfo">-</span>
+                        <div>
+                            <button class="btn-secondary" id="auditPrevBtn" onclick="auditPrevPage()" style="margin-right: 8px; font-size: 13px;">上一页</button>
+                            <button class="btn-secondary" id="auditNextBtn" onclick="auditNextPage()" style="font-size: 13px;">下一页</button>
                         </div>
                     </div>
                 </div>
@@ -1989,6 +2640,132 @@
         </div>
     </div>
 
+    <!-- 创建订阅任务模态框 -->
+    <div class="modal" id="createSubscribeTaskModal">
+        <div class="modal-content" style="width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">创建订阅任务</h3>
+                <button class="modal-close" onclick="closeSubscribeModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
+                <div class="step-nav">
+                    <div class="step-item active" id="subStep1Nav" onclick="subGoToStep(1)">
+                        <span>1. 填写连接信息</span>
+                    </div>
+                    <div class="step-item" id="subStep2Nav" onclick="subGoToStep(2)">
+                        <span>2. 选择订阅对象</span>
+                    </div>
+                    <div class="step-item" id="subStep3Nav" onclick="subGoToStep(3)">
+                        <span>3. 校验检查</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: 连接信息 -->
+                <div class="step-content active" id="subStep1Content">
+                    <div class="form-group">
+                        <label class="form-label">任务名称</label>
+                        <input type="text" class="form-input" id="subscribeTaskName" placeholder="请输入订阅任务名称" style="max-width: 400px;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">源数据库连接</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div><input type="text" class="form-input" id="subSourceHost" placeholder="IP地址" oninput="subOnConnectionFieldChange()"></div>
+                            <div><input type="text" class="form-input" id="subSourcePort" placeholder="端口号" oninput="subOnConnectionFieldChange()"></div>
+                            <div><input type="text" class="form-input" id="subSourceUsername" placeholder="用户名" oninput="subOnConnectionFieldChange()"></div>
+                            <div><input type="password" class="form-input" id="subSourcePassword" placeholder="密码" oninput="subOnConnectionFieldChange()"></div>
+                        </div>
+                        <div id="subSourceDbNameRow" style="margin-top: 8px; display: none;">
+                            <input type="text" class="form-input" id="subSourceDbNameInput" placeholder="数据库名称（PG必填，如 test_db1）" oninput="subOnConnectionFieldChange()" style="max-width: 400px;">
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">PostgreSQL 为三层结构(db-schema-table)，请指定要订阅的数据库</div>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                            <label style="font-size: 13px; color: #333; font-weight: 500; margin-right: 8px;">源库类型</label>
+                            <select id="subscribeSourceType" style="height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 13px;" onchange="subOnSourceTypeChange()">
+                                <option value="mysql">MySQL</option>
+                                <option value="postgresql">PostgreSQL</option>
+                            </select>
+                            <button type="button" class="btn-test" id="subTestSourceBtn" onclick="subTestSourceConnection()">测试连接</button>
+                        </div>
+                        <div id="subSourceConnectionStatus" class="connection-status"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">下游 Kafka 连接</label>
+                        <input type="text" class="form-input" id="subscribeKafkaServers" placeholder="host1:9092,host2:9092" style="max-width: 500px;" oninput="subOnConnectionFieldChange()">
+                        <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                            <label style="font-size: 13px; color: #333; font-weight: 500; margin-right: 8px;">Topic策略</label>
+                            <select id="subscribeTopicStrategy" style="height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 13px;">
+                                <option value="TABLE">按表分区 (cdc.{taskId}.{db}.{table})</option>
+                                <option value="TASK">按任务统一 (cdc.{taskId})</option>
+                                <option value="GLOBAL">全局统一 (cdc.events)</option>
+                            </select>
+                            <label style="font-size: 13px; color: #333; font-weight: 500; margin-left: 12px; margin-right: 8px;">前缀</label>
+                            <input type="text" id="subscribeTopicPrefix" value="cdc" style="width: 80px; height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 13px;">
+                            <label style="font-size: 13px; color: #333; font-weight: 500; margin-left: 12px; margin-right: 8px;">消息格式</label>
+                            <select id="subscribeFormat" style="height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; font-size: 13px;">
+                                <option value="DEBEZIUM_JSON">Debezium JSON</option>
+                                <option value="SIMPLE_JSON">Simple JSON</option>
+                            </select>
+                            <button type="button" class="btn-test" id="subTestKafkaBtn" onclick="subTestKafkaConnection()">测试连接</button>
+                        </div>
+                        <div id="subKafkaConnectionStatus" class="connection-status"></div>
+                    </div>
+                </div>
+
+                <!-- Step 2: 选择订阅对象 -->
+                <div class="step-content" id="subStep2Content">
+                    <div class="sync-objects-container">
+                        <div class="sync-objects-panel">
+                            <div class="sync-objects-panel-header">源数据库对象列表</div>
+                            <div class="sync-objects-panel-body" id="subSourceObjectsList">
+                                <div class="empty-selection">请先填写源数据库连接并点击"下一步"</div>
+                            </div>
+                        </div>
+                        <div class="sync-objects-panel">
+                            <div class="sync-objects-panel-header">已选择的订阅对象</div>
+                            <div class="sync-objects-panel-body" id="subSelectedObjectsList">
+                                <div class="empty-selection">暂未选择任何对象</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: 校验检查 -->
+                <div class="step-content" id="subStep3Content">
+                    <div class="validation-container">
+                        <div class="validation-header">
+                            <span>数据订阅前校验</span>
+                            <button type="button" class="btn-test" id="subRunValidationBtn" onclick="subRunValidation()">开始校验</button>
+                        </div>
+                        <div class="validation-result" id="subValidationResult">
+                            <div class="validation-empty">请点击"开始校验"按钮进行数据订阅条件检查</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeSubscribeModal()">取消</button>
+                <button class="btn-default" id="subPrevBtn" style="display: none;" onclick="subGoToStep(subCurrentStep - 1)">上一步</button>
+                <button class="btn-confirm" id="subNextBtn" onclick="subNextStep()">下一步</button>
+                <button class="btn-confirm" id="subCreateBtn" style="display: none;" onclick="createSubscribeTask()">创建任务</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订阅任务详情模态框 -->
+    <div class="modal" id="subscribeDetailModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">订阅任务详情</h3>
+                <button class="modal-close" onclick="closeSubscribeDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="subscribeDetailContent">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeSubscribeDetailModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 创建灾备任务模态框 - 步骤1 -->
     <div class="modal" id="createDrTaskModal">
         <div class="modal-content" style="width: 500px;">
@@ -2144,7 +2921,7 @@
 
     <!-- 任务详情模态框 -->
     <div class="modal" id="taskDetailModal">
-        <div class="modal-content" style="width: 600px; max-height: 85vh;">
+        <div class="modal-content" style="width: 760px; max-height: 85vh;">
             <div class="modal-header">
                 <h3 class="modal-title">任务详情</h3>
                 <span class="modal-close" id="closeDetailModal">&times;</span>
@@ -2266,7 +3043,8 @@
             const user = getCurrentUser();
             if (!user) return;
             
-            const socket = new SockJS('http://localhost:8082/ws');
+            const token = localStorage.getItem('token') || '';
+            const socket = new SockJS('http://localhost:8082/ws?token=' + encodeURIComponent(token));
             stompClient = Stomp.over(socket);
             
             stompClient.connect({}, function(frame) {
@@ -2353,9 +3131,9 @@
                 } else if (isFailed) {
                     actionHtml = `<button class="action-btn" onclick="retryWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isStarting) {
-                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    actionHtml = `<button class="action-btn monitor" onclick="viewMetrics('${taskId}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isIncrementRunning) {
-                    actionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                    actionHtml = `<button class="action-btn monitor" onclick="viewMetrics('${taskId}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                 } else if (isPaused) {
                     actionHtml = `<button class="action-btn" onclick="resumeWorkflow('${taskId}')">恢复</button>`;
                 } else if (isCompleted) {
@@ -2411,9 +3189,9 @@
                     } else if (data.status === 'FAILED') {
                         drActionHtml = `<button class="action-btn" onclick="retryWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                     } else if (data.status === 'STARTING' || data.status === 'FULL_MIGRATING') {
-                        drActionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                        drActionHtml = `<button class="action-btn monitor" onclick="viewMetrics('${taskId}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                     } else if (data.status === 'INCREMENT_RUNNING') {
-                        drActionHtml = `<button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
+                        drActionHtml = `<button class="action-btn monitor" onclick="viewMetrics('${taskId}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${taskId}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                     } else if (data.status === 'PAUSED') {
                         drActionHtml = `<button class="action-btn" onclick="resumeWorkflow('${taskId}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${taskId}')">结束</button>`;
                     } else if (data.status === 'COMPLETED' || data.status === 'FULL_COMPLETED') {
@@ -2754,9 +3532,9 @@
                         workflow.status === 'FAILED' ? 
                             `<button class="action-btn" onclick="retryWorkflow('${workflow.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
                             (workflow.status === 'STARTING' || workflow.status === 'FULL_MIGRATING') ? 
-                            `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
+                            `<button class="action-btn monitor" onclick="viewMetrics('${workflow.id}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` : 
                             workflow.status === 'INCREMENT_RUNNING' ?
-                            `<button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` :
+                            `<button class="action-btn monitor" onclick="viewMetrics('${workflow.id}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${workflow.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${workflow.id}')">结束</button>` :
                             workflow.status === 'PAUSED' ?
                             `<button class="action-btn" onclick="resumeWorkflow('${workflow.id}')">恢复</button>` :
                             (workflow.status === 'COMPLETED' || workflow.status === 'FULL_COMPLETED') ? 
@@ -4042,9 +4820,27 @@
                             ` : ''}
                         </div>
                         ${logsHtml}
+                        <div style="margin-top: 20px; border-top: 2px solid #1890ff; padding-top: 16px;">
+                            <div style="font-size: 14px; font-weight: 600; color: #1890ff; margin-bottom: 12px;">高级监控</div>
+                            <div class="adv-tabs">
+                                <div class="adv-tab active" onclick="switchAdvTab('${task.id}', 'checkpoint')">断点续传</div>
+                                <div class="adv-tab" onclick="switchAdvTab('${task.id}', 'latency')">延迟热力图</div>
+                                <div class="adv-tab" onclick="switchAdvTab('${task.id}', 'ddl')">在线DDL</div>
+                                <div class="adv-tab" onclick="switchAdvTab('${task.id}', 'fanout')">多目标分发</div>
+                            </div>
+                            <div class="adv-tab-content active" id="advTab-checkpoint">
+                                <div class="adv-empty"><div class="adv-empty-icon">○</div>加载中...</div>
+                            </div>
+                            <div class="adv-tab-content" id="advTab-latency"></div>
+                            <div class="adv-tab-content" id="advTab-ddl"></div>
+                            <div class="adv-tab-content" id="advTab-fanout"></div>
+                        </div>
                     `;
                     
+                    _currentDetailTaskId = task.id;
+                    _currentDetailLogs = task.logs || [];
                     document.getElementById('taskDetailModal').classList.add('show');
+                    loadAdvTab(task.id, 'checkpoint');
                 } else {
                     showNotification(result.message || '获取任务详情失败', 'error');
                 }
@@ -4056,7 +4852,367 @@
         
         // 关闭详情模态框
         function closeDetailModal() {
+            stopAdvRefresh();
             document.getElementById('taskDetailModal').classList.remove('show');
+        }
+
+        // ============ 高级监控功能 ============
+        let _currentDetailTaskId = null;
+        let _currentDetailLogs = [];
+        let _advRefreshTimer = null;
+        let _advCurrentTab = 'checkpoint';
+
+        function switchAdvTab(taskId, tabName) {
+            stopAdvRefresh();
+            _advCurrentTab = tabName;
+            const tabs = document.querySelectorAll('.adv-tab');
+            const tabMap = { checkpoint: 0, latency: 1, ddl: 2, fanout: 3 };
+            tabs.forEach(t => t.classList.remove('active'));
+            if (tabs[tabMap[tabName]]) tabs[tabMap[tabName]].classList.add('active');
+            document.querySelectorAll('.adv-tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('advTab-' + tabName).classList.add('active');
+            loadAdvTab(taskId, tabName);
+        }
+
+        async function loadAdvTab(taskId, tabName) {
+            if (tabName === 'checkpoint') {
+                await loadCheckpoint(taskId);
+            } else if (tabName === 'latency') {
+                await loadLatency(taskId);
+            } else if (tabName === 'ddl') {
+                renderDdlHistory(_currentDetailLogs);
+            } else if (tabName === 'fanout') {
+                await loadFanout(taskId);
+            }
+            startAdvRefresh(taskId, tabName);
+        }
+
+        function startAdvRefresh(taskId, tabName) {
+            stopAdvRefresh();
+            if (tabName === 'ddl') return; // DDL历史无需自动刷新
+            _advRefreshTimer = setInterval(async () => {
+                if (tabName === 'checkpoint') await loadCheckpoint(taskId);
+                else if (tabName === 'latency') await loadLatency(taskId);
+                else if (tabName === 'fanout') await loadFanout(taskId);
+            }, 10000);
+        }
+
+        function stopAdvRefresh() {
+            if (_advRefreshTimer) {
+                clearInterval(_advRefreshTimer);
+                _advRefreshTimer = null;
+            }
+        }
+
+        // ---- 断点续传可视化 ----
+        async function loadCheckpoint(taskId) {
+            const el = document.getElementById('advTab-checkpoint');
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/checkpoint/${taskId}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await resp.json();
+                renderCheckpoint(data);
+            } catch (e) {
+                el.innerHTML = `<div class="adv-empty"><div class="adv-empty-icon">⚠</div>加载失败: ${e.message}<br><span style="font-size:11px;color:#ccc;">请确认 Agent (端口8083) 正在运行</span></div>`;
+            }
+        }
+
+        function renderCheckpoint(data) {
+            const el = document.getElementById('advTab-checkpoint');
+            const d = data.data || data;
+            if (!d) {
+                el.innerHTML = '<div class="adv-empty"><div class="adv-empty-icon">○</div>暂无断点续传数据</div>';
+                return;
+            }
+            const binlog = d.binlog || {};
+            const thl = d.thl || {};
+            const cp = d.checkpoint || {};
+            const gaps = d.gaps || {};
+            const rpo = d.rpo_ms;
+            const rto = d.rto_ms;
+
+            const binlogStatus = binlog.available ? 'OK' : 'UNKNOWN';
+            const thlStatus = thl.available ? 'OK' : 'UNKNOWN';
+            const cpStatus = cp.available ? 'OK' : 'UNKNOWN';
+            const pendingEvents = gaps.pending_events != null ? gaps.pending_events : '-';
+            const binlogGap = gaps.binlog_gap != null ? gaps.binlog_gap : '-';
+
+            el.innerHTML = `
+                <div class="adv-metric-grid">
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">Binlog 位点</div>
+                        <div class="adv-metric-value" style="font-size:13px;font-family:monospace;">${binlog.file || '-'}</div>
+                        <div class="adv-metric-sub">pos: ${binlog.position || '-'}</div>
+                        <div style="margin-top:4px;">${advStatusBadge(binlogStatus)}</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">THL Seqno</div>
+                        <div class="adv-metric-value">${thl.seqno != null ? thl.seqno : '-'}</div>
+                        <div class="adv-metric-sub">${thl.available ? '可用' : '不可用'}</div>
+                        <div style="margin-top:4px;">${advStatusBadge(thlStatus)}</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">Checkpoint</div>
+                        <div class="adv-metric-value">${cp.seqno != null ? cp.seqno : '-'}</div>
+                        <div class="adv-metric-sub">${cp.updated_at || '-'}</div>
+                        <div style="margin-top:4px;">${advStatusBadge(cpStatus)}</div>
+                    </div>
+                </div>
+                <div class="adv-metric-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">待应用事件数</div>
+                        <div class="adv-metric-value ${pendingEvents > 100 ? 'bad' : ''}" style="${pendingEvents > 100 ? 'color:#f5222d;' : ''}">${pendingEvents}</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">Binlog 位点差距</div>
+                        <div class="adv-metric-value">${binlogGap}</div>
+                    </div>
+                </div>
+                <div class="adv-metric-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="adv-metric-card" style="background:#e6f7ff;border-color:#91d5ff;">
+                        <div class="adv-metric-label">RPO (数据丢失容忍)</div>
+                        <div class="adv-metric-value" style="color:#1890ff;">${rpo != null ? rpo + ' ms' : '-'}</div>
+                    </div>
+                    <div class="adv-metric-card" style="background:#fff7e6;border-color:#ffd591;">
+                        <div class="adv-metric-label">RTO (恢复时间)</div>
+                        <div class="adv-metric-value" style="color:#fa8c16;">${rto != null ? rto + ' ms' : '-'}</div>
+                    </div>
+                </div>
+                <div class="adv-link-flow">
+                    <div class="adv-link-node ${binlog.available ? 'ok' : ''}">capture</div>
+                    <span class="adv-link-arrow">→</span>
+                    <div class="adv-link-node ${thl.available ? 'ok' : ''}">extract</div>
+                    <span class="adv-link-arrow">→</span>
+                    <div class="adv-link-node ${cp.available ? 'ok' : ''}">increment</div>
+                    <span class="adv-link-arrow">→</span>
+                    <div class="adv-link-node ${cp.available ? 'ok' : ''}">checkpoint</div>
+                </div>
+            `;
+        }
+
+        // ---- 同步延迟热力图 ----
+        async function loadLatency(taskId) {
+            const el = document.getElementById('advTab-latency');
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/table-latency/${taskId}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await resp.json();
+                renderLatency(data);
+            } catch (e) {
+                el.innerHTML = `<div class="adv-empty"><div class="adv-empty-icon">⚠</div>加载失败: ${e.message}<br><span style="font-size:11px;color:#ccc;">请确认 Agent (端口8083) 正在运行</span></div>`;
+            }
+        }
+
+        function renderLatency(data) {
+            const el = document.getElementById('advTab-latency');
+            const d = data.data || data;
+            const tables = d.tables || [];
+            if (!tables.length) {
+                el.innerHTML = '<div class="adv-empty"><div class="adv-empty-icon">○</div>暂无表级延迟数据</div>';
+                return;
+            }
+            const summary = d.summary || {};
+            const totalTables = summary.total_tables || tables.length;
+            const avgLatency = summary.avg_latency_ms || 0;
+            const maxLatency = summary.max_latency_ms || 0;
+            const bottleneck = summary.bottleneck_table || '-';
+
+            const rows = tables.map(t => {
+                const p50 = t.p50_ms || 0;
+                const p95 = t.p95_ms || 0;
+                const p99 = t.p99_ms || 0;
+                const maxV = t.max_ms || 0;
+                return `
+                    <tr onclick="toggleLatencyChart('${t.table}')" style="cursor:pointer;">
+                        <td style="font-weight:500;">${t.table}</td>
+                        <td>${advLatencyCell(p50)}</td>
+                        <td>${advLatencyCell(p95)}</td>
+                        <td>${advLatencyCell(p99)}</td>
+                        <td>${advLatencyCell(maxV)}</td>
+                        <td>${advLatencyLevel(p95)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            el.innerHTML = `
+                <div class="adv-metric-grid">
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">总表数</div>
+                        <div class="adv-metric-value">${totalTables}</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">平均延迟</div>
+                        <div class="adv-metric-value">${avgLatency} ms</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">最大延迟</div>
+                        <div class="adv-metric-value" style="color:#f5222d;">${maxLatency} ms</div>
+                        <div class="adv-metric-sub">瓶颈表: ${bottleneck}</div>
+                    </div>
+                </div>
+                <table class="adv-heatmap-table">
+                    <thead>
+                        <tr>
+                            <th>表名</th><th>P50</th><th>P95</th><th>P99</th><th>最大</th><th>级别</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <div id="latencyChartArea" style="margin-top:12px;display:none;"></div>
+            `;
+        }
+
+        function toggleLatencyChart(tableName) {
+            const area = document.getElementById('latencyChartArea');
+            if (area.style.display === 'none') {
+                area.style.display = 'block';
+                area.innerHTML = `<div style="padding:12px;background:#fafafa;border-radius:6px;font-size:12px;color:#666;">表 <b>${tableName}</b> 的延迟趋势图（需后端补充历史数据接口）</div>`;
+            } else {
+                area.style.display = 'none';
+            }
+        }
+
+        // ---- 在线DDL变更历史 ----
+        function renderDdlHistory(logs) {
+            const el = document.getElementById('advTab-ddl');
+            const keywords = ['影子表', 'ghost', '_new', '_ghost_', 'DDL', 'ALTER', 'CREATE TABLE', 'RENAME', 'cutover', '影子', '在线DDL'];
+            const ddlLogs = (logs || []).filter(log =>
+                keywords.some(k => (log.message || '').includes(k))
+            ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            if (!ddlLogs.length) {
+                el.innerHTML = `
+                    <div class="adv-empty"><div class="adv-empty-icon">○</div>暂无在线DDL变更记录</div>
+                    <div style="font-size:12px;color:#999;padding:0 12px;">
+                        <b>说明：</b>系统自动识别 gh-ost/pt-osc 风格的影子表（<code>_tbl_ghost_</code> / <code>_tbl_new</code>），将 CREATE 转换为 ALTER，跳过 RENAME/DML/DROP。
+                    </div>
+                `;
+                return;
+            }
+
+            const items = ddlLogs.map(log => {
+                const msg = log.message || '';
+                let status = '✓ 已应用';
+                let statusColor = '#52c41a';
+                if (msg.includes('跳过') || msg.includes('SKIP')) {
+                    status = '⏸ 已跳过';
+                    statusColor = '#faad14';
+                } else if (msg.includes('失败') || msg.includes('error')) {
+                    status = '✗ 失败';
+                    statusColor = '#f5222d';
+                }
+                return `
+                    <div class="adv-timeline-item">
+                        <div class="adv-timeline-time">${formatDateTime(log.created_at)} · ${log.level || 'INFO'}</div>
+                        <div class="adv-timeline-content">${msg}</div>
+                        <div style="margin-top:2px;font-size:12px;color:${statusColor};font-weight:500;">${status}</div>
+                    </div>
+                `;
+            }).join('');
+
+            el.innerHTML = `
+                <div style="font-size:12px;color:#666;margin-bottom:12px;">共 ${ddlLogs.length} 条DDL变更记录</div>
+                <div class="adv-timeline">${items}</div>
+            `;
+        }
+
+        // ---- 多目标库分发 ----
+        async function loadFanout(taskId) {
+            const el = document.getElementById('advTab-fanout');
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/fanout/${taskId}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await resp.json();
+                renderFanout(data);
+            } catch (e) {
+                el.innerHTML = `<div class="adv-empty"><div class="adv-empty-icon">⚠</div>加载失败: ${e.message}<br><span style="font-size:11px;color:#ccc;">请确认 Agent (端口8083) 正在运行</span></div>`;
+            }
+        }
+
+        function renderFanout(data) {
+            const el = document.getElementById('advTab-fanout');
+            const d = data.data || data;
+            if (!d || (!d.targets && !d.target_count)) {
+                el.innerHTML = `
+                    <div class="adv-empty"><div class="adv-empty-icon">○</div>该任务未启用多目标分发</div>
+                    <div style="font-size:12px;color:#999;padding:0 12px;">在任务配置中开启 fanout 并添加多个目标库即可使用此功能。</div>
+                `;
+                return;
+            }
+            const targets = d.targets || [];
+            const total = d.total_dispatched || 0;
+            const success = d.total_success || 0;
+            const failure = d.total_failure || 0;
+            const targetCount = d.target_count || targets.length;
+            const parallelism = d.parallelism || '-';
+
+            const targetRows = targets.map(t => {
+                const tSuccess = t.success_count || 0;
+                const tFailure = t.failure_count || 0;
+                const tLatency = t.avg_latency_ms || 0;
+                const rate = (tSuccess + tFailure) > 0 ? (tSuccess / (tSuccess + tFailure) * 100).toFixed(1) : '100.0';
+                const rowColor = tFailure > 0 ? '#fff2f0' : '';
+                const level = rate >= 99 ? '🟢' : rate >= 95 ? '🟡' : '🔴';
+                return `
+                    <tr style="background:${rowColor};">
+                        <td style="font-weight:500;">${t.name || t.id || '-'}</td>
+                        <td style="font-family:monospace;font-size:11px;">${t.host || '-'}:${t.port || '-'}</td>
+                        <td style="color:#52c41a;">${tSuccess}</td>
+                        <td style="color:${tFailure > 0 ? '#f5222d' : '#999'};">${tFailure}</td>
+                        <td>${tLatency} ms</td>
+                        <td>${rate}%</td>
+                        <td>${level}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            el.innerHTML = `
+                <div class="adv-metric-grid">
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">总分发数</div>
+                        <div class="adv-metric-value">${total}</div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">成功 / 失败</div>
+                        <div class="adv-metric-value"><span style="color:#52c41a;">${success}</span> / <span style="color:#f5222d;">${failure}</span></div>
+                    </div>
+                    <div class="adv-metric-card">
+                        <div class="adv-metric-label">目标数 / 并行度</div>
+                        <div class="adv-metric-value">${targetCount} / ${parallelism}</div>
+                    </div>
+                </div>
+                <table class="adv-heatmap-table">
+                    <thead>
+                        <tr><th>目标库</th><th>主机</th><th>成功</th><th>失败</th><th>平均延迟</th><th>成功率</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>${targetRows || '<tr><td colspan="7" style="text-align:center;color:#999;">暂无目标库数据</td></tr>'}</tbody>
+                </table>
+            `;
+        }
+
+        // ---- 辅助函数 ----
+        function advStatusBadge(status) {
+            return `<span class="adv-status-badge adv-status-${status}">${status}</span>`;
+        }
+
+        function advLatencyCell(ms) {
+            const color = advLatencyColor(ms);
+            return `<span class="adv-heatmap-cell" style="background:${color}20;color:${color};">${ms}ms</span>`;
+        }
+
+        function advLatencyColor(ms) {
+            if (ms < 50) return '#52c41a';
+            if (ms < 200) return '#faad14';
+            return '#f5222d';
+        }
+
+        function advLatencyLevel(p95) {
+            if (p95 < 50) return '<span style="color:#52c41a;">正常</span>';
+            if (p95 < 200) return '<span style="color:#faad14;">警告</span>';
+            return '<span style="color:#f5222d;">严重</span>';
         }
         
         // 删除工作流
@@ -5386,6 +6542,8 @@
         let availableWorkflows = [];
         let _validationPollingTimer = null;
         
+        let _pendingMetricsTaskId = null;
+
         function switchPage(page) {
             console.log('switchPage called with:', page);
             const menuItems = document.querySelectorAll('.menu-item');
@@ -5394,19 +6552,140 @@
             document.getElementById('syncPage').style.display = 'none';
             document.getElementById('validationPage').style.display = 'none';
             document.getElementById('drPage').style.display = 'none';
+            document.getElementById('subscribePage').style.display = 'none';
+            document.getElementById('metricsPage').style.display = 'none';
+            const auditPage = document.getElementById('auditPage');
+            if (auditPage) auditPage.style.display = 'none';
+            stopMetricsAutoRefresh();
             
             if (page === 'sync') {
                 document.getElementById('syncPage').style.display = 'block';
                 menuItems[0].classList.add('active');
             } else if (page === 'validation') {
                 document.getElementById('validationPage').style.display = 'block';
-                menuItems[2].classList.add('active');
+                menuItems[3].classList.add('active');
                 fetchValidationTasks();
             } else if (page === 'dr') {
                 document.getElementById('drPage').style.display = 'block';
                 menuItems[1].classList.add('active');
                 fetchDrTasks();
+            } else if (page === 'subscribe') {
+                document.getElementById('subscribePage').style.display = 'block';
+                menuItems[2].classList.add('active');
+                fetchSubscribeTasks();
+            } else if (page === 'metrics') {
+                document.getElementById('metricsPage').style.display = 'block';
+                menuItems[4].classList.add('active');
+                loadMetricsTaskList().then(() => {
+                    if (_pendingMetricsTaskId) {
+                        document.getElementById('metricsTaskSelect').value = _pendingMetricsTaskId;
+                        const task = _metricsTaskList.find(t => t.id === _pendingMetricsTaskId);
+                        if (task) {
+                            document.getElementById('metricsTaskSearch').value = _getMetricsTaskLabel(task);
+                        }
+                        _pendingMetricsTaskId = null;
+                        onMetricsTaskChange();
+                    }
+                });
+                if (document.getElementById('metricsAutoRefresh').checked) {
+                    startMetricsAutoRefresh();
+                }
+            } else if (page === 'audit') {
+                if (auditPage) {
+                    auditPage.style.display = 'block';
+                    menuItems[5].classList.add('active');
+                    fetchAuditLogs();
+                }
             }
+        }
+
+        function viewMetrics(taskId) {
+            _pendingMetricsTaskId = taskId;
+            switchPage('metrics');
+        }
+
+        // ============ 审计日志 ============
+        let _auditCurrentPage = 0;
+        const _auditPageSize = 20;
+
+        const _auditActionLabels = {
+            CREATE_TASK: '创建任务', UPDATE_CONFIG: '更新配置', LAUNCH_TASK: '启动任务',
+            PAUSE_TASK: '暂停任务', RESUME_TASK: '恢复任务', STOP_TASK: '停止任务',
+            DELETE_TASK: '删除任务', RETRY_TASK: '重试任务', FAILOVER_TASK: '故障切换',
+            LOGIN: '登录', LOGOUT: '登出'
+        };
+
+        async function fetchAuditLogs() {
+            const action = document.getElementById('auditActionFilter').value;
+            const params = new URLSearchParams({
+                page: _auditCurrentPage,
+                size: _auditPageSize
+            });
+            if (action) params.append('action', action);
+
+            try {
+                const res = await fetch('/api/audit-logs?' + params.toString(), {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    renderAuditLogs(data.data || []);
+                    document.getElementById('auditPageInfo').textContent =
+                        `共 ${data.total} 条，第 ${data.page + 1}/${data.totalPages || 1} 页`;
+                    document.getElementById('auditPrevBtn').disabled = data.page === 0;
+                    document.getElementById('auditNextBtn').disabled = data.page + 1 >= (data.totalPages || 1);
+                } else {
+                    document.getElementById('auditLogTableBody').innerHTML =
+                        `<tr><td colspan="7" style="padding:24px;text-align:center;color:#f5222d;">${data.message || '加载失败'}</td></tr>`;
+                }
+            } catch (e) {
+                document.getElementById('auditLogTableBody').innerHTML =
+                    `<tr><td colspan="7" style="padding:24px;text-align:center;color:#f5222d;">加载失败: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderAuditLogs(logs) {
+            const tbody = document.getElementById('auditLogTableBody');
+            if (!logs.length) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding:24px;text-align:center;color:#999;">暂无审计日志</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = logs.map(log => {
+                const time = log.createdAt ? new Date(log.createdAt).toLocaleString('zh-CN') : '-';
+                const resultBadge = log.result === 'SUCCESS'
+                    ? '<span style="color:#52c41a;">成功</span>'
+                    : '<span style="color:#f5222d;">失败</span>';
+                const details = log.details ? (log.details.length > 80 ? log.details.substring(0, 80) + '...' : log.details) : '-';
+                const error = log.errorMessage ? `<div style="color:#f5222d;font-size:12px;">${escapeHtml(log.errorMessage)}</div>` : '';
+                return `<tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:12px;">${time}</td>
+                    <td style="padding:12px;">${escapeHtml(log.username || '-')}</td>
+                    <td style="padding:12px;"><span style="background:#e6f7ff;color:#1890ff;padding:2px 8px;border-radius:4px;font-size:12px;">${_auditActionLabels[log.action] || log.action}</span></td>
+                    <td style="padding:12px;">${escapeHtml(log.workflowName || log.workflowId || '-')}</td>
+                    <td style="padding:12px;">${resultBadge}</td>
+                    <td style="padding:12px;max-width:300px;word-break:break-all;">${escapeHtml(details)}${error}</td>
+                    <td style="padding:12px;">${escapeHtml(log.clientIp || '-')}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[c]);
+        }
+
+        function auditPrevPage() {
+            if (_auditCurrentPage > 0) {
+                _auditCurrentPage--;
+                fetchAuditLogs();
+            }
+        }
+
+        function auditNextPage() {
+            _auditCurrentPage++;
+            fetchAuditLogs();
         }
         
         function startValidationPolling() {
@@ -5719,6 +6998,7 @@
         }
         
         let _compareResultData = null;
+        let _compareResultCacheKey = null;
         let _mismatchTableVisible = 5;
         let _diffVisibleMap = {};
         let _diffPageMap = {};
@@ -5728,8 +7008,10 @@
                 const result = JSON.parse(compareResultStr);
                 if (!result.tables || result.tables.length === 0) return '';
                 
-                if (!_compareResultData || _compareResultData.sessionId !== result.sessionId) {
+                const cacheKey = result.sessionId || ('rowCount_' + result.tables.length + '_' + (result.tables[0] ? result.tables[0].sourceTable : ''));
+                if (!_compareResultData || _compareResultCacheKey !== cacheKey) {
                     _compareResultData = result;
+                    _compareResultCacheKey = cacheKey;
                     _mismatchTableVisible = 5;
                     _diffVisibleMap = {};
                     _diffPageMap = {};
@@ -5795,13 +7077,14 @@
 
         function _buildMismatchTableCard(table, index) {
             const diffCount = table.diffCount || (table.diffs ? table.diffs.length : 0);
+            const hasDiffs = table.diffs && table.diffs.length > 0;
             const isExpanded = _diffVisibleMap[index] === true;
             const currentPage = _diffPageMap[index] || 0;
             const pageSize = 10;
             
             let html = `<div style="border: 1px solid #e8e8e8; border-radius: 4px; margin-bottom: 8px; overflow: hidden;">`;
             
-            html += `<div style="padding: 10px 12px; background: #fafafa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="_toggleDiffExpand(${index})">`;
+            html += `<div style="padding: 10px 12px; background: #fafafa; ${hasDiffs ? 'cursor: pointer;' : ''} display: flex; justify-content: space-between; align-items: center;" ${hasDiffs ? `onclick="_toggleDiffExpand(${index})"` : ''}>`;
             html += `<div style="display: flex; align-items: center; gap: 8px;">`;
             html += `<span style="font-weight: 500; font-size: 13px;">${table.sourceTable}</span>`;
             html += `<span style="background: #fff1f0; color: #f5222d; padding: 1px 6px; border-radius: 3px; font-size: 11px;">不一致</span>`;
@@ -5810,7 +7093,9 @@
             html += `<span>源: ${table.sourceRowCount || 0}行</span>`;
             html += `<span>目标: ${table.targetRowCount || 0}行</span>`;
             html += `<span style="color: #f5222d; font-weight: 500;">差异: ${diffCount}行</span>`;
-            html += `<span style="color: #1890ff; font-size: 11px;">${isExpanded ? '收起 ▴' : '查看差异 ▾'}</span>`;
+            if (hasDiffs) {
+                html += `<span style="color: #1890ff; font-size: 11px;">${isExpanded ? '收起 ▴' : '查看差异 ▾'}</span>`;
+            }
             html += `</div>`;
             html += `</div>`;
             
@@ -6170,6 +7455,7 @@
                 fetchWorkflows();
                 connectWebSocket();
                 initFilterDropdown();
+                initMetricsTaskSearch();
 
                 setInterval(() => {
                     const token = localStorage.getItem('token');
@@ -6354,9 +7640,9 @@
                             task.status === 'FAILED' ? 
                                 `<button class="action-btn" onclick="retryWorkflow('${task.id}')">恢复</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` : 
                             (task.status === 'STARTING' || task.status === 'FULL_MIGRATING') ? 
-                                `<button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` : 
+                                `<button class="action-btn monitor" onclick="viewMetrics('${task.id}')">监控</button><button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` : 
                             task.status === 'INCREMENT_RUNNING' ?
-                                `<button class="action-btn" style="color: #1890ff; border-color: #1890ff;" onclick="confirmDrFailover('${task.id}', '${task.name.replace(/'/g, "\\'")}')">主备倒换</button><button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` :
+                                `<button class="action-btn monitor" onclick="viewMetrics('${task.id}')">监控</button><button class="action-btn" style="color: #1890ff; border-color: #1890ff;" onclick="confirmDrFailover('${task.id}', '${task.name.replace(/'/g, "\\'")}')">主备倒换</button><button class="action-btn" onclick="pauseWorkflow('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopWorkflow('${task.id}')">结束</button>` :
                             task.status === 'SWITCHING' ?
                                 `<span style="color: #1890ff; font-size: 12px;">倒换中...</span>` :
                             task.status === 'PAUSED' ?
@@ -6760,6 +8046,1647 @@
             } catch (e) {
                 console.error('Failed to fetch DR tasks:', e);
             }
+        }
+
+        let _metricsAutoRefreshTimer = null;
+        let _metricsCharts = {};
+        let _metricsHistory = {
+            captureRate: [],
+            e2eLatency: [],
+            queueDepth: [],
+            checkpointLag: [],
+            timestamps: []
+        };
+        const METRICS_HISTORY_MAX = 360;
+
+        let _metricsTaskList = [];
+
+        const _metricsTaskTypeMap = {
+            'SYNC': '同步',
+            'SUBSCRIBE': '订阅',
+            'DR': '容灾'
+        };
+
+        function _getMetricsTaskLabel(task) {
+            const typeLabel = _metricsTaskTypeMap[task.taskType] || task.taskType || '同步';
+            const name = task.name || task.taskName || task.id || '';
+            return `[${typeLabel}] ${name}`;
+        }
+
+        function _renderMetricsTaskDropdown(filter) {
+            const dropdown = document.getElementById('metricsTaskDropdown');
+            const keyword = (filter || '').toLowerCase().trim();
+            let filtered = _metricsTaskList;
+            if (keyword) {
+                filtered = _metricsTaskList.filter(t => {
+                    const label = _getMetricsTaskLabel(t).toLowerCase();
+                    const id = (t.id || '').toLowerCase();
+                    return label.includes(keyword) || id.includes(keyword);
+                });
+            } else {
+                filtered = _metricsTaskList.slice(0, 5);
+            }
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 10px 12px; color: #999; font-size: 13px;">无匹配任务</div>';
+            } else {
+                dropdown.innerHTML = filtered.map(t => {
+                    const typeLabel = _metricsTaskTypeMap[t.taskType] || t.taskType || '同步';
+                    const typeColor = t.taskType === 'SUBSCRIBE' ? '#52c41a' : t.taskType === 'DR' ? '#722ed1' : '#1890ff';
+                    return `<div class="metrics-task-option" data-id="${t.id}" style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                        <span style="background: ${typeColor}15; color: ${typeColor}; padding: 1px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${typeLabel}</span>
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.name || t.id}</span>
+                        <span style="color: #999; font-size: 11px; margin-left: auto; flex-shrink: 0;">${t.status || ''}</span>
+                    </div>`;
+                }).join('');
+            }
+            dropdown.style.display = 'block';
+
+            dropdown.querySelectorAll('.metrics-task-option').forEach(opt => {
+                opt.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    const taskId = this.dataset.id;
+                    const task = _metricsTaskList.find(t => t.id === taskId);
+                    document.getElementById('metricsTaskSelect').value = taskId;
+                    document.getElementById('metricsTaskSearch').value = task ? _getMetricsTaskLabel(task) : taskId;
+                    dropdown.style.display = 'none';
+                    onMetricsTaskChange();
+                });
+                opt.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f5f5f5';
+                });
+                opt.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+            });
+        }
+
+        async function loadMetricsTaskList() {
+            const currentVal = document.getElementById('metricsTaskSelect').value;
+            _metricsTaskList = [];
+            const taskMap = new Map();
+
+            // 从 Admin API 获取所有任务
+            try {
+                const resp = await fetchWithAuth(`${API_BASE_URL}/workflows?page=1&pageSize=200`);
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    const tasks = data.data?.list || data.records || data.data || data.items || [];
+                    (Array.isArray(tasks) ? tasks : []).forEach(task => {
+                        const tid = task.id || task.taskId;
+                        if (tid && !taskMap.has(tid)) {
+                            taskMap.set(tid, {
+                                id: tid,
+                                name: task.name || task.taskName || tid,
+                                taskType: task.task_type || task.taskType || 'SYNC',
+                                status: task.status || ''
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Admin API not available for task list');
+            }
+
+            // 从 Agent status API 获取运行中的任务
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/agent/status`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.tasks && Array.isArray(data.tasks)) {
+                        data.tasks.forEach(task => {
+                            if (!taskMap.has(task.taskId)) {
+                                taskMap.set(task.taskId, {
+                                    id: task.taskId,
+                                    name: task.taskId,
+                                    taskType: task.taskType || 'SYNC',
+                                    status: task.status || 'RUNNING'
+                                });
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Agent status API not available for task list');
+            }
+
+            // 从 Metrics API 获取有监控数据的任务
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/metrics`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.tasks && Array.isArray(data.tasks)) {
+                        data.tasks.forEach(task => {
+                            const tid = task.taskId;
+                            if (tid && !taskMap.has(tid)) {
+                                taskMap.set(tid, {
+                                    id: tid,
+                                    name: tid,
+                                    taskType: task.taskType || 'SYNC',
+                                    status: 'RUNNING'
+                                });
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Metrics API not available for task list');
+            }
+
+            // 只保留有监控数据的任务（运行中的任务）
+            _metricsTaskList = Array.from(taskMap.values()).filter(t => {
+                const s = (t.status || '').toUpperCase();
+                return s === 'INCREMENT_RUNNING' || s === 'SUBSCRIBE_RUNNING' || s === 'FULL_MIGRATING' || s === 'RUNNING' || s === 'STARTING' || s === 'PENDING';
+            });
+
+            // 恢复之前选中的值
+            if (currentVal) {
+                document.getElementById('metricsTaskSelect').value = currentVal;
+                const task = _metricsTaskList.find(t => t.id === currentVal);
+                if (task) {
+                    document.getElementById('metricsTaskSearch').value = _getMetricsTaskLabel(task);
+                }
+            }
+        }
+
+        function onMetricsTaskChange() {
+            const taskId = document.getElementById('metricsTaskSelect').value;
+            if (taskId) {
+                document.getElementById('metricsEmpty').style.display = 'none';
+                document.getElementById('metricsContent').style.display = 'block';
+                _metricsHistory = { captureRate: [], e2eLatency: [], queueDepth: [], checkpointLag: [], timestamps: [] };
+                loadMetricsHistory(taskId);
+                refreshMetrics();
+            } else {
+                document.getElementById('metricsEmpty').style.display = 'block';
+                document.getElementById('metricsContent').style.display = 'none';
+            }
+        }
+
+        function initMetricsTaskSearch() {
+            const searchInput = document.getElementById('metricsTaskSearch');
+            const dropdown = document.getElementById('metricsTaskDropdown');
+
+            searchInput.addEventListener('focus', function() {
+                if (_metricsTaskList.length === 0) {
+                    loadMetricsTaskList().then(() => _renderMetricsTaskDropdown(this.value));
+                } else {
+                    _renderMetricsTaskDropdown(this.value);
+                }
+            });
+
+            searchInput.addEventListener('input', function() {
+                _renderMetricsTaskDropdown(this.value);
+            });
+
+            searchInput.addEventListener('blur', function() {
+                setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    this.blur();
+                }
+            });
+        }
+
+        const AGENT_BASE_URL = 'http://localhost:8083';
+
+        async function loadMetricsHistory(taskId) {
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/metrics/${taskId}/history?last=1h&interval=30000`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success && data.metrics && data.metrics.length > 0) {
+                        _metricsHistory = { captureRate: [], e2eLatency: [], queueDepth: [], checkpointLag: [], timestamps: [] };
+                        for (const point of data.metrics) {
+                            const date = new Date(point.ts);
+                            _metricsHistory.timestamps.push(date.toLocaleTimeString('zh-CN', { hour12: false }));
+                            _metricsHistory.captureRate.push(point.captureRate || 0);
+                            _metricsHistory.e2eLatency.push(point.e2eLatency || 0);
+                            _metricsHistory.queueDepth.push((point.captureQueueDepth || 0) + (point.extractQueueDepth || 0) + (point.applyQueueDepth || 0));
+                            _metricsHistory.checkpointLag.push(point.checkpointLag || 0);
+                        }
+                        drawSparkline('sparkCaptureRate', _metricsHistory.captureRate, '#52c41a');
+                        drawSparkline('sparkE2eLatency', _metricsHistory.e2eLatency, '#1890ff');
+                        drawSparkline('sparkQueueDepth', _metricsHistory.queueDepth, '#fa8c16');
+                        drawSparkline('sparkCheckpointLag', _metricsHistory.checkpointLag, '#f5222d');
+                        updateChart('chartCaptureRate', 'captureRate', '事件/sec', _metricsHistory.timestamps, _metricsHistory.captureRate, '#52c41a');
+                        updateChart('chartE2eLatency', 'e2eLatency', '延迟(ms)', _metricsHistory.timestamps, _metricsHistory.e2eLatency, '#1890ff');
+                        updateChart('chartQueueDepth', 'queueDepth', '队列深度', _metricsHistory.timestamps, _metricsHistory.queueDepth, '#fa8c16');
+                        updateChart('chartCheckpointLag', 'checkpointLag', '滞后(sec)', _metricsHistory.timestamps, _metricsHistory.checkpointLag, '#f5222d');
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load metrics history:', e.message);
+            }
+        }
+
+        async function refreshMetrics() {
+            const taskId = document.getElementById('metricsTaskSelect').value;
+            if (!taskId) return;
+            try {
+                const resp = await fetch(`${AGENT_BASE_URL}/api/metrics/${taskId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    renderMetrics(data);
+                } else if (resp.status === 404) {
+                    renderMetrics({
+                        captureRate: 0, e2eLatency: 0, queueDepth: 0, checkpointLag: 0,
+                        captureQueueDepth: 0, extractQueueDepth: 0, applyQueueDepth: 0,
+                        processes: []
+                    });
+                } else {
+                    clearMetricsDisplay();
+                }
+            } catch (e) {
+                console.warn('Metrics API not available:', e.message);
+                clearMetricsDisplay();
+            }
+        }
+
+        function clearMetricsDisplay() {
+            ['metricCaptureRate', 'metricE2eLatency', 'metricQueueDepth', 'metricCheckpointLag', 'metricProcessHealth'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.textContent = '--'; el.className = 'metric-card-value'; }
+            });
+        }
+
+        function renderMetrics(data) {
+            const captureRate = data.captureRate || 0;
+            const e2eLatency = data.e2eLatency || 0;
+            const queueDepth = data.queueDepth || 0;
+            const checkpointLag = data.checkpointLag || 0;
+            const processes = data.processes || [];
+
+            updateMetricCard('metricCaptureRate', captureRate, v => v > 0 ? 'good' : 'bad');
+            updateMetricCard('metricE2eLatency', e2eLatency, v => v < 500 ? 'good' : v < 2000 ? 'warn' : 'bad');
+            updateMetricCard('metricQueueDepth', queueDepth, v => v < 1000 ? 'good' : v < 5000 ? 'warn' : 'bad');
+            updateMetricCard('metricCheckpointLag', checkpointLag, v => v < 10 ? 'good' : v < 60 ? 'warn' : 'bad');
+
+            const healthyCount = processes.filter(p => p.state === 'RUNNING').length;
+            const totalCount = processes.length || 1;
+            document.getElementById('metricProcessHealth').textContent = `${healthyCount}/${totalCount}`;
+            document.getElementById('metricProcessHealth').className = 'metric-card-value ' + (healthyCount === totalCount ? 'good' : healthyCount > 0 ? 'warn' : 'bad');
+
+            const now = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            _metricsHistory.captureRate.push(captureRate);
+            _metricsHistory.e2eLatency.push(e2eLatency);
+            _metricsHistory.queueDepth.push(queueDepth);
+            _metricsHistory.checkpointLag.push(checkpointLag);
+            _metricsHistory.timestamps.push(now);
+
+            if (_metricsHistory.timestamps.length > METRICS_HISTORY_MAX) {
+                _metricsHistory.captureRate.shift();
+                _metricsHistory.e2eLatency.shift();
+                _metricsHistory.queueDepth.shift();
+                _metricsHistory.checkpointLag.shift();
+                _metricsHistory.timestamps.shift();
+            }
+
+            drawSparkline('sparkCaptureRate', _metricsHistory.captureRate, '#52c41a');
+            drawSparkline('sparkE2eLatency', _metricsHistory.e2eLatency, '#1890ff');
+            drawSparkline('sparkQueueDepth', _metricsHistory.queueDepth, '#fa8c16');
+            drawSparkline('sparkCheckpointLag', _metricsHistory.checkpointLag, '#f5222d');
+
+            updateChart('chartCaptureRate', 'captureRate', '事件/sec', _metricsHistory.timestamps, _metricsHistory.captureRate, '#52c41a');
+            updateChart('chartE2eLatency', 'e2eLatency', '延迟(ms)', _metricsHistory.timestamps, _metricsHistory.e2eLatency, '#1890ff');
+            updateChart('chartQueueDepth', 'queueDepth', '队列深度', _metricsHistory.timestamps, _metricsHistory.queueDepth, '#fa8c16');
+            updateChart('chartCheckpointLag', 'checkpointLag', '滞后(sec)', _metricsHistory.timestamps, _metricsHistory.checkpointLag, '#f5222d');
+
+            renderProcessStatus(processes);
+
+            if (_chartModalInstance && _currentModalKey) {
+                renderModalChart(_currentModalKey, _currentModalUnit, _currentModalColor);
+            }
+        }
+
+        function updateMetricCard(elementId, value, colorFn) {
+            const el = document.getElementById(elementId);
+            el.textContent = typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value;
+            el.className = 'metric-card-value ' + colorFn(value);
+        }
+
+        function drawSparkline(canvasId, data, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || data.length < 2) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            const min = Math.min(...data), max = Math.max(...data);
+            const range = max - min || 1;
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            data.forEach((v, i) => {
+                const x = (i / (data.length - 1)) * w;
+                const y = h - ((v - min) / range) * (h - 4) - 2;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        }
+
+        function updateChart(canvasId, key, label, labels, data, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            if (_metricsCharts[key]) {
+                _metricsCharts[key].data.labels = labels;
+                _metricsCharts[key].data.datasets[0].data = data;
+                _metricsCharts[key].update('none');
+                return;
+            }
+            _metricsCharts[key] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#f0f0f0' } },
+                        y: { display: true, beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: '#f0f0f0' } }
+                    }
+                }
+            });
+        }
+
+        function renderProcessStatus(processes) {
+            const grid = document.getElementById('processStatusGrid');
+            if (!grid || !processes.length) return;
+            grid.innerHTML = processes.map(p => {
+                const stateClass = p.state === 'RUNNING' ? 'running' : p.state === 'STARTING' ? 'starting' : 'stopped';
+                const stateText = p.state === 'RUNNING' ? '运行中' : p.state === 'STARTING' ? '启动中' : '已停止';
+                const cbState = p.circuitBreakerState || 'CLOSED';
+                const cbLabel = cbState === 'OPEN' ? '<span style="color:#f5222d;font-size:11px;">断路器开启</span>' : '';
+                return `<div class="process-status-item">
+                    <div class="process-name">${p.name}</div>
+                    <div class="process-state ${stateClass}">${stateText}</div>
+                    <div class="process-meta">PID: ${p.pid || '-'} | 运行: ${p.uptime || '-'}</div>
+                    <div class="process-meta">重试: ${p.retryCount || 0}次 ${cbLabel}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function startMetricsAutoRefresh() {
+            stopMetricsAutoRefresh();
+            _metricsAutoRefreshTimer = setInterval(() => {
+                if (document.getElementById('metricsPage').style.display !== 'none' && document.getElementById('metricsTaskSelect').value) {
+                    refreshMetrics();
+                }
+            }, 5000);
+        }
+
+        function stopMetricsAutoRefresh() {
+            if (_metricsAutoRefreshTimer) {
+                clearInterval(_metricsAutoRefreshTimer);
+                _metricsAutoRefreshTimer = null;
+            }
+        }
+
+        function toggleMetricsAutoRefresh() {
+            if (document.getElementById('metricsAutoRefresh').checked) {
+                startMetricsAutoRefresh();
+            } else {
+                stopMetricsAutoRefresh();
+            }
+        }
+
+        let _chartModalInstance = null;
+        let _chartModalChart = null;
+        let _chartModalGrain = '5s';
+
+        function openChartModal(key, title, unit, color) {
+            if (_chartModalInstance) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'chart-modal-overlay';
+            overlay.id = 'chartModalOverlay';
+            overlay.innerHTML = `
+                <div class="chart-modal-panel">
+                    <div class="chart-modal-header">
+                        <div class="chart-modal-title">${title}</div>
+                        <div class="chart-modal-controls">
+                            <button class="time-grain-btn ${_chartModalGrain === '5s' ? 'active' : ''}" onclick="setChartGrain('5s')">5秒</button>
+                            <button class="time-grain-btn ${_chartModalGrain === '30s' ? 'active' : ''}" onclick="setChartGrain('30s')">30秒</button>
+                            <button class="time-grain-btn ${_chartModalGrain === '1m' ? 'active' : ''}" onclick="setChartGrain('1m')">1分钟</button>
+                            <button class="time-grain-btn ${_chartModalGrain === '5m' ? 'active' : ''}" onclick="setChartGrain('5m')">5分钟</button>
+                            <div class="chart-modal-close" onclick="closeChartModal()">&times;</div>
+                        </div>
+                    </div>
+                    <div class="chart-modal-body">
+                        <canvas id="chartModalCanvas"></canvas>
+                    </div>
+                </div>
+            `;
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeChartModal();
+            });
+            document.body.appendChild(overlay);
+            _chartModalInstance = overlay;
+            document.addEventListener('keydown', _chartModalEscHandler);
+            _chartModalChart = null;
+            renderModalChart(key, unit, color);
+        }
+
+        function _chartModalEscHandler(e) {
+            if (e.key === 'Escape') closeChartModal();
+        }
+
+        function closeChartModal() {
+            if (_chartModalChart) {
+                _chartModalChart.destroy();
+                _chartModalChart = null;
+            }
+            if (_chartModalInstance) {
+                _chartModalInstance.remove();
+                _chartModalInstance = null;
+            }
+            document.removeEventListener('keydown', _chartModalEscHandler);
+        }
+
+        function setChartGrain(grain) {
+            _chartModalGrain = grain;
+            const btns = document.querySelectorAll('.time-grain-btn');
+            btns.forEach(b => {
+                b.classList.toggle('active', b.textContent.trim() === { '5s': '5秒', '30s': '30秒', '1m': '1分钟', '5m': '5分钟' }[grain]);
+            });
+            renderModalChart(_currentModalKey, _currentModalUnit, _currentModalColor);
+        }
+
+        let _currentModalKey = '';
+        let _currentModalUnit = '';
+        let _currentModalColor = '';
+
+        function renderModalChart(key, unit, color) {
+            _currentModalKey = key;
+            _currentModalUnit = unit;
+            _currentModalColor = color;
+
+            const canvas = document.getElementById('chartModalCanvas');
+            if (!canvas) return;
+
+            const rawData = _metricsHistory[key] || [];
+            const rawTimestamps = _metricsHistory.timestamps || [];
+
+            let labels, data;
+            const grainMap = { '5s': 1, '30s': 6, '1m': 12, '5m': 60 };
+            const step = grainMap[_chartModalGrain] || 1;
+
+            if (step <= 1) {
+                labels = rawTimestamps;
+                data = rawData;
+            } else {
+                labels = [];
+                data = [];
+                for (let i = 0; i < rawData.length; i += step) {
+                    const slice = rawData.slice(i, i + step);
+                    const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+                    data.push(Math.round(avg * 10) / 10);
+                    const tSlice = rawTimestamps.slice(i, i + step);
+                    labels.push(tSlice[Math.floor(tSlice.length / 2)] || tSlice[0] || '');
+                }
+            }
+
+            if (_chartModalChart) {
+                _chartModalChart.data.labels = labels;
+                _chartModalChart.data.datasets[0].data = data;
+                _chartModalChart.data.datasets[0].label = unit;
+                _chartModalChart.update();
+                return;
+            }
+
+            _chartModalChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: unit,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '15',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: step <= 1 ? 2 : 3,
+                        pointHoverRadius: 5,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 300 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.75)',
+                            titleFont: { size: 12 },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 6
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            ticks: { maxTicksLimit: 15, font: { size: 11 } },
+                            grid: { color: '#f0f0f0' }
+                        },
+                        y: {
+                            display: true,
+                            beginAtZero: true,
+                            ticks: { font: { size: 11 } },
+                            grid: { color: '#f0f0f0' },
+                            title: { display: true, text: unit, font: { size: 12 } }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // ========== 订阅任务管理 ==========
+        let subscribePageSize = 10;
+        let subscribeCurrentPage = 1;
+        let subscribeFilterKeyword = null;
+        let subscribeFilterStatus = null;
+        let subscribeActiveFilterType = null;
+
+        const subscribeStatusMap = {
+            'CONFIGURING': { text: '配置中', class: 'status-configuring', icon: '⚙' },
+            'PENDING': { text: '启动中', class: 'status-pending', dot: true },
+            'RECEIVED': { text: '已接收', class: 'status-pending', dot: true },
+            'STARTING': { text: '启动中', class: 'status-pending', dot: true },
+            'SUBSCRIBE_RUNNING': { text: '订阅中', class: 'status-increment-running', dot: true },
+            'PAUSED': { text: '已暂停', class: 'status-paused', icon: '⏸' },
+            'COMPLETED': { text: '已完成', class: 'status-full-completed', icon: '✓' },
+            'FAILED': { text: '异常', class: 'status-failed', icon: '✕' }
+        };
+
+        let subscribeTotalCount = 0;
+
+        async function fetchSubscribeTasks(page = 1) {
+            subscribeCurrentPage = page;
+            let url = `${API_BASE_URL}/workflows?page=${page}&pageSize=${subscribePageSize}&taskType=SUBSCRIBE`;
+            if (subscribeFilterStatus) url += `&status=${subscribeFilterStatus}`;
+            if (subscribeFilterKeyword) url += `&keyword=${encodeURIComponent(subscribeFilterKeyword)}`;
+
+            try {
+                const response = await fetchWithAuth(url);
+                const data = await response.json();
+                if (data.success) {
+                    subscribeTotalCount = data.data.total || 0;
+                    renderSubscribeTaskList(data.data.list || []);
+                    updateSubscribePagination(subscribeTotalCount);
+                }
+            } catch (e) {
+                console.error('Failed to fetch subscribe tasks:', e);
+            }
+        }
+
+        function renderSubscribeTaskList(tasks) {
+            const tableBody = document.getElementById('subscribeTableBody');
+            const emptyState = document.getElementById('subscribeEmptyState');
+
+            if (!tasks || tasks.length === 0) {
+                emptyState.style.display = 'flex';
+                const existingRows = tableBody.querySelectorAll('.table-row');
+                existingRows.forEach(row => row.remove());
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            const existingRows = tableBody.querySelectorAll('.table-row');
+            existingRows.forEach(row => row.remove());
+
+            tasks.forEach(task => {
+                const row = createSubscribeTableRow(task);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function createSubscribeTableRow(task) {
+            const row = document.createElement('div');
+            row.className = 'table-row';
+            row.dataset.id = task.id;
+
+            const statusInfo = subscribeStatusMap[task.status] || { text: task.status, class: 'status-configuring', icon: '?' };
+            const statusHtml = statusInfo.dot ? `<span class="status-dot"></span>` : statusInfo.icon ? `<span class="status-icon">${statusInfo.icon}</span>` : '';
+            const kafkaDisplay = task.kafka_bootstrap_servers ? task.kafka_bootstrap_servers.substring(0, 30) : '-';
+            const topicStrategyMap = { 'TABLE': '按表分区', 'TASK': '按任务', 'GLOBAL': '全局' };
+            const topicStrategyText = topicStrategyMap[task.kafka_topic_strategy] || task.kafka_topic_strategy || '-';
+            const sourceTypeMap = { 'mysql': 'MySQL', 'postgresql': 'PostgreSQL' };
+            const sourceTypeText = sourceTypeMap[task.source_type] || task.source_type || 'MySQL';
+
+            row.innerHTML = `
+                <div class="table-cell col-checkbox">
+                    <div class="checkbox"></div>
+                </div>
+                <div class="table-cell col-name">
+                    <div>
+                        <div><span style="background: #f6ffed; color: #52c41a; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">订阅</span>${task.name}</div>
+                        <div style="font-size: 11px; color: #1890ff; cursor: pointer;" onclick="showSubscribeDetail('${task.id}')">${task.id}</div>
+                    </div>
+                </div>
+                <div class="table-cell col-status">
+                    <span class="status-tag ${statusInfo.class}">
+                        ${statusHtml}
+                        ${statusInfo.text}
+                    </span>
+                </div>
+                <div class="table-cell col-source">
+                    <span style="font-size: 12px; color: #666;">${sourceTypeText}</span>
+                </div>
+                <div class="table-cell col-kafka">
+                    <span style="font-size: 12px; color: #666;" title="${task.kafka_bootstrap_servers || ''}">${kafkaDisplay}</span>
+                </div>
+                <div class="table-cell col-topic">
+                    <span style="font-size: 12px; color: #666;">${topicStrategyText}</span>
+                </div>
+                <div class="table-cell col-delay">
+                    ${task.status === 'SUBSCRIBE_RUNNING' ?
+                        `<div style="font-size: 11px; line-height: 1.6;">
+                            <div style="color: ${task.rpo_ms != null && task.rpo_ms < 5000 ? '#52c41a' : task.rpo_ms != null && task.rpo_ms < 30000 ? '#faad14' : task.rpo_ms != null ? '#ff4d4f' : '#999'};">
+                                RPO: ${task.rpo_ms != null ? formatDelay(task.rpo_ms) : '-'}
+                            </div>
+                            <div style="color: ${task.rto_ms != null && task.rto_ms < 5000 ? '#52c41a' : task.rto_ms != null && task.rto_ms < 30000 ? '#faad14' : task.rto_ms != null ? '#ff4d4f' : '#999'};">
+                                RTO: ${task.rto_ms != null ? formatDelay(task.rto_ms) : '-'}
+                            </div>
+                        </div>` :
+                        '<span style="color: #999;">-</span>'}
+                </div>
+                <div class="table-cell col-action">
+                    <div class="action-btns">
+                        ${task.status === 'CONFIGURING' ?
+                            `<button class="action-btn" onclick="launchSubscribeTask('${task.id}')">启动</button><button class="action-btn delete" onclick="deleteSubscribeTask('${task.id}')">删除</button>` :
+                        task.status === 'SUBSCRIBE_RUNNING' ?
+                            `<button class="action-btn monitor" onclick="viewMetrics('${task.id}')">监控</button><button class="action-btn" onclick="pauseSubscribeTask('${task.id}')">暂停</button><button class="action-btn stop" onclick="stopSubscribeTask('${task.id}')">停止</button>` :
+                        task.status === 'PAUSED' ?
+                            `<button class="action-btn" onclick="resumeSubscribeTask('${task.id}')">恢复</button>` :
+                        task.status === 'FAILED' ?
+                            `<button class="action-btn" onclick="retrySubscribeTask('${task.id}')">重试</button><button class="action-btn stop" onclick="stopSubscribeTask('${task.id}')">结束</button>` :
+                        task.status === 'COMPLETED' ?
+                            `<button class="action-btn delete" onclick="deleteSubscribeTask('${task.id}')">删除</button>` :
+                            `<button class="action-btn stop" onclick="stopSubscribeTask('${task.id}')">结束</button>`}
+                    </div>
+                </div>
+            `;
+
+            return row;
+        }
+
+        function updateSubscribePagination(total) {
+            const totalPages = Math.ceil(total / subscribePageSize);
+
+            document.getElementById('subscribePaginationInfo').textContent =
+                `总条数：${total} | 第 ${subscribeCurrentPage}/${totalPages || 1} 页`;
+
+            document.getElementById('subscribePrevPageBtn').disabled = subscribeCurrentPage <= 1;
+            document.getElementById('subscribeNextPageBtn').disabled = subscribeCurrentPage >= totalPages || totalPages === 0;
+
+            renderSubscribePageNumbers(totalPages);
+        }
+
+        function renderSubscribePageNumbers(totalPages) {
+            const container = document.getElementById('subscribePageNumbers');
+            if (totalPages <= 0) { container.innerHTML = ''; return; }
+
+            let html = '';
+            const maxVisible = 5;
+            let startPage = Math.max(1, subscribeCurrentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button class="page-btn" onclick="subscribeGoToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="page-ellipsis">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === subscribeCurrentPage ? 'active' : ''}" onclick="subscribeGoToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="page-ellipsis">...</span>`;
+                html += `<button class="page-btn" onclick="subscribeGoToPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function subscribeGoToPage(page) {
+            const totalPages = Math.ceil(subscribeTotalCount / subscribePageSize);
+            if (page < 1 || page > totalPages) return;
+            fetchSubscribeTasks(page);
+        }
+
+        // ========== 订阅任务配置状态 ==========
+        let subCurrentStep = 1;
+        let subSourceTested = false;
+        let subKafkaTested = false;
+        let subSelectedSyncObjects = {};
+        let subDatabasesCache = [];
+        let subSchemasCache = [];
+        let subTablesCache = {};
+        let subValidationPassed = false;
+
+        function openSubscribeModal() {
+            subCurrentStep = 1;
+            subSourceTested = false;
+            subKafkaTested = false;
+            subSelectedSyncObjects = {};
+            subDatabasesCache = [];
+            subSchemasCache = [];
+            subTablesCache = {};
+            subValidationPassed = false;
+
+            document.getElementById('subscribeTaskName').value = '';
+            document.getElementById('subscribeSourceType').value = 'mysql';
+            document.getElementById('subSourceHost').value = '';
+            document.getElementById('subSourcePort').value = '3306';
+            document.getElementById('subSourceUsername').value = '';
+            document.getElementById('subSourcePassword').value = '';
+            document.getElementById('subSourceDbNameInput').value = '';
+            document.getElementById('subSourceDbNameRow').style.display = 'none';
+            document.getElementById('subscribeKafkaServers').value = '';
+            document.getElementById('subscribeTopicStrategy').value = 'TABLE';
+            document.getElementById('subscribeTopicPrefix').value = 'cdc';
+            document.getElementById('subscribeFormat').value = 'DEBEZIUM_JSON';
+            document.getElementById('subSourceConnectionStatus').className = 'connection-status';
+            document.getElementById('subSourceConnectionStatus').textContent = '';
+            document.getElementById('subKafkaConnectionStatus').className = 'connection-status';
+            document.getElementById('subKafkaConnectionStatus').textContent = '';
+            document.getElementById('subSourceObjectsList').innerHTML = '<div class="empty-selection">请先填写源数据库连接并点击"下一步"</div>';
+            document.getElementById('subSelectedObjectsList').innerHTML = '<div class="empty-selection">暂未选择任何对象</div>';
+            document.getElementById('subValidationResult').innerHTML = '<div class="validation-empty">请点击"开始校验"按钮进行数据订阅条件检查</div>';
+
+            subUpdateStepUI();
+            document.getElementById('createSubscribeTaskModal').classList.add('show');
+        }
+
+        function closeSubscribeModal() {
+            document.getElementById('createSubscribeTaskModal').classList.remove('show');
+        }
+
+        function subOnSourceTypeChange() {
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            document.getElementById('subSourcePort').value = sourceType === 'postgresql' ? '5432' : '3306';
+            document.getElementById('subSourceDbNameRow').style.display = sourceType === 'postgresql' ? 'block' : 'none';
+            subSourceTested = false;
+            document.getElementById('subSourceConnectionStatus').className = 'connection-status';
+            document.getElementById('subSourceConnectionStatus').textContent = '';
+        }
+
+        function subOnConnectionFieldChange() {
+            subSourceTested = false;
+            subKafkaTested = false;
+        }
+
+        function subBuildSourceConnectionString() {
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            const host = document.getElementById('subSourceHost').value.trim();
+            const port = document.getElementById('subSourcePort').value.trim();
+            const username = document.getElementById('subSourceUsername').value.trim();
+            const password = document.getElementById('subSourcePassword').value.trim();
+            if (!host || !port || !username) return null;
+            const protocol = sourceType === 'postgresql' ? 'postgresql' : 'mysql';
+            let conn = `${protocol}://${username}:${password}@${host}:${port}`;
+            const dbName = document.getElementById('subSourceDbNameInput').value.trim();
+            if (dbName) conn += `/${dbName}`;
+            return conn;
+        }
+
+        function subValidateSourceFields() {
+            const errors = [];
+            if (!document.getElementById('subSourceHost').value.trim()) errors.push('源库IP地址');
+            if (!document.getElementById('subSourcePort').value.trim()) errors.push('源库端口号');
+            if (!document.getElementById('subSourceUsername').value.trim()) errors.push('源库用户名');
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            if (sourceType === 'postgresql' && !document.getElementById('subSourceDbNameInput').value.trim()) {
+                errors.push('PG数据库名称');
+            }
+            return errors;
+        }
+
+        function subTestSourceConnection() {
+            const errors = subValidateSourceFields();
+            if (errors.length > 0) {
+                showNotification('请正确填写: ' + errors.join('、'), 'error');
+                return;
+            }
+            const connection = subBuildSourceConnectionString();
+            if (!connection) { showNotification('请先填写源数据库连接信息', 'error'); return; }
+
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            const statusDiv = document.getElementById('subSourceConnectionStatus');
+            const testBtn = document.getElementById('subTestSourceBtn');
+
+            statusDiv.className = 'connection-status testing';
+            statusDiv.textContent = '正在测试连接...';
+            testBtn.disabled = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+            fetchWithAuth(`${API_BASE_URL}/metadata/test-connection`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ sourceConnection: connection, dbType: sourceType }),
+                signal: controller.signal
+            })
+            .then(response => response.json())
+            .then(result => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                if (result.success && result.data && result.data.connected) {
+                    statusDiv.className = 'connection-status success';
+                    statusDiv.textContent = '✓ 连接成功';
+                    subSourceTested = true;
+                } else {
+                    statusDiv.className = 'connection-status error';
+                    const errMsg = (result.data && result.data.errorMessage) ? result.data.errorMessage : (result.message || '无法连接到数据库');
+                    const suggestion = (result.data && result.data.suggestion) ? result.data.suggestion : '';
+                    statusDiv.innerHTML = `<div>✗ 连接失败：${errMsg.substring(0, 80)}</div>${suggestion ? '<div style="font-size:11px;color:#999;margin-top:2px;">💡 ' + suggestion + '</div>' : ''}`;
+                    subSourceTested = false;
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                statusDiv.className = 'connection-status error';
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = '<div>✗ 连接超时</div><div style="font-size:11px;color:#999;margin-top:2px;">💡 请检查目标主机是否可达、端口是否开放</div>';
+                } else {
+                    statusDiv.textContent = '✗ 连接测试出错: ' + error.message;
+                }
+                subSourceTested = false;
+            });
+        }
+
+        function subTestKafkaConnection() {
+            const kafkaServers = document.getElementById('subscribeKafkaServers').value.trim();
+            if (!kafkaServers) { showNotification('请输入Kafka地址', 'error'); return; }
+
+            const statusDiv = document.getElementById('subKafkaConnectionStatus');
+            const testBtn = document.getElementById('subTestKafkaBtn');
+
+            statusDiv.className = 'connection-status testing';
+            statusDiv.textContent = '正在测试Kafka连接...';
+            testBtn.disabled = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            fetchWithAuth(`${API_BASE_URL}/metadata/test-kafka`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ bootstrapServers: kafkaServers }),
+                signal: controller.signal
+            })
+            .then(response => response.json())
+            .then(result => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                if (result.success && result.data && result.data.connected) {
+                    const brokerCount = result.data.brokerCount || '?';
+                    const topicCount = result.data.topicCount || 0;
+                    statusDiv.className = 'connection-status success';
+                    statusDiv.textContent = `✓ 连接成功，${brokerCount}个Broker，${topicCount}个Topic`;
+                    subKafkaTested = true;
+                } else {
+                    statusDiv.className = 'connection-status error';
+                    const data = result.data || {};
+                    const errMsg = data.errorMessage || result.message || '无法连接到Kafka';
+                    const suggestion = data.suggestion || '';
+                    statusDiv.innerHTML = `<div>✗ 连接失败：${errMsg.substring(0, 80)}</div>${suggestion ? '<div style="font-size:11px;color:#999;margin-top:2px;">💡 ' + suggestion + '</div>' : ''}`;
+                    subKafkaTested = false;
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                testBtn.disabled = false;
+                statusDiv.className = 'connection-status error';
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = '<div>✗ 连接超时</div><div style="font-size:11px;color:#999;margin-top:2px;">💡 请检查Kafka服务是否启动、端口是否开放</div>';
+                } else {
+                    statusDiv.textContent = '✗ 连接测试出错: ' + error.message;
+                }
+                subKafkaTested = false;
+            });
+        }
+
+        function subGoToStep(step) {
+            if (step < 1 || step > 3) return;
+
+            if (step === 2 && subCurrentStep === 1) {
+                const name = document.getElementById('subscribeTaskName').value.trim();
+                if (!name) { showNotification('请输入任务名称', 'error'); return; }
+                const sourceErrors = subValidateSourceFields();
+                if (sourceErrors.length > 0) { showNotification('请正确填写源数据库: ' + sourceErrors.join('、'), 'error'); return; }
+                if (!subSourceTested) { showNotification('请先测试源数据库连接', 'error'); return; }
+                const kafkaServers = document.getElementById('subscribeKafkaServers').value.trim();
+                if (!kafkaServers) { showNotification('请输入Kafka地址', 'error'); return; }
+                if (!subKafkaTested) { showNotification('请先测试Kafka连接', 'error'); return; }
+
+                const sourceConnection = subBuildSourceConnectionString();
+                const sourceType = document.getElementById('subscribeSourceType').value;
+                if (sourceType === 'postgresql') {
+                    const dbName = document.getElementById('subSourceDbNameInput').value.trim();
+                    subLoadSchemas(sourceConnection, dbName);
+                } else {
+                    subLoadDatabases(sourceConnection);
+                }
+            }
+
+            if (step === 3 && subCurrentStep === 2) {
+                if (Object.keys(subSelectedSyncObjects).length === 0) {
+                    showNotification('请至少选择一个订阅对象', 'error');
+                    return;
+                }
+            }
+
+            subCurrentStep = step;
+            subUpdateStepUI();
+        }
+
+        function subNextStep() {
+            subGoToStep(subCurrentStep + 1);
+        }
+
+        function subUpdateStepUI() {
+            document.getElementById('subStep1Nav').className = 'step-item' + (subCurrentStep === 1 ? ' active' : (subCurrentStep > 1 ? ' completed' : ''));
+            document.getElementById('subStep2Nav').className = 'step-item' + (subCurrentStep === 2 ? ' active' : (subCurrentStep > 2 ? ' completed' : ''));
+            document.getElementById('subStep3Nav').className = 'step-item' + (subCurrentStep === 3 ? ' active' : '');
+
+            document.getElementById('subStep1Content').className = 'step-content' + (subCurrentStep === 1 ? ' active' : '');
+            document.getElementById('subStep2Content').className = 'step-content' + (subCurrentStep === 2 ? ' active' : '');
+            document.getElementById('subStep3Content').className = 'step-content' + (subCurrentStep === 3 ? ' active' : '');
+
+            document.getElementById('subNextBtn').style.display = (subCurrentStep >= 1 && subCurrentStep <= 2) ? 'inline-block' : 'none';
+            document.getElementById('subPrevBtn').style.display = (subCurrentStep >= 2 && subCurrentStep <= 3) ? 'inline-block' : 'none';
+            document.getElementById('subCreateBtn').style.display = subCurrentStep === 3 ? 'inline-block' : 'none';
+        }
+
+        // ========== 订阅对象选择 ==========
+        async function subLoadDatabases(connectionStr) {
+            const sourceList = document.getElementById('subSourceObjectsList');
+            sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/databases`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr })
+                });
+                const result = await response.json();
+                if (result.success && result.data.databases) {
+                    subDatabasesCache = result.data.databases;
+                    subRenderDatabases();
+                } else {
+                    sourceList.innerHTML = `<div class="empty-selection" style="color: #f5222d;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                sourceList.innerHTML = '<div class="empty-selection" style="color: #f5222d;">加载失败，请检查连接串</div>';
+            }
+        }
+
+        function subRenderDatabases() {
+            const sourceList = document.getElementById('subSourceObjectsList');
+            if (subDatabasesCache.length === 0) {
+                sourceList.innerHTML = '<div class="empty-selection">未找到可访问的数据库</div>';
+                return;
+            }
+            let html = '';
+            subDatabasesCache.forEach(db => {
+                html += `
+                    <div class="database-item" data-db="${db}">
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="subSelectAllTables('${db}', this.checked)">
+                            <span class="database-name" onclick="subToggleDatabase('${db}')">${db}</span>
+                            <span class="database-expand" id="sub-expand-${db}" onclick="subToggleDatabase('${db}')">▶</span>
+                        </div>
+                        <div class="table-list" id="sub-tables-${db}">
+                            <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
+                        </div>
+                    </div>
+                `;
+            });
+            sourceList.innerHTML = html;
+        }
+
+        async function subToggleDatabase(db) {
+            const tableList = document.getElementById(`sub-tables-${db}`);
+            const expandIcon = document.getElementById(`sub-expand-${db}`);
+            if (tableList.classList.contains('show')) {
+                tableList.classList.remove('show');
+                expandIcon.classList.remove('expanded');
+            } else {
+                tableList.classList.add('show');
+                expandIcon.classList.add('expanded');
+                if (!subTablesCache[db]) {
+                    await subLoadTables(db);
+                }
+            }
+        }
+
+        async function subLoadTables(db) {
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            const protocol = sourceType === 'postgresql' ? 'postgresql' : 'mysql';
+            const host = document.getElementById('subSourceHost').value.trim();
+            const port = document.getElementById('subSourcePort').value.trim();
+            const username = document.getElementById('subSourceUsername').value.trim();
+            const password = document.getElementById('subSourcePassword').value.trim();
+            const dbName = sourceType === 'postgresql' ? document.getElementById('subSourceDbNameInput').value.trim() : db;
+            let connectionStr = `${protocol}://${username}:${password}@${host}:${port}/${dbName}`;
+
+            const tableList = document.getElementById(`sub-tables-${db}`);
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/tables`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: db })
+                });
+                const result = await response.json();
+                if (result.success && result.data.tables) {
+                    subTablesCache[db] = result.data.tables;
+                    subRenderTables(db);
+                } else {
+                    tableList.innerHTML = `<div style="padding: 16px; color: #f5222d; font-size: 12px;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #f5222d; font-size: 12px;">加载失败</div>';
+            }
+        }
+
+        function subRenderTables(db) {
+            const tableList = document.getElementById(`sub-tables-${db}`);
+            const tables = subTablesCache[db] || [];
+            if (tables.length === 0) {
+                tableList.innerHTML = '<div style="padding: 16px; color: #999; font-size: 12px;">该数据库没有表</div>';
+                return;
+            }
+            let html = '';
+            tables.forEach(table => {
+                const isSelected = subSelectedSyncObjects[db] && subSelectedSyncObjects[db].includes(table.name);
+                html += `
+                    <div class="table-item">
+                        <span class="table-name">${table.name}</span>
+                        <span class="table-info">${table.rows} 行 | ${table.size}</span>
+                        <button class="table-add-btn" onclick="subAddTable('${db}', '${table.name}')" ${isSelected ? 'disabled style="opacity: 0.5;"' : ''}>
+                            ${isSelected ? '已选择' : '选择'}
+                        </button>
+                    </div>
+                `;
+            });
+            tableList.innerHTML = html;
+        }
+
+        function subSelectAllTables(db, checked) {
+            const tableList = document.getElementById(`sub-tables-${db}`);
+            const expandIcon = document.getElementById(`sub-expand-${db}`);
+            if (checked) {
+                if (tableList && !tableList.classList.contains('show')) {
+                    tableList.classList.add('show');
+                    expandIcon.classList.add('expanded');
+                }
+                if (!subTablesCache[db]) {
+                    subLoadTables(db).then(() => {
+                        if (!subSelectedSyncObjects[db]) subSelectedSyncObjects[db] = [];
+                        subTablesCache[db].forEach(table => {
+                            if (!subSelectedSyncObjects[db].includes(table.name)) subSelectedSyncObjects[db].push(table.name);
+                        });
+                        subRenderTables(db);
+                        subRenderSelectedObjects();
+                    });
+                    return;
+                }
+                if (!subSelectedSyncObjects[db]) subSelectedSyncObjects[db] = [];
+                subTablesCache[db].forEach(table => {
+                    if (!subSelectedSyncObjects[db].includes(table.name)) subSelectedSyncObjects[db].push(table.name);
+                });
+            } else {
+                delete subSelectedSyncObjects[db];
+            }
+            subRenderTables(db);
+            subRenderSelectedObjects();
+        }
+
+        function subAddTable(db, tableName) {
+            if (!subSelectedSyncObjects[db]) subSelectedSyncObjects[db] = [];
+            if (!subSelectedSyncObjects[db].includes(tableName)) subSelectedSyncObjects[db].push(tableName);
+            subRenderTables(db);
+            subRenderSelectedObjects();
+        }
+
+        function subRemoveTable(db, tableName) {
+            if (subSelectedSyncObjects[db]) {
+                const index = subSelectedSyncObjects[db].indexOf(tableName);
+                if (index > -1) subSelectedSyncObjects[db].splice(index, 1);
+                if (subSelectedSyncObjects[db].length === 0) delete subSelectedSyncObjects[db];
+            }
+            subRenderSelectedObjects();
+            if (subTablesCache[db]) subRenderTables(db);
+        }
+
+        function subRenderSelectedObjects() {
+            const selectedList = document.getElementById('subSelectedObjectsList');
+            const dbNames = Object.keys(subSelectedSyncObjects);
+            if (dbNames.length === 0) {
+                selectedList.innerHTML = '<div class="empty-selection">暂未选择任何对象</div>';
+                return;
+            }
+            let html = '';
+            dbNames.forEach(db => {
+                subSelectedSyncObjects[db].forEach(tableName => {
+                    html += `
+                        <div class="selected-item">
+                            <span class="selected-db-name">${db}.</span>
+                            <span class="selected-table-name">${tableName}</span>
+                            <button class="remove-btn" onclick="subRemoveTable('${db}', '${tableName}')">移除</button>
+                        </div>
+                    `;
+                });
+            });
+            selectedList.innerHTML = html;
+        }
+
+        async function subLoadSchemas(connectionStr, database) {
+            const sourceList = document.getElementById('subSourceObjectsList');
+            sourceList.innerHTML = '<div class="empty-selection">加载中...</div>';
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/schemas`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ sourceConnection: connectionStr, database: database })
+                });
+                const result = await response.json();
+                if (result.success && result.data.schemas) {
+                    subSchemasCache = result.data.schemas;
+                    subRenderSchemas();
+                } else {
+                    sourceList.innerHTML = `<div class="empty-selection" style="color: #f5222d;">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                sourceList.innerHTML = '<div class="empty-selection" style="color: #f5222d;">加载失败，请检查连接信息</div>';
+            }
+        }
+
+        function subRenderSchemas() {
+            const sourceList = document.getElementById('subSourceObjectsList');
+            if (subSchemasCache.length === 0) {
+                sourceList.innerHTML = '<div class="empty-selection">未找到可访问的Schema</div>';
+                return;
+            }
+            let html = '';
+            subSchemasCache.forEach(schema => {
+                html += `
+                    <div class="database-item" data-db="${schema}">
+                        <div class="database-header">
+                            <input type="checkbox" class="database-checkbox" onclick="subSelectAllTables('${schema}', this.checked)">
+                            <span class="database-name" onclick="subToggleDatabase('${schema}')">${schema} (schema)</span>
+                            <span class="database-expand" id="sub-expand-${schema}" onclick="subToggleDatabase('${schema}')">▶</span>
+                        </div>
+                        <div class="table-list" id="sub-tables-${schema}">
+                            <div style="padding: 16px; color: #999; font-size: 12px;">加载中...</div>
+                        </div>
+                    </div>
+                `;
+            });
+            sourceList.innerHTML = html;
+        }
+
+        // ========== 订阅校验 ==========
+        async function subRunValidation() {
+            const sourceConnection = subBuildSourceConnectionString();
+            const kafkaServers = document.getElementById('subscribeKafkaServers').value.trim();
+            const sourceType = document.getElementById('subscribeSourceType').value;
+
+            const resultDiv = document.getElementById('subValidationResult');
+            const runBtn = document.getElementById('subRunValidationBtn');
+
+            resultDiv.innerHTML = '<div class="validation-loading">正在校验中，请稍候...</div>';
+            runBtn.disabled = true;
+
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/metadata/validate-subscribe`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection: sourceConnection,
+                        kafkaBootstrapServers: kafkaServers,
+                        sourceType: sourceType
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    subRenderValidationResult(result.data);
+                } else {
+                    resultDiv.innerHTML = `<div class="validation-empty" style="color: #f5222d;">校验失败: ${result.message || '未知错误'}</div>`;
+                    subValidationPassed = false;
+                }
+            } catch (error) {
+                console.error('校验失败:', error);
+                resultDiv.innerHTML = `<div class="validation-empty" style="color: #f5222d;">校验请求失败: ${error.message}</div>`;
+                subValidationPassed = false;
+            } finally {
+                runBtn.disabled = false;
+            }
+        }
+
+        function subRenderValidationResult(data) {
+            const resultDiv = document.getElementById('subValidationResult');
+            let html = '';
+
+            const checkItems = data.checkItems || [];
+            if (checkItems.length > 0) {
+                checkItems.forEach(item => {
+                    const statusClass = item.passed ? 'passed' : (item.severity === 'warning' ? 'warning' : 'failed');
+                    const icon = item.passed ? '✓' : (item.severity === 'warning' ? '⚠' : '✗');
+                    html += `
+                        <div class="check-item ${statusClass}">
+                            <div class="check-icon ${statusClass}">${icon}</div>
+                            <div class="check-content">
+                                <div class="check-name">${item.name}</div>
+                                <div class="check-description">${item.description}</div>
+                                <div class="check-message">${item.message}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const allPassed = data.allPassed !== undefined ? data.allPassed : false;
+            const summaryClass = allPassed ? 'passed' : 'failed';
+            const summaryText = allPassed ? '✓ 所有检查项均已通过，可以创建订阅任务' : '✗ 存在未通过的检查项，请修复后再创建任务';
+            html += `<div class="validation-summary ${summaryClass}">${summaryText}</div>`;
+
+            resultDiv.innerHTML = html;
+            subValidationPassed = allPassed;
+        }
+
+        // ========== 创建订阅任务 ==========
+        async function createSubscribeTask() {
+            if (!subValidationPassed) {
+                showNotification('请先通过校验检查', 'error');
+                return;
+            }
+
+            const name = document.getElementById('subscribeTaskName').value.trim();
+            const sourceType = document.getElementById('subscribeSourceType').value;
+            const sourceConnection = subBuildSourceConnectionString();
+            const kafkaServers = document.getElementById('subscribeKafkaServers').value.trim();
+            const topicStrategy = document.getElementById('subscribeTopicStrategy').value;
+            const topicPrefix = document.getElementById('subscribeTopicPrefix').value.trim();
+            const format = document.getElementById('subscribeFormat').value;
+
+            let syncObjectsJson = null;
+            let sourceDbName = null;
+            if (Object.keys(subSelectedSyncObjects).length > 0) {
+                const syncObjectsData = {};
+                Object.keys(subSelectedSyncObjects).forEach(db => {
+                    syncObjectsData[db] = { tables: subSelectedSyncObjects[db] };
+                });
+                syncObjectsJson = JSON.stringify(syncObjectsData);
+
+                if (sourceType === 'postgresql') {
+                    sourceDbName = document.getElementById('subSourceDbNameInput').value.trim();
+                } else {
+                    const dbNames = Object.keys(subSelectedSyncObjects);
+                    if (dbNames.length === 1) sourceDbName = dbNames[0];
+                }
+            }
+
+            try {
+                let response = await fetchWithAuth(`${API_BASE_URL}/workflows`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ name, sourceType, targetType: sourceType, taskType: 'SUBSCRIBE' })
+                });
+                let data = await response.json();
+                if (!data.success) { showNotification(data.message, 'error'); return; }
+
+                const taskId = data.data.id;
+                response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/config`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sourceConnection,
+                        sourceType,
+                        targetType: sourceType,
+                        migrationMode: 'subscribe',
+                        syncObjects: syncObjectsJson,
+                        sourceDbName,
+                        kafkaBootstrapServers: kafkaServers,
+                        kafkaTopicPrefix: topicPrefix,
+                        kafkaTopicStrategy: topicStrategy,
+                        subscribeFormat: format
+                    })
+                });
+                data = await response.json();
+                if (!data.success) { showNotification(data.message, 'error'); return; }
+
+                closeSubscribeModal();
+                showNotification('订阅任务创建成功', 'success');
+                fetchSubscribeTasks();
+            } catch (e) {
+                showNotification('创建失败: ' + e.message, 'error');
+            }
+        }
+
+        async function launchSubscribeTask(taskId) {
+            if (!confirm('确定要启动此订阅任务吗？')) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/launch`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务已启动', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('启动失败: ' + e.message, 'error');
+            }
+        }
+
+        async function pauseSubscribeTask(taskId) {
+            if (!confirm('确定要暂停此订阅任务吗？')) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/pause`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务已暂停', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('暂停失败: ' + e.message, 'error');
+            }
+        }
+
+        async function resumeSubscribeTask(taskId) {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/resume`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务已恢复', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('恢复失败: ' + e.message, 'error');
+            }
+        }
+
+        async function stopSubscribeTask(taskId) {
+            if (!confirm('确定要停止此订阅任务吗？停止后需要重新启动。')) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/stop`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务已停止', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('停止失败: ' + e.message, 'error');
+            }
+        }
+
+        async function retrySubscribeTask(taskId) {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}/retry`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务重试已启动', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('重试失败: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteSubscribeTask(taskId) {
+            if (!confirm('确定要删除此订阅任务吗？')) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('订阅任务已删除', 'success');
+                    fetchSubscribeTasks();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (e) {
+                showNotification('删除失败: ' + e.message, 'error');
+            }
+        }
+
+        async function showSubscribeDetail(taskId) {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/workflows/${taskId}`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (!data.success) { showNotification(data.message, 'error'); return; }
+
+                const task = data.data;
+                const statusInfo = subscribeStatusMap[task.status] || { text: task.status };
+                const topicStrategyMap = { 'TABLE': '按表分区', 'TASK': '按任务', 'GLOBAL': '全局' };
+
+                let html = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div><div style="font-size: 13px; color: #666;">任务名称:</div><div style="font-weight: 500;">${task.name}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">状态:</div><div><span class="status-badge ${statusInfo.class || ''}">${statusInfo.text}</span></div></div>
+                        <div><div style="font-size: 13px; color: #666;">源库类型:</div><div>${task.source_type || 'mysql'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">源库连接:</div><div style="word-break: break-all; font-size: 12px;">${task.source_connection || '-'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">Kafka地址:</div><div style="word-break: break-all; font-size: 12px;">${task.kafka_bootstrap_servers || '-'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">Topic策略:</div><div>${topicStrategyMap[task.kafka_topic_strategy] || task.kafka_topic_strategy || '-'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">Topic前缀:</div><div>${task.kafka_topic_prefix || 'cdc'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">消息格式:</div><div>${task.subscribe_format || 'DEBEZIUM_JSON'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">延迟(RTO):</div><div>${task.rto_ms != null ? task.rto_ms + 'ms' : '-'}</div></div>
+                        <div><div style="font-size: 13px; color: #666;">创建时间:</div><div>${task.created_at || '-'}</div></div>
+                    </div>
+                `;
+
+                if (task.error_message) {
+                    html += `<div style="margin-top: 16px; padding: 12px; background: #fff2f0; border: 1px solid #ffccc7; border-radius: 4px;">
+                        <div style="font-size: 13px; color: #cf1322; font-weight: 500;">错误信息</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">${task.error_message}</div>
+                    </div>`;
+                }
+
+                document.getElementById('subscribeDetailContent').innerHTML = html;
+                document.getElementById('subscribeDetailModal').classList.add('show');
+            } catch (e) {
+                showNotification('获取详情失败: ' + e.message, 'error');
+            }
+        }
+
+        function closeSubscribeDetailModal() {
+            document.getElementById('subscribeDetailModal').classList.remove('show');
+        }
+
+        document.getElementById('createSubscribeTaskBtn').addEventListener('click', openSubscribeModal);
+
+        // 订阅任务筛选交互
+        (function initSubscribeFilter() {
+            const searchBox = document.getElementById('subscribeSearchBox');
+            const searchInput = document.getElementById('subscribeSearchInput');
+            const filterDropdown = document.getElementById('subscribeFilterDropdown');
+            const statusDropdown = document.getElementById('subscribeStatusDropdown');
+            const filterTags = document.getElementById('subscribeFilterTags');
+
+            searchInput.addEventListener('focus', () => {
+                if (!subscribeActiveFilterType) {
+                    filterDropdown.classList.add('show');
+                }
+            });
+
+            searchInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!subscribeActiveFilterType) {
+                    filterDropdown.classList.add('show');
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#subscribeSearchBox') && !e.target.closest('#subscribeFilterDropdown') && !e.target.closest('#subscribeStatusDropdown')) {
+                    filterDropdown.classList.remove('show');
+                    statusDropdown.classList.remove('show');
+                }
+            });
+
+            filterDropdown.querySelectorAll('.filter-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const filterType = option.dataset.filter;
+                    filterDropdown.classList.remove('show');
+
+                    if (filterType === 'keyword') {
+                        subscribeActiveFilterType = 'keyword';
+                        searchInput.placeholder = '输入任务名称或ID...';
+                        searchInput.focus();
+                    } else if (filterType === 'status') {
+                        statusDropdown.classList.add('show');
+                    }
+                });
+            });
+
+            statusDropdown.querySelectorAll('.status-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const status = option.dataset.status;
+                    const statusText = option.textContent;
+
+                    subscribeFilterStatus = status;
+                    addSubscribeFilterTag('状态', statusText, 'status');
+                    statusDropdown.classList.remove('show');
+                    searchInput.placeholder = '添加筛选条件';
+                    subscribeActiveFilterType = null;
+
+                    fetchSubscribeTasks(1);
+                });
+            });
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && subscribeActiveFilterType === 'keyword') {
+                    const value = searchInput.value.trim();
+                    if (value) {
+                        subscribeFilterKeyword = value;
+                        addSubscribeFilterTag('任务名称/ID', value, 'keyword');
+                        searchInput.value = '';
+                        searchInput.placeholder = '添加筛选条件';
+                        subscribeActiveFilterType = null;
+
+                        fetchSubscribeTasks(1);
+                    }
+                } else if (e.key === 'Escape') {
+                    subscribeActiveFilterType = null;
+                    searchInput.placeholder = '添加筛选条件';
+                    filterDropdown.classList.remove('show');
+                }
+            });
+        })();
+
+        function addSubscribeFilterTag(label, value, type) {
+            const filterTags = document.getElementById('subscribeFilterTags');
+            const tag = document.createElement('span');
+            tag.className = 'filter-tag';
+            tag.dataset.type = type;
+            tag.innerHTML = `${label}：${value}<span class="tag-remove" onclick="removeSubscribeFilterTag('${type}')">×</span>`;
+            filterTags.appendChild(tag);
+        }
+
+        function removeSubscribeFilterTag(type) {
+            const filterTags = document.getElementById('subscribeFilterTags');
+            const tag = filterTags.querySelector(`[data-type="${type}"]`);
+            if (tag) tag.remove();
+
+            if (type === 'keyword') {
+                subscribeFilterKeyword = null;
+            } else if (type === 'status') {
+                subscribeFilterStatus = null;
+            }
+
+            fetchSubscribeTasks(1);
+        }
+
+        document.getElementById('subscribePageSizeSelect').addEventListener('change', (e) => {
+            subscribePageSize = parseInt(e.target.value);
+            subscribeCurrentPage = 1;
+            fetchSubscribeTasks(1);
+        });
+
+        function debounce(fn, delay) {
+            let timer;
+            return function(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
         }
     </script>
 </body>

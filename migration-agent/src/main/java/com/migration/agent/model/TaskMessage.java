@@ -2,11 +2,12 @@ package com.migration.agent.model;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 public class TaskMessage implements Serializable {
     private static final long serialVersionUID = 1L;
-    
+
     private String taskId;
     private String taskName;
     private Long userId;
@@ -24,6 +25,12 @@ public class TaskMessage implements Serializable {
     private String sourceType;
     private String targetType;
     private String taskType;
+    private String kafkaBootstrapServers;
+    private String kafkaTopicPrefix;
+    private String kafkaTopicStrategy;
+    private String subscribeFormat;
+    private Boolean fanoutEnabled;
+    private List<DatabaseConfig> targetConnections;
 
     public static class DatabaseConfig {
         private String host;
@@ -207,5 +214,53 @@ public class TaskMessage implements Serializable {
 
     public void setTaskType(String taskType) {
         this.taskType = taskType;
+    }
+
+    public String getKafkaBootstrapServers() {
+        return kafkaBootstrapServers;
+    }
+
+    public void setKafkaBootstrapServers(String kafkaBootstrapServers) {
+        this.kafkaBootstrapServers = kafkaBootstrapServers;
+    }
+
+    public String getKafkaTopicPrefix() {
+        return kafkaTopicPrefix;
+    }
+
+    public void setKafkaTopicPrefix(String kafkaTopicPrefix) {
+        this.kafkaTopicPrefix = kafkaTopicPrefix;
+    }
+
+    public String getKafkaTopicStrategy() {
+        return kafkaTopicStrategy;
+    }
+
+    public void setKafkaTopicStrategy(String kafkaTopicStrategy) {
+        this.kafkaTopicStrategy = kafkaTopicStrategy;
+    }
+
+    public String getSubscribeFormat() {
+        return subscribeFormat;
+    }
+
+    public void setSubscribeFormat(String subscribeFormat) {
+        this.subscribeFormat = subscribeFormat;
+    }
+
+    public Boolean getFanoutEnabled() {
+        return fanoutEnabled;
+    }
+
+    public void setFanoutEnabled(Boolean fanoutEnabled) {
+        this.fanoutEnabled = fanoutEnabled;
+    }
+
+    public List<DatabaseConfig> getTargetConnections() {
+        return targetConnections;
+    }
+
+    public void setTargetConnections(List<DatabaseConfig> targetConnections) {
+        this.targetConnections = targetConnections;
     }
 }

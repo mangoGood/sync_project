@@ -1,5 +1,7 @@
 package com.migration.increment;
 
+import com.migration.db.ConnectionPoolManager;
+import com.migration.increment.schema.SchemaEvolutionService;
 import java.io.File;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -42,6 +44,8 @@ public class THLToSqlConverter {
     private boolean sourceIsPostgresql;
     private boolean targetIsPostgresql;
     private String targetDatabaseName;
+
+    private SchemaEvolutionService schemaEvolutionService;
 
     private LinkedHashMap<Long, String> executedRecords;
     private String executedRecordFile;
@@ -213,7 +217,9 @@ public class THLToSqlConverter {
                 url = url + "&serverTimezone=UTC";
             }
         }
-        targetConnection = DriverManager.getConnection(url, targetUser, targetPassword);
+        targetConnection = ConnectionPoolManager.getConnection(url, targetUser, targetPassword);
+        // 初始化 Schema 演进服务，用于自动应用 DDL 事件到目标库
+        this.schemaEvolutionService = new SchemaEvolutionService(props, targetConnection);
         logger.info("Connected to target database (type: {}): {}", isPostgresql ? "postgresql" : "mysql", url);
     }
 
@@ -1168,6 +1174,31 @@ public class THLToSqlConverter {
         }
 
         if (classification.isDdl()) {
+            // 通过 SchemaEvolutionService 处理 DDL：支持跨库转换、映射配置、策略控制
+            if (schemaEvolutionService != null) {
+                String ddlSubType = classification.getDdlSubType() != null
+                        ? classification.getDdlSubType().name() : "UNKNOWN_DDL";
+                String effectiveDb = resolveDdlDatabase(ddlDatabase, database, defaultDatabase, sql);
+                SchemaEvolutionService.ApplyResult ddlResult = schemaEvolutionService.applyDdl(sql, ddlSubType, effectiveDb);
+                if (ddlResult.isSuccess()) {
+                    // DDL 已由 SchemaEvolutionService 直接应用到目标库，返回空列表避免重复执行
+                    logger.debug("DDL 已由 SchemaEvolutionService 应用: {}", ddlResult.getMessage());
+                } else if (ddlResult.getStatus() == SchemaEvolutionService.ApplyResult.Status.MANUAL
+                        || ddlResult.getStatus() == SchemaEvolutionService.ApplyResult.Status.SKIPPED) {
+                    logger.info("DDL 未自动应用: {} | {}", ddlResult.getStatus(), ddlResult.getMessage());
+                } else {
+                    // FAILED：记录失败，但仍返回原 SQL 尝试执行（兼容旧行为）
+                    logger.warn("DDL 应用失败，尝试直接执行原 SQL: {}", ddlResult.getMessage());
+                    String cleanSql = sql.trim();
+                    if (!cleanSql.endsWith(";")) {
+                        cleanSql = cleanSql + ";";
+                    }
+                    statements.add(cleanSql);
+                }
+                return statements;
+            }
+
+            // 兼容路径：SchemaEvolutionService 未初始化时使用原有逻辑
             if (sourceIsPostgresql && !targetIsPostgresql) {
                 logger.warn("Skipping PG DDL for MySQL target (not auto-convertible): {}", sql);
                 return statements;
@@ -1374,6 +1405,15 @@ public class THLToSqlConverter {
         executedRecords = newRecords;
         rewriteExecutedRecordsFile();
         logger.info("Set seqno position to {}, kept {} records", seqno, executedRecords.size());
+    }
+
+    /**
+     * 注入 SchemaEvolutionService，用于在 ContinuousIncrementMain 等外部初始化场景下
+     * 启用 DDL 自动应用和在线 DDL 影子表过滤。
+     */
+    public void setSchemaEvolutionService(SchemaEvolutionService service) {
+        this.schemaEvolutionService = service;
+        logger.info("SchemaEvolutionService 已注入，DDL 自动应用和在线 DDL 过滤已启用");
     }
 
     public void removeSeqnoBefore(long seqno) {

@@ -17,7 +17,7 @@ public class THLFileWriter implements AutoCloseable {
 
     public THLFileWriter(String filePath) throws IOException {
         this.thlFile = new File(filePath);
-        
+
         File parentDir = thlFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
             parentDir.mkdirs();
@@ -27,6 +27,19 @@ public class THLFileWriter implements AutoCloseable {
         oos = new ObjectOutputStream(fos);
 
         logger.info("Created THL file: {}", thlFile.getAbsolutePath());
+    }
+
+    /**
+     * 子类专用构造函数，跳过 ObjectOutputStream 头写入初始化。
+     * 子类需自行管理 FileOutputStream 的创建与写入。
+     */
+    protected THLFileWriter(boolean skipInit) throws IOException {
+        if (!skipInit) {
+            throw new IllegalArgumentException("This constructor is for subclasses only");
+        }
+        this.thlFile = null;
+        this.fos = null;
+        this.oos = null;
     }
 
     public void writeEvent(THLEvent event) throws IOException {

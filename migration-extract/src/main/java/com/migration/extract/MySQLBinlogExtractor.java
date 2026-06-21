@@ -1,6 +1,7 @@
 package com.migration.extract;
 
 import com.migration.common.AbstractExtractor;
+import com.migration.db.ConnectionPoolManager;
 import com.migration.thl.THLEvent;
 import com.migration.thl.pipeline.Pipeline;
 import com.migration.thl.pipeline.PipelineConfig;
@@ -85,7 +86,7 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
     private void connectToSourceDatabase() throws SQLException {
         String url = "jdbc:mysql://" + sourceHost + ":" + sourcePort +
                 "/?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
-        sourceConnection = DriverManager.getConnection(url, sourceUser, sourcePassword);
+        sourceConnection = ConnectionPoolManager.getConnection(url, sourceUser, sourcePassword);
         logger.info("Connected to source database: {}:{}", sourceHost, sourcePort);
     }
 
@@ -142,7 +143,12 @@ public class MySQLBinlogExtractor extends AbstractExtractor<byte[], THLEvent> {
 
         String eventData = fields.length > 5 ? fields[5] : "";
 
-        if ("TABLE_MAP".equals(eventType)) {
+        if ("SYNC_HEARTBEAT".equals(eventType)) {
+            thlEvent.setType(THLEvent.HEARTBEAT_EVENT);
+            thlEvent.addMetadata("operation", "HEARTBEAT");
+            thlEvent.addMetadata("source_db_timestamp", timestamp);
+            return thlEvent;
+        } else if ("TABLE_MAP".equals(eventType)) {
             parseTableMapEvent(thlEvent, eventData);
         } else if (isWriteRowsEvent(eventType)) {
             parseRowEvent(thlEvent, eventData, "INSERT");

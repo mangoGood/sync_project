@@ -19,6 +19,10 @@ public class TaskCreatedMessage {
     private String sourceType;
     private String targetType;
     private String taskType;
+    private String kafkaBootstrapServers;
+    private String kafkaTopicPrefix;
+    private String kafkaTopicStrategy;
+    private String subscribeFormat;
 
     public TaskCreatedMessage() {
         this.messageType = "TASK_CREATED";
@@ -142,5 +146,37 @@ public class TaskCreatedMessage {
 
     public void setTaskType(String taskType) {
         this.taskType = taskType;
+    }
+
+    public String getKafkaBootstrapServers() {
+        return kafkaBootstrapServers;
+    }
+
+    public void setKafkaBootstrapServers(String kafkaBootstrapServers) {
+        this.kafkaBootstrapServers = kafkaBootstrapServers;
+    }
+
+    public String getKafkaTopicPrefix() {
+        return kafkaTopicPrefix;
+    }
+
+    public void setKafkaTopicPrefix(String kafkaTopicPrefix) {
+        this.kafkaTopicPrefix = kafkaTopicPrefix;
+    }
+
+    public String getKafkaTopicStrategy() {
+        return kafkaTopicStrategy;
+    }
+
+    public void setKafkaTopicStrategy(String kafkaTopicStrategy) {
+        this.kafkaTopicStrategy = kafkaTopicStrategy;
+    }
+
+    public String getSubscribeFormat() {
+        return subscribeFormat;
+    }
+
+    public void setSubscribeFormat(String subscribeFormat) {
+        this.subscribeFormat = subscribeFormat;
     }
 }

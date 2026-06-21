@@ -26,6 +26,19 @@ public class THLFileReader implements AutoCloseable {
         logger.info("Opened THL file: {}", thlFile);
     }
 
+    /**
+     * 子类专用构造函数，跳过文件头读取初始化。
+     * 子类需自行管理 FileInputStream 的创建与读取。
+     */
+    protected THLFileReader(boolean skipInit) throws IOException {
+        if (!skipInit) {
+            throw new IllegalArgumentException("This constructor is for subclasses only");
+        }
+        // 不初始化 fis/ois，由子类自行管理
+        this.fis = null;
+        this.ois = null;
+    }
+
     public THLEvent readEvent() throws IOException, ClassNotFoundException {
         try {
             return (THLEvent) ois.readObject();

@@ -159,6 +159,9 @@ public class KafkaConsumerService {
                 }
             } else if (newStatus == WorkflowStatus.INCREMENT_RUNNING) {
                 workflow.setIsBilling(true);
+                workflow.setIncrementStarted(true);
+            } else if (newStatus == WorkflowStatus.SUBSCRIBE_RUNNING) {
+                workflow.setIsBilling(true);
             }
 
             if ("DR".equals(workflow.getTaskType())) {
@@ -282,6 +285,8 @@ public class KafkaConsumerService {
                 return "全量同步完成";
             case INCREMENT_RUNNING:
                 return "增量同步中";
+            case SUBSCRIBE_RUNNING:
+                return "数据订阅中";
             case COMPLETED:
                 return "任务执行完成";
             case FAILED:
