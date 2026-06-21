@@ -115,32 +115,39 @@ public class ConfigService {
         }
         
         if (taskMessage.getTargetConnection() != null && !taskMessage.getTargetConnection().isEmpty()) {
-            ConnectionInfo targetInfo = ConnectionStringParser.parse(taskMessage.getTargetConnection());
-            if (targetInfo != null) {
-                props.setProperty("target.db.host", targetInfo.getHost());
-                props.setProperty("target.db.port", String.valueOf(targetInfo.getPort()));
-                props.setProperty("target.db.database", targetInfo.getDatabase());
-                if (targetInfo.getUsername() != null) {
-                    props.setProperty("target.db.username", targetInfo.getUsername());
-                }
-                if (targetInfo.getPassword() != null) {
-                    props.setProperty("target.db.password", targetInfo.getPassword());
-                }
-                if (targetInfo.getUsername() == null && taskMessage.getTarget() != null) {
-                    TaskMessage.DatabaseConfig target = taskMessage.getTarget();
-                    if (target.getUsername() != null) {
-                        props.setProperty("target.db.username", target.getUsername());
+            String targetType = taskMessage.getTargetType() != null ? taskMessage.getTargetType() : "mysql";
+            if ("kafka".equalsIgnoreCase(targetType)) {
+                // 订阅任务的 targetConnection 是 Kafka 连接串，不是数据库连接串
+                props.setProperty("subscribe.kafka.bootstrap.servers", taskMessage.getTargetConnection());
+                logger.info("Subscribe Kafka target config updated: {}", taskMessage.getTargetConnection());
+            } else {
+                ConnectionInfo targetInfo = ConnectionStringParser.parse(taskMessage.getTargetConnection());
+                if (targetInfo != null) {
+                    props.setProperty("target.db.host", targetInfo.getHost());
+                    props.setProperty("target.db.port", String.valueOf(targetInfo.getPort()));
+                    props.setProperty("target.db.database", targetInfo.getDatabase());
+                    if (targetInfo.getUsername() != null) {
+                        props.setProperty("target.db.username", targetInfo.getUsername());
                     }
-                    if (target.getPassword() != null) {
-                        props.setProperty("target.db.password", target.getPassword());
+                    if (targetInfo.getPassword() != null) {
+                        props.setProperty("target.db.password", targetInfo.getPassword());
                     }
+                    if (targetInfo.getUsername() == null && taskMessage.getTarget() != null) {
+                        TaskMessage.DatabaseConfig target = taskMessage.getTarget();
+                        if (target.getUsername() != null) {
+                            props.setProperty("target.db.username", target.getUsername());
+                        }
+                        if (target.getPassword() != null) {
+                            props.setProperty("target.db.password", target.getPassword());
+                        }
+                    }
+                    props.setProperty("target.host", targetInfo.getHost());
+                    props.setProperty("target.port", String.valueOf(targetInfo.getPort()));
+                    props.setProperty("target.user", targetInfo.getUsername() != null ? targetInfo.getUsername() : props.getProperty("target.db.username", ""));
+                    props.setProperty("target.password", targetInfo.getPassword() != null ? targetInfo.getPassword() : props.getProperty("target.db.password", ""));
+                    props.setProperty("target.type", targetInfo.getType() != null ? targetInfo.getType() : "mysql");
+                    logger.info("Target database config updated: {}:{}", targetInfo.getHost(), targetInfo.getPort());
                 }
-                props.setProperty("target.host", targetInfo.getHost());
-                props.setProperty("target.port", String.valueOf(targetInfo.getPort()));
-                props.setProperty("target.user", targetInfo.getUsername() != null ? targetInfo.getUsername() : props.getProperty("target.db.username", ""));
-                props.setProperty("target.password", targetInfo.getPassword() != null ? targetInfo.getPassword() : props.getProperty("target.db.password", ""));
-                props.setProperty("target.type", targetInfo.getType() != null ? targetInfo.getType() : "mysql");
-                logger.info("Target database config updated: {}:{}", targetInfo.getHost(), targetInfo.getPort());
             }
         } else if (taskMessage.getTarget() != null) {
             TaskMessage.DatabaseConfig target = taskMessage.getTarget();
@@ -241,7 +248,10 @@ public class ConfigService {
             logger.info("MySQL source config: using binlog capture, JDBC driver: com.mysql.cj.jdbc.Driver");
         }
 
-        if ("postgresql".equals(targetType)) {
+        if ("kafka".equalsIgnoreCase(targetType)) {
+            props.setProperty("target.db.type", "kafka");
+            logger.info("Kafka target config: no JDBC driver needed for subscribe task");
+        } else if ("postgresql".equals(targetType)) {
             props.setProperty("target.db.jdbc.driver", "org.postgresql.Driver");
             String targetPgSchema = "public";
             if ("mysql".equals(sourceType)) {
@@ -271,6 +281,28 @@ public class ConfigService {
             props.setProperty("migration.mode", "fullAndIncre");
             logger.info("DR task detected, setting task.type=DR, migration.mode=fullAndIncre");
         }
+
+        if ("SUBSCRIBE".equals(taskType)) {
+            props.setProperty("task.type", "SUBSCRIBE");
+            props.setProperty("migration.mode", "subscribe");
+            logger.info("SUBSCRIBE task detected, setting task.type=SUBSCRIBE, migration.mode=subscribe");
+        }
+
+        if (taskMessage.getKafkaBootstrapServers() != null && !taskMessage.getKafkaBootstrapServers().isEmpty()) {
+            props.setProperty("subscribe.kafka.bootstrap.servers", taskMessage.getKafkaBootstrapServers());
+            logger.info("Subscribe Kafka bootstrap servers: {}", taskMessage.getKafkaBootstrapServers());
+        }
+        if (taskMessage.getKafkaTopicPrefix() != null && !taskMessage.getKafkaTopicPrefix().isEmpty()) {
+            props.setProperty("subscribe.kafka.topic.prefix", taskMessage.getKafkaTopicPrefix());
+        }
+        if (taskMessage.getKafkaTopicStrategy() != null && !taskMessage.getKafkaTopicStrategy().isEmpty()) {
+            props.setProperty("subscribe.kafka.topic.strategy", taskMessage.getKafkaTopicStrategy());
+        }
+        if (taskMessage.getSubscribeFormat() != null && !taskMessage.getSubscribeFormat().isEmpty()) {
+            props.setProperty("subscribe.format", taskMessage.getSubscribeFormat());
+        }
+
+        props.setProperty("subscribe.thl.dir", "files/" + taskId + "/thl_output");
 
         if ("DR".equals(taskType) && (taskMessage.getSyncObjects() == null || taskMessage.getSyncObjects().isEmpty())) {
             Map<String, Object> drSyncObjects = discoverDrSyncObjects(props);

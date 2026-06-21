@@ -1,8 +1,12 @@
 package com.synctask.controller;
 
+import com.synctask.entity.AuditLog;
 import com.synctask.entity.Workflow;
 import com.synctask.entity.WorkflowLog;
 import com.synctask.security.UserPrincipal;
+import com.synctask.service.AuditLogService;
+import com.synctask.service.ConfigVersionService;
+import com.synctask.service.ResourceQuotaService;
 import com.synctask.service.WorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,12 +24,24 @@ public class WorkflowController {
     @Autowired
     private WorkflowService workflowService;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private ResourceQuotaService quotaService;
+
+    @Autowired
+    private ConfigVersionService configVersionService;
+
     @PostMapping
     public ResponseEntity<?> createWorkflow(
             @RequestBody CreateWorkflowRequest request,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            // 资源配额检查
+            quotaService.checkTaskQuota(userPrincipal.getId());
+
             String taskType = request.getTaskType() != null ? request.getTaskType() : "SYNC";
             Workflow workflow = workflowService.createWorkflow(
                     request.getName(),
@@ -34,8 +50,15 @@ public class WorkflowController {
                     userPrincipal.getId(),
                     taskType
             );
+            // 审计日志
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.CREATE_TASK,
+                    workflow.getId(),
+                    AuditLogService.buildDetails(workflow.getName(), null, null, null, taskType));
             return ResponseEntity.ok(new ApiResponse(true, "任务创建成功", convertToMap(workflow)));
         } catch (Exception e) {
+            // 审计日志（失败）
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.CREATE_TASK,
+                    null, request.getName(), e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -45,8 +68,8 @@ public class WorkflowController {
             @PathVariable String id,
             @RequestBody UpdateConfigRequest request,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             Workflow workflow = workflowService.updateConfig(
                     id,
                     userPrincipal.getId(),
@@ -57,10 +80,24 @@ public class WorkflowController {
                     request.getSourceDbName(),
                     request.getTargetDbName(),
                     request.getSourceType(),
-                    request.getTargetType()
+                    request.getTargetType(),
+                    request.getKafkaBootstrapServers(),
+                    request.getKafkaTopicPrefix(),
+                    request.getKafkaTopicStrategy(),
+                    request.getSubscribeFormat(),
+                    request.getFanoutEnabled(),
+                    request.getTargetConnections()
             );
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.UPDATE_CONFIG,
+                    id, AuditLogService.buildDetails(workflow.getName(),
+                            request.getSourceDbName(), request.getTargetDbName(),
+                            request.getMigrationMode(), null));
+            // 保存配置版本
+            configVersionService.saveVersion(id, userPrincipal.getId(), "配置更新", userPrincipal.getUsername());
             return ResponseEntity.ok(new ApiResponse(true, "配置保存成功", convertToMap(workflow)));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.UPDATE_CONFIG,
+                    id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -69,11 +106,18 @@ public class WorkflowController {
     public ResponseEntity<?> launchWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            // 并发任务配额检查
+            quotaService.checkConcurrentTaskQuota(userPrincipal.getId());
+
             Workflow workflow = workflowService.launchWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.LAUNCH_TASK,
+                    id, AuditLogService.buildDetails(workflow.getName(), null, null, null, null));
             return ResponseEntity.ok(new ApiResponse(true, "任务启动成功", convertToMap(workflow)));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.LAUNCH_TASK,
+                    id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -165,11 +209,13 @@ public class WorkflowController {
     public ResponseEntity<?> pauseWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             workflowService.pauseWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.PAUSE_TASK, id, null);
             return ResponseEntity.ok(new ApiResponse(true, "任务已暂停"));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.PAUSE_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -178,11 +224,13 @@ public class WorkflowController {
     public ResponseEntity<?> resumeWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             workflowService.resumeWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.RESUME_TASK, id, null);
             return ResponseEntity.ok(new ApiResponse(true, "任务已恢复"));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.RESUME_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -191,11 +239,13 @@ public class WorkflowController {
     public ResponseEntity<?> stopWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             workflowService.stopWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.STOP_TASK, id, null);
             return ResponseEntity.ok(new ApiResponse(true, "任务已结束"));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.STOP_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -204,11 +254,13 @@ public class WorkflowController {
     public ResponseEntity<?> deleteWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             workflowService.deleteWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.DELETE_TASK, id, null);
             return ResponseEntity.ok(new ApiResponse(true, "任务删除成功"));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.DELETE_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -217,11 +269,13 @@ public class WorkflowController {
     public ResponseEntity<?> retryWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             workflowService.retryWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.RETRY_TASK, id, null);
             return ResponseEntity.ok(new ApiResponse(true, "任务重试已启动"));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.RETRY_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -230,11 +284,14 @@ public class WorkflowController {
     public ResponseEntity<?> failoverWorkflow(
             @PathVariable String id,
             Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         try {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             Workflow workflow = workflowService.failoverWorkflow(id, userPrincipal.getId());
+            auditLogService.logSuccess(userPrincipal.getId(), AuditLog.Action.FAILOVER_TASK, id,
+                    AuditLogService.buildDetails(workflow.getName(), null, null, null, null));
             return ResponseEntity.ok(new ApiResponse(true, "主备倒换已启动", convertToMap(workflow)));
         } catch (Exception e) {
+            auditLogService.logFailure(userPrincipal.getId(), AuditLog.Action.FAILOVER_TASK, id, null, e.getMessage());
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
     }
@@ -270,6 +327,10 @@ public class WorkflowController {
         map.put("task_type", workflow.getTaskType());
         map.put("dr_status", workflow.getDrStatus());
         map.put("dr_switch_count", workflow.getDrSwitchCount());
+        map.put("kafka_bootstrap_servers", workflow.getKafkaBootstrapServers());
+        map.put("kafka_topic_prefix", workflow.getKafkaTopicPrefix());
+        map.put("kafka_topic_strategy", workflow.getKafkaTopicStrategy());
+        map.put("subscribe_format", workflow.getSubscribeFormat());
         return map;
     }
 
@@ -298,6 +359,12 @@ public class WorkflowController {
         private String targetDbName;
         private String sourceType;
         private String targetType;
+        private String kafkaBootstrapServers;
+        private String kafkaTopicPrefix;
+        private String kafkaTopicStrategy;
+        private String subscribeFormat;
+        private Boolean fanoutEnabled;
+        private String targetConnections;
 
         public String getSourceConnection() { return sourceConnection; }
         public void setSourceConnection(String sourceConnection) { this.sourceConnection = sourceConnection; }
@@ -315,6 +382,18 @@ public class WorkflowController {
         public void setSourceType(String sourceType) { this.sourceType = sourceType; }
         public String getTargetType() { return targetType; }
         public void setTargetType(String targetType) { this.targetType = targetType; }
+        public String getKafkaBootstrapServers() { return kafkaBootstrapServers; }
+        public void setKafkaBootstrapServers(String kafkaBootstrapServers) { this.kafkaBootstrapServers = kafkaBootstrapServers; }
+        public String getKafkaTopicPrefix() { return kafkaTopicPrefix; }
+        public void setKafkaTopicPrefix(String kafkaTopicPrefix) { this.kafkaTopicPrefix = kafkaTopicPrefix; }
+        public String getKafkaTopicStrategy() { return kafkaTopicStrategy; }
+        public void setKafkaTopicStrategy(String kafkaTopicStrategy) { this.kafkaTopicStrategy = kafkaTopicStrategy; }
+        public String getSubscribeFormat() { return subscribeFormat; }
+        public void setSubscribeFormat(String subscribeFormat) { this.subscribeFormat = subscribeFormat; }
+        public Boolean getFanoutEnabled() { return fanoutEnabled; }
+        public void setFanoutEnabled(Boolean fanoutEnabled) { this.fanoutEnabled = fanoutEnabled; }
+        public String getTargetConnections() { return targetConnections; }
+        public void setTargetConnections(String targetConnections) { this.targetConnections = targetConnections; }
     }
 
     public static class ApiResponse {

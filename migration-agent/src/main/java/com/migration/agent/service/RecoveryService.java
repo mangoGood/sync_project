@@ -28,9 +28,9 @@ public class RecoveryService {
         
         String sql = "SELECT id, name, user_id, source_connection, target_connection, " +
                      "migration_mode, status, progress, created_at, sync_objects, source_db_name, " +
-                     "source_type, target_type " +
+                     "source_type, target_type, task_type " +
                      "FROM workflows " +
-                     "WHERE status IN ('STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SWITCHING') " +
+                     "WHERE status IN ('STARTING', 'FULL_MIGRATING', 'FULL_COMPLETED', 'INCREMENT_RUNNING', 'SUBSCRIBE_RUNNING', 'SWITCHING') " +
                      "AND is_deleted = 0 " +
                      "ORDER BY created_at ASC";
         
@@ -58,7 +58,7 @@ public class RecoveryService {
     public RecoveryTask getTaskById(String taskId) {
         String sql = "SELECT id, name, user_id, source_connection, target_connection, " +
                      "migration_mode, status, progress, created_at, sync_objects, source_db_name, " +
-                     "source_type, target_type " +
+                     "source_type, target_type, task_type " +
                      "FROM workflows WHERE id = ?";
         
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
@@ -106,6 +106,14 @@ public class RecoveryService {
             logger.debug("source_type/target_type columns not found in workflows table, using defaults");
             task.setSourceType("mysql");
             task.setTargetType("mysql");
+        }
+
+        try {
+            String taskType = rs.getString("task_type");
+            task.setTaskType(taskType != null ? taskType : "SYNC");
+        } catch (SQLException e) {
+            logger.debug("task_type column not found in workflows table, using default SYNC");
+            task.setTaskType("SYNC");
         }
         
         return task;

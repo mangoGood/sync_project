@@ -3,7 +3,10 @@ package com.synctask.controller;
 import com.synctask.dto.JwtResponse;
 import com.synctask.dto.LoginRequest;
 import com.synctask.dto.RegisterRequest;
+import com.synctask.entity.AuditLog;
 import com.synctask.entity.User;
+import com.synctask.repository.UserRepository;
+import com.synctask.service.AuditLogService;
 import com.synctask.service.AuthService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -16,6 +19,10 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -24,6 +31,12 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private String translateLoginError(Exception e) {
         if (e instanceof BadCredentialsException || e instanceof UsernameNotFoundException) {
@@ -59,8 +72,20 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             JwtResponse response = authService.login(request);
+            // 审计日志：登录成功
+            Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+            Long userId = userOpt.map(User::getId).orElse(null);
+            Map<String, Object> details = new HashMap<>();
+            details.put("username", request.getUsername());
+            auditLogService.logSuccess(userId, AuditLog.Action.LOGIN, null, details);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            // 审计日志：登录失败
+            Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+            Long userId = userOpt.map(User::getId).orElse(null);
+            Map<String, Object> details = new HashMap<>();
+            details.put("username", request.getUsername());
+            auditLogService.logFailure(userId, AuditLog.Action.LOGIN, null, details, translateLoginError(e));
             return ResponseEntity.badRequest().body(new ApiResponse(false, translateLoginError(e)));
         }
     }

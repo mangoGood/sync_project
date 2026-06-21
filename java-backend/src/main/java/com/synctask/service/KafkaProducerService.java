@@ -42,6 +42,10 @@ public class KafkaProducerService {
         message.setSourceType(workflow.getSourceType());
         message.setTargetType(workflow.getTargetType());
         message.setTaskType(workflow.getTaskType());
+        message.setKafkaBootstrapServers(workflow.getKafkaBootstrapServers());
+        message.setKafkaTopicPrefix(workflow.getKafkaTopicPrefix());
+        message.setKafkaTopicStrategy(workflow.getKafkaTopicStrategy());
+        message.setSubscribeFormat(workflow.getSubscribeFormat());
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {
@@ -82,6 +86,10 @@ public class KafkaProducerService {
         message.setSourceType(workflow.getSourceType());
         message.setTargetType(workflow.getTargetType());
         message.setTaskType(workflow.getTaskType());
+        message.setKafkaBootstrapServers(workflow.getKafkaBootstrapServers());
+        message.setKafkaTopicPrefix(workflow.getKafkaTopicPrefix());
+        message.setKafkaTopicStrategy(workflow.getKafkaTopicStrategy());
+        message.setSubscribeFormat(workflow.getSubscribeFormat());
         
         if (workflow.getSyncObjects() != null && !workflow.getSyncObjects().isEmpty()) {
             try {

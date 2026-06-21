@@ -6,15 +6,19 @@ import com.migration.agent.model.RecoveryTask;
 import com.migration.agent.model.TaskMessage;
 import com.migration.agent.model.TaskStateInfo;
 import com.migration.agent.model.TaskStatusMessage;
+import com.migration.agent.service.AgentConfig;
 import com.migration.agent.service.AgentHttpServer;
 import com.migration.agent.service.ConfigService;
 import com.migration.agent.service.KafkaConsumerService;
 import com.migration.agent.service.KafkaProducerService;
 import com.migration.agent.service.RecoveryService;
 import com.migration.agent.service.TaskStateService;
-import com.migration.agent.thread.MigrationAgentThread;                                                                                                             
+import com.migration.agent.spring.AgentSpringConfig;
+import com.migration.agent.thread.MigrationAgentThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.ApplicationContext;
 
 import java.io.File;
 import java.sql.Connection;
@@ -29,14 +33,14 @@ import java.util.concurrent.*;
 public class AgentMain {
     private static final Logger logger = LoggerFactory.getLogger(AgentMain.class);
     
-    private static final String KAFKA_BOOTSTRAP_SERVERS = "192.168.117.2:19092";
+    private static final String KAFKA_BOOTSTRAP_SERVERS = System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "192.168.117.2:19092");
     private static final String CONSUMER_GROUP_ID = "migration-agent-group";
     private static final String METADATA_DB_USER = "sa";
     private static final String METADATA_DB_PASSWORD = "";
-    
-    private static final String MYSQL_DB_URL = "jdbc:mysql://192.168.107.2:3306/sync_task_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true";
-    private static final String MYSQL_DB_USER = "root";
-    private static final String MYSQL_DB_PASSWORD = "rootpassword";
+
+    private static final String MYSQL_DB_URL = System.getenv().getOrDefault("DB_URL", "jdbc:mysql://192.168.107.2:3306/sync_task_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true");
+    private static final String MYSQL_DB_USER = System.getenv().getOrDefault("DB_USERNAME", "root");
+    private static final String MYSQL_DB_PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "rootpassword");
     
     private static final String CAPTURE_JAR_PATH = "migration-capture/target/migration-capture-1.0.0.jar";
     private static final String MIGRATION_FULL_JAR_PATH = "migration-full/target/migration-full-1.0.0.jar";
@@ -63,6 +67,7 @@ public class AgentMain {
     private final Set<String> failoverInProgress = ConcurrentHashMap.newKeySet();
     
     private AgentHttpServer httpServer;
+    private ApplicationContext springContext;
     
     public static void main(String[] args) {
         AgentMain agent = new AgentMain();
@@ -77,10 +82,16 @@ public class AgentMain {
     public void start() {
         logger.info("Starting Migration Agent...");
         
-        kafkaProducer = new KafkaProducerService(KAFKA_BOOTSTRAP_SERVERS);
-        configService = new ConfigService();
-        taskStateService = new TaskStateService();
-        recoveryService = new RecoveryService(MYSQL_DB_URL, MYSQL_DB_USER, MYSQL_DB_PASSWORD);
+        // 通过 Spring DI 容器初始化核心组件，便于测试和配置管理
+        springContext = new AnnotationConfigApplicationContext(AgentSpringConfig.class);
+        logger.info("Spring ApplicationContext initialized with DI beans");
+        
+        kafkaProducer = springContext.getBean(KafkaProducerService.class);
+        configService = springContext.getBean(ConfigService.class);
+        taskStateService = springContext.getBean(TaskStateService.class);
+        AgentConfig agentConfig = springContext.getBean(AgentConfig.class);
+        
+        recoveryService = new RecoveryService(agentConfig.getMysqlDbUrl(), agentConfig.getMysqlDbUser(), agentConfig.getMysqlDbPassword());
         
         kafkaConsumer = new KafkaConsumerService(KAFKA_BOOTSTRAP_SERVERS, CONSUMER_GROUP_ID, 
             this::handleTaskMessage);
@@ -197,6 +208,11 @@ public class AgentMain {
         
         if (httpServer != null) {
             httpServer.stop();
+        }
+        
+        if (springContext instanceof AnnotationConfigApplicationContext) {
+            ((AnnotationConfigApplicationContext) springContext).close();
+            logger.info("Spring ApplicationContext closed");
         }
         
         logger.info("Agent stopped");
@@ -355,9 +371,10 @@ public class AgentMain {
             logger.info("Resuming task: {} with mode: {}, progress: {}, status: {}", 
                 taskId, migrationMode, progress, savedStatus);
             
-            if ("fullAndIncre".equals(migrationMode)) {
+            if ("fullAndIncre".equals(migrationMode) || "subscribe".equals(migrationMode)) {
                 boolean skipFullMigration = "FULL_COMPLETED".equals(savedStatus) || 
-                                           "INCREMENT_RUNNING".equals(savedStatus);
+                                           "INCREMENT_RUNNING".equals(savedStatus) ||
+                                           "SUBSCRIBE_RUNNING".equals(savedStatus);
                 
                 MigrationAgentThread agentThread = new MigrationAgentThread(taskMessage, kafkaProducer, taskStateService, skipFullMigration);
                 migrationAgentThreads.put(taskId, agentThread);
@@ -367,7 +384,7 @@ public class AgentMain {
                 migrationAgentThreadWrappers.put(taskId, threadWrapper);
                 threadWrapper.start();
                 
-                logger.info("MigrationAgentThread started for task: {}, skipFullMigration: {}", taskId, skipFullMigration);
+                logger.info("MigrationAgentThread started for {} task: {}, skipFullMigration: {}", migrationMode, taskId, skipFullMigration);
             } else {
                 if (progress < 100) {
                     startMigrationForTask(taskId);
@@ -504,17 +521,16 @@ public class AgentMain {
 
     private void stopMigrationAgentThread(String taskId) {
         MigrationAgentThread agentThread = migrationAgentThreads.remove(taskId);
+        Thread threadWrapper = migrationAgentThreadWrappers.remove(taskId);
+
         if (agentThread != null) {
             try {
-                agentThread.stop();
+                agentThread.stopAndInterrupt(threadWrapper);
                 logger.info("MigrationAgentThread stopped for task: {}", taskId);
             } catch (Exception e) {
                 logger.error("Error stopping MigrationAgentThread for task: {}", taskId, e);
             }
-        }
-        
-        Thread threadWrapper = migrationAgentThreadWrappers.remove(taskId);
-        if (threadWrapper != null) {
+        } else if (threadWrapper != null) {
             try {
                 threadWrapper.interrupt();
                 logger.info("MigrationAgentThread wrapper interrupted for task: {}", taskId);
@@ -587,7 +603,7 @@ public class AgentMain {
                 logger.warn("Config file not found at: {}", configFile.getAbsolutePath());
             }
             
-            if ("fullAndIncre".equals(migrationMode)) {
+            if ("fullAndIncre".equals(migrationMode) || "subscribe".equals(migrationMode)) {
                 MigrationAgentThread agentThread = new MigrationAgentThread(taskMessage, kafkaProducer, taskStateService, false);
                 migrationAgentThreads.put(taskId, agentThread);
                 
@@ -596,7 +612,7 @@ public class AgentMain {
                 migrationAgentThreadWrappers.put(taskId, threadWrapper);
                 threadWrapper.start();
                 
-                logger.info("MigrationAgentThread started for fullAndIncre task: {}", taskId);
+                logger.info("MigrationAgentThread started for {} task: {}", migrationMode, taskId);
             } else {
                 logger.info("Full migration mode, skipping binlog process for task: {}", taskId);
                 startMigrationForTask(taskId);
@@ -755,7 +771,7 @@ public class AgentMain {
             return;
         }
         
-        if ("fullAndIncre".equals(migrationMode)) {
+        if ("fullAndIncre".equals(migrationMode) || "subscribe".equals(migrationMode)) {
             recoverFullAndIncreTask(recoveryTask, taskMessage);
         } else {
             recoverFullOnlyTask(recoveryTask, taskMessage);
@@ -786,6 +802,11 @@ public class AgentMain {
                 
             case "INCREMENT_RUNNING":
                 logger.info("Task {} was in INCREMENT_RUNNING state, resuming incremental sync from checkpoint", taskId);
+                startMigrationAgentThread(taskMessage, true);
+                break;
+
+            case "SUBSCRIBE_RUNNING":
+                logger.info("Task {} was in SUBSCRIBE_RUNNING state, resuming subscribe from checkpoint", taskId);
                 startMigrationAgentThread(taskMessage, true);
                 break;
 

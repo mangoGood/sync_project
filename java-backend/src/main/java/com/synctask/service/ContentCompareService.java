@@ -2,6 +2,7 @@ package com.synctask.service;
 
 import com.synctask.dto.ContentCompareSession;
 import com.synctask.dto.ContentCompareSession.*;
+import com.synctask.util.DataSourcePoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -626,6 +627,6 @@ public class ContentCompareService {
                 conn.host, conn.port, conn.database != null ? conn.database : "");
         }
 
-        return DriverManager.getConnection(url, conn.username, conn.password);
+        return DataSourcePoolManager.getConnection(url, conn.username, conn.password);
     }
 }

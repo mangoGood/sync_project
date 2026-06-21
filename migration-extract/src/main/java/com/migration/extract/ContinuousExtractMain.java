@@ -1,7 +1,9 @@
 package com.migration.extract;
 
-import com.migration.thl.THLEvent;
+import com.migration.thl.EncryptedTHLFileWriter;
 import com.migration.thl.THLFileWriter;
+import com.migration.thl.THLEvent;
+import com.migration.thl.crypto.ThlEncryptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,8 @@ public class ContinuousExtractMain {
 
     private static final long HEARTBEAT_IDLE_THRESHOLD_MS = 1000;
     private static final long HEARTBEAT_INTERVAL_MS = 1000;
+    /** THL 文件最大大小（50MB），超过后轮转到新文件 */
+    private static final long THL_FILE_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 
     private com.migration.common.Extractor<byte[], THLEvent> extractor;
     private MySQLBinlogExtractor mysqlExtractor;
@@ -30,11 +34,21 @@ public class ContinuousExtractMain {
     private Map<String, FileProgress> fileProgressMap = new LinkedHashMap<>();
     private String progressRecordFile;
 
+    private BackpressureController backpressureController;
+
     private THLFileWriter currentThlWriter;
     private File currentThlFile;
+    /** THL 文件全局递增索引，用于文件命名和排序 */
+    private int globalThlIndex = 0;
     private volatile long lastRealEventTime = System.currentTimeMillis();
     private volatile long lastHeartbeatTime = 0;
     private long heartbeatSeqno = 0;
+
+    /** 已处理cap文件保留数量（安全余量），超过此数量的已处理文件将被清理 */
+    private int capRetentionCount = 2;
+
+    /** THL 加密服务 */
+    private ThlEncryptionService thlEncryptionService;
 
     public static void main(String[] args) {
         String configPath = null;
@@ -97,6 +111,19 @@ public class ContinuousExtractMain {
         this.progressRecordFile = outputDir + "/.extract_progress";
         this.captureType = props.getProperty("capture.type", "binlog").toLowerCase();
 
+        // 初始化背压控制器：高水位/低水位可配置
+        String taskId = props.getProperty("task.id", System.getProperty("task.id", "unknown"));
+        int highWatermark = Integer.parseInt(props.getProperty("backpressure.high.watermark", "5000"));
+        int lowWatermark = Integer.parseInt(props.getProperty("backpressure.low.watermark", "1000"));
+        this.backpressureController = new BackpressureController(taskId, highWatermark, lowWatermark);
+        logger.info("背压控制器初始化: highWatermark={}, lowWatermark={}", highWatermark, lowWatermark);
+
+        // 初始化 THL 加密服务
+        this.thlEncryptionService = new ThlEncryptionService(props);
+        if (thlEncryptionService.isEnabled()) {
+            logger.info("THL 文件加密已启用");
+        }
+
         if ("wal".equals(captureType) || "postgresql".equals(captureType)) {
             pgExtractor = new PostgresWalExtractor();
             this.extractor = (com.migration.common.Extractor<byte[], THLEvent>) pgExtractor;
@@ -113,10 +140,44 @@ public class ContinuousExtractMain {
             outputDirFile.mkdirs();
         }
 
+        // 扫描已有THL文件，确定全局起始索引，避免文件名冲突
+        initializeThlIndex(outputDirFile);
+
+        capRetentionCount = Integer.parseInt(props.getProperty("extract.cap.retention.count", "2"));
+
         loadProgress();
 
-        logger.info("Continuous Extract initialized - type: {}, input: {}, output: {}, scanInterval: {}ms",
-                captureType, inputDir, outputDir, scanInterval);
+        logger.info("Continuous Extract initialized - type: {}, input: {}, output: {}, scanInterval: {}ms, thlMaxSize: {}MB",
+                captureType, inputDir, outputDir, scanInterval, THL_FILE_MAX_SIZE_BYTES / (1024 * 1024));
+    }
+
+    /** 扫描输出目录中已有的THL文件，确定全局起始索引 */
+    private void initializeThlIndex(File outputDirFile) {
+        String[] existingThlFiles = outputDirFile.list((dir, name) ->
+                name.endsWith(".thl") && !name.startsWith("."));
+        if (existingThlFiles == null) return;
+
+        for (String name : existingThlFiles) {
+            long seq = extractSeqnoFromFileName(name);
+            if (seq >= globalThlIndex) {
+                globalThlIndex = (int) seq + 1;
+            }
+        }
+        logger.info("THL文件全局起始索引: {}", globalThlIndex);
+    }
+
+    /** 从THL文件名中提取seqno数字，用于排序和索引初始化 */
+    private long extractSeqnoFromFileName(String fileName) {
+        String name = fileName.replace(".thl", "");
+        int lastUnderscore = name.lastIndexOf('_');
+        if (lastUnderscore >= 0 && lastUnderscore < name.length() - 1) {
+            try {
+                return Long.parseLong(name.substring(lastUnderscore + 1));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     public void start() {
@@ -132,6 +193,9 @@ public class ContinuousExtractMain {
 
                 writeHeartbeatIfNeeded();
 
+                // 背压控制：检测 THL 输出目录积压量，超阈值时暂停 capture
+                applyBackpressureIfNeeded();
+
                 Thread.sleep(scanInterval);
             } catch (InterruptedException e) {
                 logger.info("Extract thread interrupted");
@@ -144,11 +208,36 @@ public class ContinuousExtractMain {
         closeCurrentThlWriter();
         closeExtractor();
         saveProgress();
+        // 进程退出时确保恢复 capture
+        if (backpressureController != null) {
+            backpressureController.forceResume();
+        }
         logger.info("Continuous Extract stopped");
     }
 
     public void stop() {
         running.set(false);
+    }
+
+    /**
+     * 检测 THL 输出目录中待处理的文件数量，超过高水位时向 capture 发送暂停信号。
+     * 待处理文件 = .thl 文件总数 - increment 已处理文件数（近似用文件数估算）。
+     */
+    private void applyBackpressureIfNeeded() {
+        if (backpressureController == null) return;
+
+        try {
+            File outputDirFile = new File(outputDir);
+            if (!outputDirFile.exists()) return;
+
+            File[] thlFiles = outputDirFile.listFiles((dir, name) ->
+                    name.endsWith(".thl") && !name.startsWith("."));
+            int pendingCount = thlFiles != null ? thlFiles.length : 0;
+
+            backpressureController.checkAndApplyBackpressure(pendingCount);
+        } catch (Exception e) {
+            logger.debug("背压检测异常: {}", e.getMessage());
+        }
     }
 
     private int scanAndProcessFiles() throws Exception {
@@ -192,23 +281,8 @@ public class ContinuousExtractMain {
         logger.info("Processing binlog file: {} ({} new lines, already read: {}, total: {})",
                 binlogFile.getName(), newLines, progress.linesRead, totalLinesInFile);
 
-        int newEventCount = 0;
-
-        String baseName = binlogFile.getName().replace(".cap", "");
-        File outputDirFile = new File(outputDir);
-        String[] existingThlFiles = outputDirFile.list((dir, name) ->
-                name.startsWith(baseName) && name.endsWith(".thl"));
-        int thlIndex = (existingThlFiles != null) ? existingThlFiles.length : 0;
-        String outputFileName = baseName + "_" + thlIndex + ".thl";
-        File outputFile = new File(outputDir, outputFileName);
-
-        try (THLFileWriter thlWriter = new THLFileWriter(outputFile.getAbsolutePath())) {
-            newEventCount = readAndExtractNewLines(binlogFile, thlWriter, progress, progress.linesRead);
-        }
-
-        if (newEventCount > 0) {
-            currentThlFile = outputFile;
-        }
+        // 使用类级别 currentThlWriter 统一写入，按50MB大小轮转文件
+        int newEventCount = readAndExtractNewLines(binlogFile, progress, progress.linesRead);
 
         long currentSize = binlogFile.length();
         boolean fileStoppedGrowing = (currentSize == progress.lastFileSize && currentSize > 0);
@@ -223,6 +297,8 @@ public class ContinuousExtractMain {
         if (progress.stableCheckCount >= 3) {
             progress.completed = true;
             logger.info("Binlog file {} appears complete, marking as completed", binlogFile.getName());
+            // 文件处理完成，清理旧的已完成cap文件
+            cleanupCompletedCapFiles();
         }
 
         logger.info("Processed binlog file: {} -> {} new events", binlogFile.getName(), newEventCount);
@@ -245,17 +321,8 @@ public class ContinuousExtractMain {
             return;
         }
 
-        if (currentThlFile == null) {
-            currentThlFile = createHeartbeatThlFile();
-            if (currentThlFile == null) {
-                return;
-            }
-        }
-
         try {
-            if (currentThlWriter == null) {
-                currentThlWriter = new THLFileWriter(currentThlFile.getAbsolutePath());
-            }
+            ensureThlWriter();
 
             long seqno = getNextHeartbeatSeqno();
 
@@ -276,19 +343,6 @@ public class ContinuousExtractMain {
         } catch (Exception e) {
             logger.warn("Failed to write heartbeat event: {}", e.getMessage());
             closeCurrentThlWriter();
-        }
-    }
-
-    private File createHeartbeatThlFile() {
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-            String timestamp = sdf.format(new Date());
-            String fileName = "heartbeat_" + timestamp + ".thl";
-            File outputFile = new File(outputDir, fileName);
-            return outputFile;
-        } catch (Exception e) {
-            logger.warn("Failed to create heartbeat THL file: {}", e.getMessage());
-            return null;
         }
     }
 
@@ -324,7 +378,15 @@ public class ContinuousExtractMain {
         return count;
     }
 
-    private int readAndExtractNewLines(File binlogFile, THLFileWriter thlWriter,
+    /** 创建 THL 文件写入器（根据加密配置自动选择） */
+    private THLFileWriter createThlWriter(String filePath) throws IOException {
+        if (thlEncryptionService != null && thlEncryptionService.isEnabled()) {
+            return new EncryptedTHLFileWriter(filePath, thlEncryptionService);
+        }
+        return new THLFileWriter(filePath);
+    }
+
+    private int readAndExtractNewLines(File binlogFile,
                                         FileProgress progress, int skipLines) throws Exception {
         int eventCount = 0;
         int currentLine = 0;
@@ -340,13 +402,14 @@ public class ContinuousExtractMain {
 
                 byte[] eventBytes = line.getBytes("UTF-8");
                 THLEvent event = extractor.extract(eventBytes);
-                if (event != null && thlWriter != null) {
+                if (event != null) {
+                    ensureThlWriter();
+                    checkAndRotateThlFile();
+
                     Boolean multiRow = (Boolean) event.getMetadata().get("multi_row");
                     if (multiRow != null && multiRow) {
                         @SuppressWarnings("unchecked")
                         java.util.List<String> rowsData = (java.util.List<String>) event.getMetadata().get("rows_data");
-                        @SuppressWarnings("unchecked")
-                        java.util.List<String> rowsDataBefore = (java.util.List<String>) event.getMetadata().get("rows_data_before");
                         if (rowsData != null && rowsData.size() > 1) {
                             for (int i = 0; i < rowsData.size(); i++) {
                                 THLEvent rowEvent = new THLEvent();
@@ -357,29 +420,55 @@ public class ContinuousExtractMain {
                                 
                                 for (java.util.Map.Entry<String, Object> entry : event.getMetadata().entrySet()) {
                                     String key = entry.getKey();
-                                    if (!"rows_data".equals(key) && !"multi_row".equals(key) && !"rows_data_before".equals(key)) {
+                                    if (!"rows_data".equals(key) && !"multi_row".equals(key)) {
                                         rowEvent.addMetadata(key, entry.getValue());
                                     }
                                 }
                                 rowEvent.addMetadata("row_data", rowsData.get(i));
-                                if (rowsDataBefore != null && i < rowsDataBefore.size()) {
-                                    rowEvent.addMetadata("row_data_before", rowsDataBefore.get(i));
-                                }
                                 
-                                thlWriter.writeEvent(rowEvent);
+                                currentThlWriter.writeEvent(rowEvent);
                                 eventCount++;
+                                checkAndRotateThlFile();
                             }
                             progress.linesRead++;
                             continue;
                         }
                     }
-                    thlWriter.writeEvent(event);
+                    currentThlWriter.writeEvent(event);
                     eventCount++;
                 }
                 progress.linesRead++;
             }
         }
         return eventCount;
+    }
+
+    /** 确保 currentThlWriter 可用，若为空则创建新THL文件 */
+    private void ensureThlWriter() throws IOException {
+        if (currentThlWriter == null || currentThlFile == null) {
+            createNewThlFile();
+        }
+    }
+
+    /** 检查当前THL文件大小，超过50MB则轮转到新文件 */
+    private void checkAndRotateThlFile() throws IOException {
+        if (currentThlFile != null && currentThlFile.length() >= THL_FILE_MAX_SIZE_BYTES) {
+            logger.info("THL文件 {} 达到{}MB，轮转到新文件",
+                    currentThlFile.getName(), currentThlFile.length() / (1024 * 1024));
+            createNewThlFile();
+        }
+    }
+
+    /** 创建新的THL文件并初始化writer */
+    private void createNewThlFile() throws IOException {
+        closeCurrentThlWriter();
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String timestamp = sdf.format(new Date());
+        String fileName = String.format("binlog_%s_%04d.thl", timestamp, globalThlIndex++);
+        currentThlFile = new File(outputDir, fileName);
+        currentThlWriter = createThlWriter(currentThlFile.getAbsolutePath());
+        logger.info("Created new THL file: {}", currentThlFile.getName());
     }
 
     private void loadProgress() {
@@ -452,6 +541,52 @@ public class ContinuousExtractMain {
             mysqlExtractor.saveSeqno();
         } else if (pgExtractor != null) {
             pgExtractor.saveSeqno();
+        }
+    }
+
+    /**
+     * 清理已完全处理的cap文件，保留最近 capRetentionCount 个已处理文件作为安全余量。
+     * 只删除 fileProgressMap 中标记为 completed=true 的文件。
+     */
+    private void cleanupCompletedCapFiles() {
+        try {
+            File inputDirFile = new File(inputDir);
+            if (!inputDirFile.exists() || !inputDirFile.isDirectory()) return;
+
+            File[] capFiles = inputDirFile.listFiles((dir, name) ->
+                    name.startsWith("binlog_") && name.endsWith(".cap"));
+            if (capFiles == null || capFiles.length == 0) return;
+
+            // 按文件名排序
+            Arrays.sort(capFiles, Comparator.comparing(File::getName));
+
+            // 收集已处理完成的文件
+            List<File> completedFiles = new ArrayList<>();
+            for (File f : capFiles) {
+                FileProgress progress = fileProgressMap.get(f.getName());
+                if (progress != null && progress.completed) {
+                    completedFiles.add(f);
+                }
+            }
+
+            // 保留最近 capRetentionCount 个已处理文件，删除其余的
+            if (completedFiles.size() <= capRetentionCount) {
+                return;
+            }
+
+            int toDelete = completedFiles.size() - capRetentionCount;
+            for (int i = 0; i < toDelete; i++) {
+                File f = completedFiles.get(i);
+                if (f.delete()) {
+                    fileProgressMap.remove(f.getName());
+                    logger.info("已清理已处理的cap文件: {}", f.getName());
+                } else {
+                    logger.warn("清理cap文件失败: {}", f.getName());
+                }
+            }
+            saveProgress();
+        } catch (Exception e) {
+            logger.warn("清理已处理cap文件时异常: {}", e.getMessage());
         }
     }
 }

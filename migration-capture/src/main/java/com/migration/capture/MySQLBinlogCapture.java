@@ -19,9 +19,11 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
@@ -64,6 +66,15 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
     private static final long RPO_REPORT_INTERVAL_MS = 3000;
     private final Map<Long, String> tableIdToNameMap = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // 背压控制：extract 通过信号文件通知 capture 暂停/恢复
+    private volatile boolean backpressurePaused = false;
+    private String backpressureSignalPath;
+
+    /** 需要同步的数据库集合（为空表示不过滤，捕获所有） */
+    private Set<String> syncedDatabases = new HashSet<>();
+    /** 需要同步的表集合（格式：database.table，为空表示不过滤） */
+    private Set<String> syncedTables = new HashSet<>();
+
     @Override
     protected void doInitialize() throws Exception {
         host = props.getProperty("source.db.host", "localhost");
@@ -76,6 +87,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         taskId = props.getProperty("task.id", "unknown");
         maxEventsPerFile = Long.parseLong(props.getProperty("capture.max.events.per.file", "10000"));
         serverId = Long.parseLong(props.getProperty("capture.server.id", "65535"));
+        backpressureSignalPath = "files/" + taskId + "/backpressure.signal";
 
         heartbeatDatabase = props.getProperty("source.db.database", "");
         if (heartbeatDatabase == null || heartbeatDatabase.isEmpty()) {
@@ -119,8 +131,136 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
             binlogPosition = 0;
         }
 
-        logger.info("Capture initialized - host={}:{} user={} outputDir={} taskId={} binlogFile={} binlogPosition={} heartbeatDatabase={}",
-                host, port, user, outputDir, taskId, binlogFile, binlogPosition, heartbeatDatabase);
+        // 解析同步对象配置，构建数据库/表过滤集合
+        parseSyncObjects();
+
+        logger.info("Capture初始化完成 - host={}:{} user={} outputDir={} taskId={} binlogFile={} binlogPosition={} heartbeatDatabase={} syncedDatabases={} syncedTables={}",
+                host, port, user, outputDir, taskId, binlogFile, binlogPosition, heartbeatDatabase,
+                syncedDatabases, syncedTables);
+    }
+
+    /**
+     * 解析同步对象配置，构建数据库和表过滤集合。
+     * 配置格式: migration.sync.objects={"test_db1":{"tables":["users","orders"]}}
+     * 也支持 migration.included.databases 和 migration.included.tables
+     */
+    private void parseSyncObjects() {
+        // 方式1: 从 migration.sync.objects JSON 解析
+        String syncObjectsJson = props.getProperty("migration.sync.objects", "");
+        if (syncObjectsJson == null || syncObjectsJson.isEmpty()) {
+            syncObjectsJson = props.getProperty("sync.objects", "");
+        }
+
+        if (syncObjectsJson != null && !syncObjectsJson.isEmpty() && syncObjectsJson.startsWith("{")) {
+            try {
+                // 简单解析JSON: {"db1":{"tables":["t1","t2"]},"db2":{"tables":["t3"]}}
+                String json = syncObjectsJson.replace("\\\"", "\"");
+                // 提取所有 "dbname":{"tables":[...]} 模式
+                java.util.regex.Pattern dbPattern = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:\\s*\\{\\s*\"tables\"\\s*:\\s*\\[([^\\]]*)\\]");
+                java.util.regex.Matcher matcher = dbPattern.matcher(json);
+                while (matcher.find()) {
+                    String dbName = matcher.group(1);
+                    String tablesStr = matcher.group(2);
+                    syncedDatabases.add(dbName);
+                    // 解析表名列表
+                    java.util.regex.Pattern tablePattern = java.util.regex.Pattern.compile("\"([^\"]+)\"");
+                    java.util.regex.Matcher tableMatcher = tablePattern.matcher(tablesStr);
+                    while (tableMatcher.find()) {
+                        syncedTables.add(dbName + "." + tableMatcher.group(1));
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("解析sync.objects失败，将捕获所有数据库事件: {}", e.getMessage());
+            }
+        }
+
+        // 方式2: 从 migration.included.databases 和 migration.included.tables 解析
+        if (syncedDatabases.isEmpty()) {
+            String databases = props.getProperty("migration.included.databases", "");
+            if (databases != null && !databases.isEmpty()) {
+                for (String db : databases.split(",")) {
+                    String trimmed = db.trim();
+                    if (!trimmed.isEmpty()) {
+                        syncedDatabases.add(trimmed);
+                    }
+                }
+            }
+        }
+
+        if (syncedTables.isEmpty()) {
+            String tables = props.getProperty("migration.included.tables", "");
+            if (tables != null && !tables.isEmpty()) {
+                for (String table : tables.split(",")) {
+                    String trimmed = table.trim();
+                    if (!trimmed.isEmpty()) {
+                        syncedTables.add(trimmed);
+                        // 同时提取数据库名
+                        if (trimmed.contains(".")) {
+                            syncedDatabases.add(trimmed.substring(0, trimmed.indexOf('.')));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!syncedDatabases.isEmpty() || !syncedTables.isEmpty()) {
+            logger.info("已启用binlog事件过滤 - 数据库: {}, 表: {}", syncedDatabases, syncedTables);
+        } else {
+            logger.info("未配置同步对象过滤，将捕获所有数据库事件");
+        }
+    }
+
+    /**
+     * 检查指定表是否在同步范围内。
+     * @param dbName 数据库名
+     * @param tableName 表名
+     * @return true表示需要同步，false表示需要跳过
+     */
+    private boolean shouldCaptureTable(String dbName, String tableName) {
+        // 未配置过滤则捕获所有
+        if (syncedDatabases.isEmpty() && syncedTables.isEmpty()) {
+            return true;
+        }
+        // 优先检查表级过滤
+        if (!syncedTables.isEmpty()) {
+            String fullTableName = dbName + "." + tableName;
+            return syncedTables.contains(fullTableName);
+        }
+        // 仅数据库级过滤
+        return syncedDatabases.contains(dbName);
+    }
+
+    /**
+     * 检查数据事件（Write/Update/Delete）是否应该被捕获。
+     * 通过tableId查找表名，再判断是否在同步范围内。
+     */
+    private boolean shouldCaptureDataEvent(EventData eventData) {
+        long tableId = -1;
+        if (eventData instanceof WriteRowsEventData) {
+            tableId = ((WriteRowsEventData) eventData).getTableId();
+        } else if (eventData instanceof UpdateRowsEventData) {
+            tableId = ((UpdateRowsEventData) eventData).getTableId();
+        } else if (eventData instanceof DeleteRowsEventData) {
+            tableId = ((DeleteRowsEventData) eventData).getTableId();
+        }
+
+        if (tableId < 0) {
+            return true; // 无法确定表，默认捕获
+        }
+
+        String fullTableName = tableIdToNameMap.get(tableId);
+        if (fullTableName == null) {
+            return true; // 表映射未知，默认捕获（可能是TableMap事件还未到达）
+        }
+
+        int dotIndex = fullTableName.indexOf('.');
+        if (dotIndex < 0) {
+            return true;
+        }
+
+        String dbName = fullTableName.substring(0, dotIndex);
+        String tableName = fullTableName.substring(dotIndex + 1);
+        return shouldCaptureTable(dbName, tableName);
     }
 
     @Override
@@ -137,9 +277,9 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         if (binlogFile != null && !binlogFile.isEmpty()) {
             client.setBinlogFilename(binlogFile);
             client.setBinlogPosition(binlogPosition);
-            logger.info("Starting capture from binlog position: {}:{}", binlogFile, binlogPosition);
+            logger.info("从binlog位点开始捕获: {}:{}", binlogFile, binlogPosition);
         } else {
-            logger.info("Starting capture from latest binlog position");
+            logger.info("从最新binlog位点开始捕获");
         }
 
         client.registerEventListener(this::processEvent);
@@ -147,31 +287,32 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
             @Override
             public void onConnect(BinaryLogClient client) {
-                logger.info("Connected to MySQL binlog stream");
+                logger.info("已连接到MySQL binlog流");
             }
 
             @Override
             public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-                logger.error("Communication failure with MySQL: {}", ex.getMessage());
+                logger.error("MySQL通信失败: {}", ex.getMessage());
             }
 
             @Override
             public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-                logger.error("Event deserialization failure: {}", ex.getMessage());
+                logger.error("事件反序列化失败: {}", ex.getMessage());
             }
 
             @Override
             public void onDisconnect(BinaryLogClient client) {
-                logger.info("Disconnected from MySQL binlog stream");
+                logger.info("已断开MySQL binlog流连接");
             }
         });
 
         initClockOffset();
         startHeartbeat();
+        startBackpressureMonitor();
 
         client.connect();
 
-        logger.info("Binlog capture started successfully for task: {}", taskId);
+        logger.info("Binlog捕获已启动, taskId: {}", taskId);
     }
 
     @Override
@@ -183,7 +324,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
             try {
                 heartbeatConnection.close();
             } catch (Exception e) {
-                logger.warn("Error closing heartbeat connection: {}", e.getMessage());
+                logger.warn("关闭心跳连接异常: {}", e.getMessage());
             }
         }
 
@@ -191,7 +332,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
             try {
                 client.disconnect();
             } catch (Exception e) {
-                logger.warn("Error disconnecting binlog client: {}", e.getMessage());
+                logger.warn("断开binlog客户端异常: {}", e.getMessage());
             }
         }
 
@@ -200,17 +341,79 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                 writer.flush();
                 writer.close();
             } catch (Exception e) {
-                logger.warn("Error closing writer: {}", e.getMessage());
+                logger.warn("关闭写入器异常: {}", e.getMessage());
             }
         }
 
         savePosition();
-        logger.info("Binlog capture stopped. Total events captured: {}, lastRpoMs: {}", eventCounter.get(), lastRpoMs);
+        logger.info("Binlog捕获已停止, 总事件数: {}, 最后RPO: {}ms", eventCounter.get(), lastRpoMs);
+    }
+
+    /**
+     * 检查背压信号文件，更新 backpressurePaused 状态。
+     * extract 进程在 THL 积压时写入 PAUSE 信号，积压解除后写入 RESUME。
+     */
+    private void checkBackpressureSignal() {
+        if (backpressureSignalPath == null) return;
+        java.io.File signalFile = new java.io.File(backpressureSignalPath);
+        if (!signalFile.exists()) {
+            backpressurePaused = false;
+            return;
+        }
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(signalFile))) {
+            String firstLine = reader.readLine();
+            boolean shouldPause = firstLine != null && "PAUSE".equalsIgnoreCase(firstLine.trim());
+            if (shouldPause != backpressurePaused) {
+                backpressurePaused = shouldPause;
+                if (shouldPause) {
+                    logger.warn("收到背压暂停信号，暂停 binlog 事件处理");
+                } else {
+                    logger.info("收到背压恢复信号，恢复 binlog 事件处理");
+                }
+            }
+        } catch (IOException e) {
+            logger.debug("读取背压信号文件失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 启动后台线程定期检查背压信号，确保无事件时也能及时响应暂停/恢复。
+     */
+    private void startBackpressureMonitor() {
+        Thread monitor = new Thread(() -> {
+            while (running) {
+                try {
+                    checkBackpressureSignal();
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    logger.debug("背压监控异常: {}", e.getMessage());
+                }
+            }
+        }, "Backpressure-Monitor-" + taskId);
+        monitor.setDaemon(true);
+        monitor.start();
+        logger.info("背压监控线程已启动, taskId={}", taskId);
     }
 
     private void processEvent(Event event) {
         if (!running) {
             return;
+        }
+
+        // 背压检查：如果 extract 发出暂停信号，则等待恢复
+        if (backpressurePaused) {
+            try {
+                while (backpressurePaused && running) {
+                    Thread.sleep(500);
+                    checkBackpressureSignal();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
 
         try {
@@ -235,8 +438,18 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                 lastSourceEventTs = timestamp;
                 writeRpoMetric(lastRpoMs);
                 if (eventCounter.get() % 5000 == 0) {
-                    logger.info("RPO heartbeat detected: sourceTstamp={}, rpoMs={}, clockOffsetMs={}", timestamp, lastRpoMs, clockOffsetMs);
+                    logger.info("检测到RPO心跳: sourceTstamp={}, rpoMs={}, clockOffsetMs={}", timestamp, lastRpoMs, clockOffsetMs);
                 }
+
+                StringBuilder hbSb = new StringBuilder();
+                hbSb.append("SYNC_HEARTBEAT").append(FIELD_SEP);
+                hbSb.append(currentBinlogFile).append(FIELD_SEP);
+                hbSb.append(currentBinlogPosition).append(FIELD_SEP);
+                hbSb.append(timestamp).append(FIELD_SEP);
+                hbSb.append(serverId).append(FIELD_SEP);
+                hbSb.append(RECORD_SEP);
+                writer.write(hbSb.toString());
+                writer.flush();
                 return;
             }
 
@@ -244,6 +457,10 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                     || (eventData instanceof UpdateRowsEventData)
                     || (eventData instanceof DeleteRowsEventData);
             if (isDataEvent) {
+                // 基于同步对象过滤：只捕获本任务相关的表事件，避免浪费网络和存储资源
+                if (!shouldCaptureDataEvent(eventData)) {
+                    return;
+                }
                 lastSourceEventTs = timestamp;
                 long now = System.currentTimeMillis();
                 long currentRpoMs = now - timestamp + clockOffsetMs;
@@ -283,11 +500,11 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
             }
 
             if (count % 1000 == 0) {
-                logger.info("Captured {} events, current position: {}:{}", count, currentBinlogFile, currentBinlogPosition);
+                logger.info("已捕获 {} 个事件, 当前位点: {}:{}", count, currentBinlogFile, currentBinlogPosition);
                 savePosition();
             }
         } catch (Exception e) {
-            logger.error("Error processing binlog event: {}", e.getMessage(), e);
+            logger.error("处理binlog事件异常: {}", e.getMessage(), e);
         }
     }
 
@@ -305,13 +522,13 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile), StandardCharsets.UTF_8));
         currentFileEvents = 0;
 
-        logger.info("Opened new capture output file: {}", outputFile.getAbsolutePath());
+        logger.info("打开新的捕获输出文件: {}", outputFile.getAbsolutePath());
     }
 
     private synchronized void rotateOutputFile() throws IOException {
         fileCounter.incrementAndGet();
         openNewOutputFile();
-        logger.info("Rotated to new capture output file after {} events", maxEventsPerFile);
+        logger.info("文件轮转, 已捕获 {} 个事件", maxEventsPerFile);
     }
 
     private String serializeEventData(String eventType, EventData eventData) {
@@ -328,7 +545,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                 return eventData.toString();
             }
         } catch (Exception e) {
-            logger.warn("Failed to serialize event data, falling back to toString(): {}", e.getMessage());
+            logger.warn("事件数据序列化失败, 回退到toString(): {}", e.getMessage());
             return eventData.toString();
         }
     }
@@ -459,7 +676,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         try (FileOutputStream fos = new FileOutputStream(positionFile)) {
             posProps.store(fos, "Capture position for task: " + taskId);
         } catch (IOException e) {
-            logger.warn("Failed to save capture position: {}", e.getMessage());
+            logger.warn("保存捕获位点失败: {}", e.getMessage());
         }
     }
 
@@ -489,11 +706,11 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                     long sourceDbTime = rs.getLong(1);
                     long localTime = System.currentTimeMillis();
                     clockOffsetMs = sourceDbTime - localTime;
-                    logger.info("Clock offset calculated: sourceDbTime={}, localTime={}, offsetMs={}", sourceDbTime, localTime, clockOffsetMs);
+                    logger.info("时钟偏移计算完成: sourceDbTime={}, localTime={}, offsetMs={}", sourceDbTime, localTime, clockOffsetMs);
                 }
             }
         } catch (Exception e) {
-            logger.warn("Failed to calculate clock offset, assuming clocks are synchronized: {}", e.getMessage());
+            logger.warn("时钟偏移计算失败, 假设时钟已同步: {}", e.getMessage());
             clockOffsetMs = 0;
         }
     }
@@ -506,15 +723,15 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
 
             try (Statement stmt = heartbeatConnection.createStatement()) {
                 stmt.execute("CREATE TABLE IF NOT EXISTS " + HEARTBEAT_TABLE + " (id INT PRIMARY KEY, ts BIGINT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
-                logger.info("Heartbeat table ensured: {}.{}", db, HEARTBEAT_TABLE);
+                logger.info("心跳表已就绪: {}.{}", db, HEARTBEAT_TABLE);
             }
         } catch (Exception e) {
-            logger.warn("Failed to initialize heartbeat table: {}", e.getMessage());
+            logger.warn("初始化心跳表失败: {}", e.getMessage());
             return;
         }
 
         heartbeatThread = new Thread(() -> {
-            logger.info("Heartbeat thread started, interval={}ms", HEARTBEAT_INTERVAL_MS);
+            logger.info("心跳线程已启动, 间隔={}ms", HEARTBEAT_INTERVAL_MS);
             while (running && !Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(HEARTBEAT_INTERVAL_MS);
@@ -528,20 +745,20 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
                     Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    logger.warn("Heartbeat write failed: {}", e.getMessage());
+                    logger.warn("心跳写入失败: {}", e.getMessage());
                     try {
                         if (heartbeatConnection != null && !heartbeatConnection.isValid(2)) {
                             String db = (heartbeatDatabase != null && !heartbeatDatabase.isEmpty()) ? heartbeatDatabase : "mysql";
                             String url = "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false&serverTimezone=UTC";
                             heartbeatConnection = DriverManager.getConnection(url, user, password);
-                            logger.info("Heartbeat connection re-established");
+                            logger.info("心跳连接已重新建立");
                         }
                     } catch (Exception ex) {
-                        logger.warn("Heartbeat connection reconnect failed: {}", ex.getMessage());
+                        logger.warn("心跳连接重连失败: {}", ex.getMessage());
                     }
                 }
             }
-            logger.info("Heartbeat thread stopped");
+            logger.info("心跳线程已停止");
         }, "Heartbeat-" + taskId);
         heartbeatThread.setDaemon(true);
         heartbeatThread.start();
@@ -577,7 +794,7 @@ public class MySQLBinlogCapture extends AbstractCapture<byte[]> {
         try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(metricFile, false))) {
             pw.println(System.currentTimeMillis() + "|" + rpoMs + "|" + lastSourceEventTs);
         } catch (IOException e) {
-            logger.warn("Failed to write RPO metric: {}", e.getMessage());
+            logger.warn("写入RPO指标失败: {}", e.getMessage());
         }
     }
 }

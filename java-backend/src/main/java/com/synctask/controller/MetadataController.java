@@ -7,6 +7,11 @@ import com.synctask.dto.TableInfo;
 import com.synctask.dto.ValidationResult;
 import com.synctask.service.ContentCompareService;
 import com.synctask.service.MetadataService;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.TopicListing;
+import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +39,26 @@ public class MetadataController {
         try {
             String connectionStr = request.get("sourceConnection");
             String expectedType = request.get("dbType");
-            
+
+            if (connectionStr == null || connectionStr.isEmpty()) {
+                String host = request.get("host");
+                String port = request.get("port");
+                String username = request.get("username");
+                String password = request.get("password");
+                String type = request.get("type");
+
+                if (host != null && port != null && username != null) {
+                    String protocol = "postgresql".equalsIgnoreCase(type) ? "postgresql" : "mysql";
+                    connectionStr = String.format("%s://%s:%s@%s:%s", protocol, username, password != null ? password : "", host, port);
+                    if (expectedType == null || expectedType.isEmpty()) {
+                        expectedType = protocol;
+                    }
+                    logger.info("从独立字段构建连接串: host={}, port={}, username={}, type={}", host, port, username, type);
+                }
+            }
+
             logger.info("测试数据库连接: expectedType={}", expectedType);
-            
+
             MetadataService.ConnectionTestResult result = metadataService.testConnectionDetailed(connectionStr, expectedType);
             
             Map<String, Object> data = new HashMap<>();
@@ -58,6 +80,113 @@ public class MetadataController {
                 "success", false,
                 "message", e.getMessage()
             ));
+        }
+    }
+
+    @PostMapping("/test-kafka")
+    public ResponseEntity<?> testKafkaConnection(@RequestBody Map<String, String> request) {
+        String bootstrapServers = request.get("bootstrapServers");
+        if (bootstrapServers == null || bootstrapServers.trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "Kafka地址不能为空"));
+        }
+
+        java.util.Properties props = new java.util.Properties();
+        props.put("bootstrap.servers", bootstrapServers.trim());
+        props.put("request.timeout.ms", "10000");
+        props.put("default.api.timeout.ms", "10000");
+
+        try (AdminClient adminClient = AdminClient.create(props)) {
+            java.util.Collection<org.apache.kafka.common.Node> nodes = adminClient.describeCluster().nodes().get(12, java.util.concurrent.TimeUnit.SECONDS);
+            int brokerCount = nodes.size();
+            logger.info("Kafka集群节点数: {}", brokerCount);
+
+            java.util.List<String> topics = new java.util.ArrayList<>();
+            try {
+                java.util.Collection<TopicListing> listings = adminClient.listTopics().listings().get(5, java.util.concurrent.TimeUnit.SECONDS);
+                for (TopicListing tl : listings) {
+                    if (!tl.isInternal()) {
+                        topics.add(tl.name());
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("获取Kafka主题列表失败（非致命）: {}", e.getMessage());
+            }
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("connected", true);
+            data.put("brokerCount", brokerCount);
+            data.put("topicCount", topics.size());
+            data.put("sampleTopics", topics.stream().limit(10).collect(java.util.stream.Collectors.toList()));
+
+            return ResponseEntity.ok(Map.of("success", true, "data", data));
+        } catch (java.util.concurrent.TimeoutException e) {
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", Map.of("connected", false, "errorType", "TIMEOUT",
+                    "errorMessage", "连接Kafka超时，请检查地址和端口是否正确",
+                    "suggestion", "请检查Kafka服务是否启动、端口是否开放、防火墙是否放行")
+            ));
+        } catch (org.apache.kafka.common.errors.AuthenticationException e) {
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", Map.of("connected", false, "errorType", "AUTH_FAILED",
+                    "errorMessage", "Kafka认证失败: " + e.getMessage(),
+                    "suggestion", "请检查Kafka的SASL配置是否正确")
+            ));
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg == null && e.getCause() != null) msg = e.getCause().getMessage();
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", Map.of("connected", false, "errorType", "CONNECTION_ERROR",
+                    "errorMessage", "无法连接到Kafka: " + (msg != null ? msg.substring(0, Math.min(msg.length(), 120)) : "未知错误"),
+                    "suggestion", "请检查Kafka地址格式是否正确（如 host1:9092,host2:9092）")
+            ));
+        }
+    }
+
+    @PostMapping("/validate-subscribe")
+    public ResponseEntity<?> validateForSubscribe(@RequestBody Map<String, String> request) {
+        try {
+            String sourceConnection = request.get("sourceConnection");
+            String kafkaBootstrapServers = request.get("kafkaBootstrapServers");
+            String sourceType = request.get("sourceType");
+
+            logger.info("校验订阅任务条件: sourceType={}", sourceType);
+
+            ValidationResult result = metadataService.validateForSubscribe(sourceConnection, sourceType);
+
+            java.util.List<ValidationResult.CheckItem> items = new java.util.ArrayList<>(result.getCheckItems());
+
+            if (kafkaBootstrapServers != null && !kafkaBootstrapServers.trim().isEmpty()) {
+                java.util.Properties props = new java.util.Properties();
+                props.put("bootstrap.servers", kafkaBootstrapServers.trim());
+                props.put("request.timeout.ms", "10000");
+                props.put("default.api.timeout.ms", "10000");
+                try (AdminClient adminClient = AdminClient.create(props)) {
+                    java.util.Collection<org.apache.kafka.common.Node> nodes = adminClient.describeCluster().nodes()
+                            .get(12, java.util.concurrent.TimeUnit.SECONDS);
+                    items.add(new ValidationResult.CheckItem("Kafka连接", "Kafka集群连接检查", true,
+                            "Kafka连接成功，共" + nodes.size() + "个Broker", "info"));
+                } catch (Exception e) {
+                    String errMsg = e.getMessage();
+                    if (errMsg == null && e.getCause() != null) errMsg = e.getCause().getMessage();
+                    items.add(new ValidationResult.CheckItem("Kafka连接", "Kafka集群连接检查", false,
+                            "Kafka连接失败: " + (errMsg != null ? errMsg.substring(0, Math.min(errMsg.length(), 80)) : "未知错误"), "error"));
+                }
+            }
+
+            boolean allPassed = items.stream().allMatch(ValidationResult.CheckItem::isPassed);
+            result.setAllPassed(allPassed);
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("checkItems", items);
+            data.put("allPassed", allPassed);
+
+            return ResponseEntity.ok(Map.of("success", true, "data", data));
+        } catch (Exception e) {
+            logger.error("订阅校验失败: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of("success", false, "message", e.getMessage()));
         }
     }
 

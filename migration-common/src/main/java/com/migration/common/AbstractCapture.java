@@ -11,27 +11,33 @@ public abstract class AbstractCapture<T> implements Capture<T> {
 
     protected Properties props;
     protected String currentPosition;
-    protected boolean running = false;
+    protected volatile boolean running = false;
 
     @Override
     public void initialize(Properties props) throws Exception {
         this.props = props;
-        logger.info("Initializing {} with properties", getClass().getSimpleName());
+        String taskId = props.getProperty("task.id", "");
+        if (!taskId.isEmpty()) {
+            MdcUtil.setTaskId(taskId);
+        }
+        MdcUtil.setProcessName("capture");
+        logger.info("初始化 {}, taskId={}", getClass().getSimpleName(), taskId);
         doInitialize();
     }
 
     @Override
     public void start() throws Exception {
-        logger.info("Starting {}", getClass().getSimpleName());
+        logger.info("启动 {}", getClass().getSimpleName());
         running = true;
         doStart();
     }
 
     @Override
     public void stop() throws Exception {
-        logger.info("Stopping {}", getClass().getSimpleName());
+        logger.info("停止 {}", getClass().getSimpleName());
         running = false;
         doStop();
+        MdcUtil.clear();
     }
 
     @Override
@@ -42,7 +48,7 @@ public abstract class AbstractCapture<T> implements Capture<T> {
     @Override
     public void setPosition(String position) throws Exception {
         this.currentPosition = position;
-        logger.info("Set position to: {}", position);
+        logger.info("设置位点: {}", position);
     }
 
     protected abstract void doInitialize() throws Exception;

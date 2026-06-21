@@ -1,7 +1,6 @@
 package com.synctask.service;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.synctask.dto.ContentCompareSession;
 import com.synctask.entity.ValidationTask;
 import com.synctask.entity.ValidationTaskLog;
@@ -10,6 +9,7 @@ import com.synctask.entity.WorkflowStatus;
 import com.synctask.repository.ValidationTaskLogRepository;
 import com.synctask.repository.ValidationTaskRepository;
 import com.synctask.repository.WorkflowRepository;
+import com.synctask.util.DataSourcePoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -211,7 +210,7 @@ public class ValidationTaskService {
             if (isDrTask || syncObjectsMap.isEmpty()) {
                 ParsedConnection sourceConn = parseConnection(task.getSourceConnection());
                 boolean sourceIsPg = "postgresql".equalsIgnoreCase(sourceType);
-                try (Connection sourceDb = DriverManager.getConnection(
+                try (Connection sourceDb = DataSourcePoolManager.getConnection(
                         buildJdbcUrl(sourceConn.type, sourceConn.host, sourceConn.port, null),
                         sourceConn.username, sourceConn.password)) {
                     List<String> allDatabases = getAllDatabaseNames(sourceDb, sourceIsPg);
@@ -362,11 +361,12 @@ public class ValidationTaskService {
         int failedTables = 0;
         long totalRows = 0;
         long mismatchedRows = 0;
+        List<Map<String, Object>> tableResults = new ArrayList<>();
 
-        try (Connection sourceDb = DriverManager.getConnection(
+        try (Connection sourceDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(sourceConn.type, sourceConn.host, sourceConn.port, sourceConn.database),
                 sourceConn.username, sourceConn.password);
-             Connection targetDb = DriverManager.getConnection(
+             Connection targetDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(targetConn.type, targetConn.host, targetConn.port, targetConn.database),
                 targetConn.username, targetConn.password)) {
 
@@ -406,22 +406,38 @@ public class ValidationTaskService {
                         totalRows += diff.totalRows;
                         mismatchedRows += diff.mismatchedRows;
 
+                        Map<String, Object> tr = new LinkedHashMap<>();
+                        tr.put("sourceTable", tableName);
+                        tr.put("targetTable", tableName);
+                        tr.put("sourceRowCount", diff.sourceRowCount);
+                        tr.put("targetRowCount", diff.targetRowCount);
+
                         if (diff.mismatchedRows == 0 && diff.error == null) {
                             passedTables++;
+                            tr.put("status", "MATCH");
                             addLog(taskId, ValidationTaskLog.LogLevel.INFO, 
                                 "表 " + sourceDbName + "." + tableName + " 行数对比通过，共 " + diff.totalRows + " 行");
                         } else {
                             failedTables++;
                             if (diff.error != null) {
+                                tr.put("status", "ERROR");
                                 addLog(taskId, ValidationTaskLog.LogLevel.ERROR, 
                                     "表 " + sourceDbName + "." + tableName + " 行数对比失败: " + diff.error);
                             } else {
+                                tr.put("status", "MISMATCH");
+                                tr.put("diffCount", diff.mismatchedRows);
                                 addLog(taskId, ValidationTaskLog.LogLevel.WARNING, 
                                     "表 " + sourceDbName + "." + tableName + " 数据不一致，差异行数: " + diff.mismatchedRows);
                             }
                         }
+                        tableResults.add(tr);
                     } catch (Exception e) {
                         failedTables++;
+                        Map<String, Object> tr = new LinkedHashMap<>();
+                        tr.put("sourceTable", tableName);
+                        tr.put("targetTable", tableName);
+                        tr.put("status", "ERROR");
+                        tableResults.add(tr);
                         addLog(taskId, ValidationTaskLog.LogLevel.ERROR, 
                             "表 " + sourceDbName + "." + tableName + " 对比异常: " + e.getMessage());
                     }
@@ -433,6 +449,7 @@ public class ValidationTaskService {
             task.setFailedTables(failedTables);
             task.setTotalRows(totalRows);
             task.setMismatchedRows(mismatchedRows);
+            task.setCompareResult(gson.toJson(Map.of("tables", tableResults)));
             task.setStatus(ValidationTask.ValidationStatus.COMPLETED);
             task.setCompletedAt(java.time.LocalDateTime.now());
             validationTaskRepository.save(task);
@@ -488,6 +505,8 @@ public class ValidationTaskService {
     private static class TableDiffResult {
         long totalRows;
         long mismatchedRows;
+        long sourceRowCount;
+        long targetRowCount;
         String error;
     }
 
@@ -499,28 +518,26 @@ public class ValidationTaskService {
             boolean sourceIsPg = isPostgresqlConnection(sourceDb);
             boolean targetIsPg = isPostgresqlConnection(targetDb);
 
-            long sourceRowCount = getRowCount(sourceDb, sourceDbName, tableName, sourceIsPg);
-            long targetRowCount = getRowCount(targetDb, targetDbName, tableName, targetIsPg);
+            long sourceRowCount = getRowCountSafe(sourceDb, sourceDbName, tableName, sourceIsPg);
+            long targetRowCount = getRowCountSafe(targetDb, targetDbName, tableName, targetIsPg);
 
-            result.totalRows = sourceRowCount;
-
-            if (sourceIsPg == targetIsPg) {
-                String sourceHash = getTableChecksum(sourceDb, sourceDbName, tableName, sourceIsPg);
-                String targetHash = getTableChecksum(targetDb, targetDbName, tableName, targetIsPg);
-
-                if (sourceHash != null && sourceHash.equals(targetHash)) {
-                    result.mismatchedRows = 0;
-                } else {
-                    result.mismatchedRows = countMismatchedRows(sourceDb, targetDb, sourceDbName, targetDbName, tableName, sourceIsPg, targetIsPg);
-                }
-            } else {
-                result.mismatchedRows = Math.abs(sourceRowCount - targetRowCount);
-                if (result.mismatchedRows > 0) {
-                    addLogForCurrentTask("跨数据库类型校验: 源库 " + tableName + " 行数=" + sourceRowCount + ", 目标库行数=" + targetRowCount);
-                }
+            if (sourceRowCount < 0 || targetRowCount < 0) {
+                result.error = "获取行数失败";
+                return result;
             }
 
-        } catch (SQLException e) {
+            result.sourceRowCount = sourceRowCount;
+            result.targetRowCount = targetRowCount;
+            result.totalRows = sourceRowCount;
+
+            if (sourceRowCount != targetRowCount) {
+                result.mismatchedRows = Math.abs(sourceRowCount - targetRowCount);
+                addLogForCurrentTask("行数对比: 源库 " + sourceDbName + "." + tableName + " 行数=" + sourceRowCount + ", 目标库 " + targetDbName + "." + tableName + " 行数=" + targetRowCount);
+            } else {
+                result.mismatchedRows = 0;
+            }
+
+        } catch (Exception e) {
             result.error = e.getMessage();
         }
 
@@ -539,28 +556,6 @@ public class ValidationTaskService {
         return conn.getMetaData().getDatabaseProductName().toLowerCase().contains("postgresql");
     }
 
-    private String getTableChecksum(Connection conn, String dbName, String tableName, boolean isPg) throws SQLException {
-        try (Statement stmt = conn.createStatement()) {
-            if (isPg) {
-                try (ResultSet rs = stmt.executeQuery(
-                        "SELECT md5(string_agg(t::text, ',' ORDER BY t)) as checksum FROM (SELECT * FROM \"" + tableName + "\" ORDER BY ctid) t")) {
-                    if (rs.next()) {
-                        return rs.getString("checksum");
-                    }
-                }
-            } else {
-                try (ResultSet rs = stmt.executeQuery("CHECKSUM TABLE `" + dbName + "`.`" + tableName + "`")) {
-                    if (rs.next()) {
-                        return rs.getString("Checksum");
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            logger.warn("获取表校验和失败: {}.{} - {}", dbName, tableName, e.getMessage());
-        }
-        return null;
-    }
-
     private long getRowCount(Connection conn, String dbName, String tableName, boolean isPg) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             String sql = isPg
@@ -575,99 +570,20 @@ public class ValidationTaskService {
         return 0;
     }
 
-    private long countMismatchedRows(Connection sourceDb, Connection targetDb, 
-            String sourceDbName, String targetDbName, String tableName, boolean sourceIsPg, boolean targetIsPg) throws SQLException {
-        List<String> primaryKeys = getPrimaryKeys(sourceDb, sourceDbName, tableName, sourceIsPg);
-        
-        if (primaryKeys.isEmpty()) {
+    private long getRowCountSafe(Connection conn, String dbName, String tableName, boolean isPg) {
+        try {
+            return getRowCount(conn, dbName, tableName, isPg);
+        } catch (SQLException e) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("doesn't exist") || msg.contains("does not exist")
+                    || msg.contains("not found") || msg.contains("unknown table")
+                    || msg.contains("no such table") || msg.contains("relation") && msg.contains("does not exist"))) {
+                logger.info("表 {}.{} 在目标库不存在，视为0行: {}", dbName, tableName, msg);
+                return 0;
+            }
+            logger.warn("获取表 {}.{} 行数失败: {}", dbName, tableName, msg);
             return -1;
         }
-
-        String orderClauseSrc = sourceIsPg
-            ? String.join(", ", primaryKeys.stream().map(pk -> "\"" + pk + "\"").toArray(String[]::new))
-            : String.join(", ", primaryKeys);
-        String orderClauseTgt = targetIsPg
-            ? String.join(", ", primaryKeys.stream().map(pk -> "\"" + pk + "\"").toArray(String[]::new))
-            : String.join(", ", primaryKeys);
-
-        List<String> sourceColumns = getTableColumns(sourceDb, sourceDbName, tableName, sourceIsPg);
-        List<String> targetColumns = getTableColumns(targetDb, targetDbName, tableName, targetIsPg);
-
-        String sourceQuery, targetQuery;
-        if (sourceIsPg) {
-            sourceQuery = String.format(
-                "SELECT md5(string_agg(t::text, '')) as row_hash FROM (SELECT * FROM \"%s\" ORDER BY %s) t",
-                tableName, orderClauseSrc);
-        } else {
-            String concatExpr = sourceColumns.stream().map(c -> "COALESCE(`" + c + "`, '')").collect(java.util.stream.Collectors.joining(", '|', "));
-            sourceQuery = String.format(
-                "SELECT MD5(CONCAT_WS('|', %s)) as row_hash FROM `%s`.`%s` ORDER BY %s",
-                concatExpr, sourceDbName, tableName, orderClauseSrc);
-        }
-        if (targetIsPg) {
-            targetQuery = String.format(
-                "SELECT md5(string_agg(t::text, '')) as row_hash FROM (SELECT * FROM \"%s\" ORDER BY %s) t",
-                tableName, orderClauseTgt);
-        } else {
-            String concatExpr = targetColumns.stream().map(c -> "COALESCE(`" + c + "`, '')").collect(java.util.stream.Collectors.joining(", '|', "));
-            targetQuery = String.format(
-                "SELECT MD5(CONCAT_WS('|', %s)) as row_hash FROM `%s`.`%s` ORDER BY %s",
-                concatExpr, targetDbName, tableName, orderClauseTgt);
-        }
-
-        long mismatched = 0;
-
-        try (Statement sourceStmt = sourceDb.createStatement();
-             ResultSet sourceRs = sourceStmt.executeQuery(sourceQuery);
-             Statement targetStmt = targetDb.createStatement();
-             ResultSet targetRs = targetStmt.executeQuery(targetQuery)) {
-
-            while (sourceRs.next() && targetRs.next()) {
-                String sourceHash = sourceRs.getString("row_hash");
-                String targetHash = targetRs.getString("row_hash");
-
-                if (!Objects.equals(sourceHash, targetHash)) {
-                    mismatched++;
-                }
-            }
-
-            while (sourceRs.next()) mismatched++;
-            while (targetRs.next()) mismatched++;
-        }
-
-        return mismatched;
-    }
-
-    private List<String> getPrimaryKeys(Connection conn, String dbName, String tableName, boolean isPg) throws SQLException {
-        List<String> pks = new ArrayList<>();
-        DatabaseMetaData metaData = conn.getMetaData();
-        String schema = isPg ? "public" : dbName;
-        String table = isPg ? tableName.toLowerCase() : tableName;
-        try (ResultSet rs = metaData.getPrimaryKeys(dbName, schema, table)) {
-            while (rs.next()) {
-                pks.add(rs.getString("COLUMN_NAME"));
-            }
-        }
-        if (pks.isEmpty() && isPg) {
-            try (ResultSet rs = metaData.getPrimaryKeys(dbName, schema, tableName)) {
-                while (rs.next()) {
-                    pks.add(rs.getString("COLUMN_NAME"));
-                }
-            }
-        }
-        return pks;
-    }
-
-    private List<String> getTableColumns(Connection conn, String dbName, String tableName, boolean isPg) throws SQLException {
-        List<String> columns = new ArrayList<>();
-        DatabaseMetaData metaData = conn.getMetaData();
-        String schema = isPg ? "public" : null;
-        try (ResultSet rs = metaData.getColumns(dbName, schema, tableName, "%")) {
-            while (rs.next()) {
-                columns.add(rs.getString("COLUMN_NAME"));
-            }
-        }
-        return columns;
     }
 
     private static final Set<String> IGNORED_TABLES = Set.of("__sync_heartbeat");

@@ -225,6 +225,26 @@ public class TypeMapper {
         return "TEXT";
     }
 
+    /**
+     * 从 MySQL 类型字符串中提取 size，例如 "varchar(255)" 提取 255。
+     * 如果类型字符串中没有 size，则使用 column.getColumnSize()。
+     * 注意：fillMysqlColumnInfo 使用 DESCRIBE 获取类型，不设置 columnSize，
+     * 所以优先从类型字符串中提取。
+     */
+    private static int extractSizeFromType(String lowerType, ColumnInfo column) {
+        // 优先从类型字符串中提取 size，例如 varchar(255) -> 255
+        if (lowerType.contains("(") && lowerType.contains(")")) {
+            String sizeStr = lowerType.replaceAll(".*\\((\\d+)\\).*", "$1");
+            try {
+                return Integer.parseInt(sizeStr);
+            } catch (NumberFormatException e) {
+                // 忽略，使用 columnSize
+            }
+        }
+        // 回退到 column.getColumnSize()
+        return column.getColumnSize();
+    }
+
     public static String mapMysqlToPgColumnDef(ColumnInfo column) {
         String mysqlType = column.getDataType();
         if (mysqlType == null) {
@@ -236,7 +256,12 @@ public class TypeMapper {
         boolean isAutoIncrement = column.isAutoIncrement();
 
         if (lowerType.startsWith("tinyint")) {
-            if (lowerType.contains("unsigned")) {
+            // tinyint(1) 在 MySQL 中是 BOOL 的别名，映射为 BOOLEAN
+            // 注意：fillMysqlColumnInfo 使用 DESCRIBE 获取类型，不设置 columnSize，
+            // 所以这里通过类型字符串中的 "(1)" 来判断
+            if (lowerType.contains("(1)") && !lowerType.contains("unsigned")) {
+                pgType = "BOOLEAN";
+            } else if (lowerType.contains("unsigned")) {
                 pgType = "SMALLINT";
             } else {
                 pgType = "SMALLINT";
@@ -248,14 +273,33 @@ public class TypeMapper {
         } else if (lowerType.startsWith("int") || lowerType.startsWith("integer")) {
             pgType = lowerType.contains("unsigned") ? "BIGINT" : "INTEGER";
         } else if (lowerType.startsWith("bigint")) {
-            pgType = "BIGINT";
+            // MySQL BIGINT UNSIGNED 最大值 18446744073709551615 超出 PG BIGINT 范围(9223372036854775807)
+            // 映射为 NUMERIC(20,0) 以支持无符号大数
+            pgType = lowerType.contains("unsigned") ? "NUMERIC(20,0)" : "BIGINT";
         } else if (lowerType.startsWith("float")) {
             pgType = "REAL";
         } else if (lowerType.startsWith("double")) {
             pgType = "DOUBLE PRECISION";
         } else if (lowerType.startsWith("decimal") || lowerType.startsWith("numeric")) {
-            int precision = column.getColumnSize();
-            int scale = column.getDecimalDigits();
+            // 从类型字符串中提取 precision 和 scale，例如 decimal(10,2)
+            int precision = 0;
+            int scale = 0;
+            if (lowerType.contains("(") && lowerType.contains(")")) {
+                String sizeContent = lowerType.replaceAll(".*\\(([^)]+)\\).*", "$1");
+                String[] parts = sizeContent.split(",");
+                try {
+                    precision = Integer.parseInt(parts[0].trim());
+                    if (parts.length > 1) {
+                        scale = Integer.parseInt(parts[1].trim());
+                    }
+                } catch (NumberFormatException e) {
+                    // 忽略，使用 column 的值
+                }
+            }
+            if (precision == 0) {
+                precision = column.getColumnSize();
+                scale = column.getDecimalDigits();
+            }
             if (scale > 0) {
                 pgType = "NUMERIC(" + precision + "," + scale + ")";
             } else if (precision > 0) {
@@ -264,10 +308,12 @@ public class TypeMapper {
                 pgType = "NUMERIC";
             }
         } else if (lowerType.startsWith("varchar")) {
-            int size = column.getColumnSize();
+            // 从类型字符串中提取 size，例如 varchar(255)
+            int size = extractSizeFromType(lowerType, column);
             pgType = size > 0 ? "VARCHAR(" + size + ")" : "VARCHAR(255)";
         } else if (lowerType.startsWith("char")) {
-            int size = column.getColumnSize();
+            // 从类型字符串中提取 size，例如 char(10)
+            int size = extractSizeFromType(lowerType, column);
             pgType = size > 0 ? "CHAR(" + size + ")" : "CHAR(1)";
         } else if (lowerType.startsWith("text") || lowerType.startsWith("tinytext") ||
                    lowerType.startsWith("mediumtext") || lowerType.startsWith("longtext")) {
@@ -287,8 +333,15 @@ public class TypeMapper {
         } else if (lowerType.startsWith("boolean") || lowerType.startsWith("bool")) {
             pgType = "BOOLEAN";
         } else if (lowerType.startsWith("bit")) {
-            int size = column.getColumnSize();
-            pgType = size > 1 ? "BIT(" + size + ")" : "BOOLEAN";
+            // MySQL BIT(n): n=1 时映射为 BOOLEAN，n>1 时映射为 BYTEA（二进制数据）
+            // 注意：fillMysqlColumnInfo 使用 DESCRIBE 获取类型，不设置 columnSize，
+            // 所以这里通过类型字符串中的 "(n)" 来判断
+            if (lowerType.contains("(1)")) {
+                pgType = "BOOLEAN";
+            } else {
+                // BIT(n>1) 映射为 BYTEA，因为 MySQL BIT 存储二进制数据
+                pgType = "BYTEA";
+            }
         } else if (lowerType.startsWith("enum") || lowerType.startsWith("set")) {
             pgType = "VARCHAR(255)";
         } else if (lowerType.startsWith("json")) {

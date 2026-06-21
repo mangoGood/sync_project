@@ -3,6 +3,7 @@ package com.synctask.service;
 import com.synctask.dto.DatabaseInfo;
 import com.synctask.dto.TableInfo;
 import com.synctask.dto.ValidationResult;
+import com.synctask.util.DataSourcePoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -116,7 +117,7 @@ public class MetadataService {
                 conn.host, conn.port, (conn.database != null && !conn.database.isEmpty()) ? conn.database : "");
         }
 
-        try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+        try (Connection connection = DataSourcePoolManager.getConnection(jdbcUrl, conn.username, conn.password)) {
             if (connection.isValid(5)) {
                 String dbTypeName = isPg ? "PostgreSQL" : "MySQL";
                 return new ConnectionTestResult(true, null, dbTypeName + "连接成功", null);
@@ -170,7 +171,7 @@ public class MetadataService {
         try {
             Class.forName("org.postgresql.Driver");
             String jdbcUrl = buildJdbcUrl(conn, database);
-            try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+            try (Connection connection = DataSourcePoolManager.getConnection(jdbcUrl, conn.username, conn.password)) {
                 try (Statement stmt = connection.createStatement();
                      ResultSet rs = stmt.executeQuery(
                          "SELECT schema_name FROM information_schema.schemata " +
@@ -195,7 +196,7 @@ public class MetadataService {
             try {
                 Class.forName("org.postgresql.Driver");
                 String jdbcUrl = buildJdbcUrl(conn, database);
-                try (Connection connection = DriverManager.getConnection(jdbcUrl, conn.username, conn.password)) {
+                try (Connection connection = DataSourcePoolManager.getConnection(jdbcUrl, conn.username, conn.password)) {
                     String effectiveSchema = (schema != null && !schema.isEmpty()) ? schema : "public";
                     try (Statement stmt = connection.createStatement();
                          ResultSet rs = stmt.executeQuery(
@@ -243,7 +244,7 @@ public class MetadataService {
             } else {
                 Class.forName("com.mysql.cj.jdbc.Driver");
             }
-            connection = DriverManager.getConnection(
+            connection = DataSourcePoolManager.getConnection(
                     buildJdbcUrl(conn, null),
                     conn.username, conn.password);
             
@@ -271,7 +272,7 @@ public class MetadataService {
                 Class.forName("com.mysql.cj.jdbc.Driver");
             }
             
-            try (Connection connection = DriverManager.getConnection(
+            try (Connection connection = DataSourcePoolManager.getConnection(
                     buildJdbcUrl(conn, null),
                     conn.username, conn.password)) {
                 
@@ -335,7 +336,7 @@ public class MetadataService {
                 Class.forName("com.mysql.cj.jdbc.Driver");
             }
             
-            try (Connection connection = DriverManager.getConnection(
+            try (Connection connection = DataSourcePoolManager.getConnection(
                     buildJdbcUrl(conn, database),
                     conn.username, conn.password)) {
                 
@@ -455,6 +456,129 @@ public class MetadataService {
         return dbInfo;
     }
 
+    public ValidationResult validateForSubscribe(String sourceConnection, String sourceType) {
+        ValidationResult result = new ValidationResult();
+        boolean sourceIsPg = "postgresql".equalsIgnoreCase(sourceType);
+
+        ParsedConnection sourceConn = parseConnection(sourceConnection);
+
+        try (Connection sourceDb = DataSourcePoolManager.getConnection(
+                buildJdbcUrl(sourceConn, sourceIsPg),
+                sourceConn.username, sourceConn.password)) {
+
+            result.addItem("源库连接", "源数据库连接检查", true,
+                    sourceIsPg ? "PostgreSQL源库连接成功" : "MySQL源库连接成功", "info");
+
+            if (sourceIsPg) {
+                checkPgWalConfig(sourceDb, result);
+                checkPgReplicationSlot(sourceDb, result);
+            } else {
+                checkBinlogEnabled(sourceDb, result);
+                checkBinlogFormat(sourceDb, result);
+                checkBinlogRowImage(sourceDb, result);
+                String sourceVersion = getMySQLVersion(sourceDb);
+                checkServerId(sourceDb, sourceVersion, result);
+            }
+
+            checkSubscribePermissions(sourceDb, sourceIsPg, result);
+
+        } catch (SQLException e) {
+            logger.error("订阅校验失败: {}", e.getMessage());
+            result.addItem("源库连接", "源数据库连接检查", false,
+                    "连接失败: " + e.getMessage(), "error");
+        }
+
+        boolean allPassed = result.getCheckItems().stream().allMatch(ValidationResult.CheckItem::isPassed);
+        result.setAllPassed(allPassed);
+
+        return result;
+    }
+
+    private void checkPgReplicationSlot(Connection conn, ValidationResult result) {
+        try {
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT slot_name, plugin, slot_type FROM pg_replication_slots WHERE slot_type = 'logical' LIMIT 5")) {
+                java.util.List<String> slots = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    slots.add(rs.getString("slot_name") + "(" + rs.getString("plugin") + ")");
+                }
+                if (!slots.isEmpty()) {
+                    result.addItem("复制槽", "PostgreSQL逻辑复制槽检查", true,
+                            "检测到逻辑复制槽: " + String.join(", ", slots), "info");
+                } else {
+                    result.addItem("复制槽", "PostgreSQL逻辑复制槽检查", true,
+                            "暂无逻辑复制槽，订阅任务将自动创建", "info");
+                }
+            }
+        } catch (SQLException e) {
+            result.addItem("复制槽", "PostgreSQL逻辑复制槽检查", true,
+                    "无法检查复制槽（可能权限不足）: " + e.getMessage(), "warning");
+        }
+    }
+
+    private void checkSubscribePermissions(Connection conn, boolean isPg, ValidationResult result) {
+        try {
+            if (isPg) {
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT has_database_privilege(current_database(), 'connect') AND " +
+                         "has_database_privilege(current_database(), 'usage')")) {
+                    if (rs.next() && rs.getBoolean(1)) {
+                        result.addItem("源库权限", "订阅所需源库权限检查", true,
+                                "当前用户具有源库连接和使用权限", "info");
+                    } else {
+                        result.addItem("源库权限", "订阅所需源库权限检查", false,
+                                "当前用户缺少源库连接或使用权限", "error");
+                    }
+                }
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT pg_is_in_recovery()")) {
+                    if (rs.next() && rs.getBoolean(1)) {
+                        result.addItem("主从角色", "源库主从角色检查", false,
+                                "当前连接的是PostgreSQL从库，无法进行逻辑复制", "error");
+                    }
+                }
+            } else {
+                // MySQL 8.x 使用 Super_priv/Repl_slave_priv/Reload_priv，5.x 使用 SUPER/REPLICATION_SLAVE/RELOAD
+                boolean hasRepl = false;
+                boolean hasReload = false;
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT Super_priv, Repl_slave_priv, Reload_priv FROM mysql.user WHERE user = SUBSTRING_INDEX(CURRENT_USER(), '@', 1)")) {
+                    if (rs.next()) {
+                        hasRepl = "Y".equalsIgnoreCase(rs.getString("Repl_slave_priv"));
+                        hasReload = "Y".equalsIgnoreCase(rs.getString("Reload_priv"));
+                    }
+                } catch (SQLException e8) {
+                    // fallback for MySQL 5.x
+                    try (Statement stmt2 = conn.createStatement();
+                         ResultSet rs2 = stmt2.executeQuery(
+                             "SELECT SUPER, REPLICATION_SLAVE, RELOAD FROM mysql.user WHERE user = SUBSTRING_INDEX(CURRENT_USER(), '@', 1)")) {
+                        if (rs2.next()) {
+                            hasRepl = rs2.getBoolean("REPLICATION_SLAVE");
+                            hasReload = rs2.getBoolean("RELOAD");
+                        }
+                    }
+                }
+                if (hasRepl) {
+                    result.addItem("源库权限", "Binlog订阅所需权限检查", true,
+                            "当前用户具有REPLICATION SLAVE权限", "info");
+                } else {
+                    result.addItem("源库权限", "Binlog订阅所需权限检查", false,
+                            "当前用户缺少REPLICATION SLAVE权限，无法读取Binlog", "error");
+                }
+                if (!hasReload) {
+                    result.addItem("RELOAD权限", "Binlog订阅建议具有RELOAD权限", false,
+                            "当前用户缺少RELOAD权限，可能无法刷新Binlog状态", "warning");
+                }
+            }
+        } catch (SQLException e) {
+            result.addItem("源库权限", "订阅所需源库权限检查", true,
+                    "无法检查权限（非致命）: " + e.getMessage(), "warning");
+        }
+    }
+
     public ValidationResult validateForMigration(String sourceConnection, String targetConnection, 
                                                   String migrationMode, String sourceType, String targetType) {
         ValidationResult result = new ValidationResult();
@@ -468,10 +592,10 @@ public class MetadataService {
         ParsedConnection sourceConn = parseConnection(sourceConnection);
         ParsedConnection targetConn = parseConnection(targetConnection);
         
-        try (Connection sourceDb = DriverManager.getConnection(
+        try (Connection sourceDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(sourceConn, sourceIsPg),
                 sourceConn.username, sourceConn.password);
-             Connection targetDb = DriverManager.getConnection(
+             Connection targetDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(targetConn, targetIsPg),
                 targetConn.username, targetConn.password)) {
             
@@ -555,10 +679,10 @@ public class MetadataService {
         ParsedConnection sourceConn = parseConnection(sourceConnection);
         ParsedConnection targetConn = parseConnection(targetConnection);
         
-        try (Connection sourceDb = DriverManager.getConnection(
+        try (Connection sourceDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(sourceConn),
                 sourceConn.username, sourceConn.password);
-             Connection targetDb = DriverManager.getConnection(
+             Connection targetDb = DataSourcePoolManager.getConnection(
                 buildJdbcUrl(targetConn),
                 targetConn.username, targetConn.password)) {
             
