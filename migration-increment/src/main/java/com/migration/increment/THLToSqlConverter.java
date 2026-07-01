@@ -1407,15 +1407,6 @@ public class THLToSqlConverter {
         logger.info("Set seqno position to {}, kept {} records", seqno, executedRecords.size());
     }
 
-    /**
-     * 注入 SchemaEvolutionService，用于在 ContinuousIncrementMain 等外部初始化场景下
-     * 启用 DDL 自动应用和在线 DDL 影子表过滤。
-     */
-    public void setSchemaEvolutionService(SchemaEvolutionService service) {
-        this.schemaEvolutionService = service;
-        logger.info("SchemaEvolutionService 已注入，DDL 自动应用和在线 DDL 过滤已启用");
-    }
-
     public void removeSeqnoBefore(long seqno) {
         LinkedHashMap<Long, String> newRecords = new LinkedHashMap<>();
         for (Map.Entry<Long, String> entry : executedRecords.entrySet()) {

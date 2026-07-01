@@ -26,9 +26,9 @@ import java.util.Map;
 public class CheckpointVisualizationService {
     private static final Logger logger = LoggerFactory.getLogger(CheckpointVisualizationService.class);
 
-    private static final String H2_CHECKPOINT_PATH_TEMPLATE = "./files/%s/checkpoint/increment_checkpoint";
-    private static final String BINLOG_POSITION_FILE_TEMPLATE = "./files/%s/binlog_output/capture_position.properties";
-    private static final String THL_LATEST_SEQNO_FILE_TEMPLATE = "./files/%s/thl_output/.extractor_seqno";
+    private static final String H2_CHECKPOINT_PATH_TEMPLATE = "./files/%s/binlog_output/checkpoint";
+    private static final String BINLOG_POSITION_FILE_TEMPLATE = "./files/%s/binlog_output/current_binlog_position";
+    private static final String THL_LATEST_SEQNO_FILE_TEMPLATE = "./files/%s/binlog_output/thl_latest_seqno";
     private static final String RPO_METRIC_FILE_TEMPLATE = "./files/%s/binlog_output/rpo_metric";
     private static final String RTO_METRIC_FILE_TEMPLATE = "./files/%s/binlog_output/rto_metric";
 
@@ -42,11 +42,11 @@ public class CheckpointVisualizationService {
 
         // 1. binlog 位点（capture 当前位置）
         Map<String, Object> binlogPosition = readBinlogPosition(taskId);
-        result.put("binlog", binlogPosition);
+        result.put("binlogPosition", binlogPosition);
 
         // 2. THL seqno（extract 最新写入位置）
         Map<String, Object> thlSeqno = readThlLatestSeqno(taskId);
-        result.put("thl", thlSeqno);
+        result.put("thlSeqno", thlSeqno);
 
         // 3. checkpoint（increment 已应用位置）
         Map<String, Object> checkpoint = readCheckpoint(taskId);
@@ -56,10 +56,8 @@ public class CheckpointVisualizationService {
         Map<String, Object> gaps = calculateGaps(binlogPosition, thlSeqno, checkpoint);
         result.put("gaps", gaps);
 
-        // 5. RPO/RTO 指标（扁平化到顶层，前端直接读 rpo_ms/rto_ms）
+        // 5. RPO/RTO 指标
         Map<String, Object> metrics = readRpoRtoMetrics(taskId);
-        result.put("rpo_ms", metrics.get("rpoMs"));
-        result.put("rto_ms", metrics.get("rtoMs"));
         result.put("metrics", metrics);
 
         // 6. 链路状态判断
@@ -82,16 +80,16 @@ public class CheckpointVisualizationService {
         }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            // properties 格式: binlog.file=xxx \n binlog.position=xxx
-            java.util.Properties props = new java.util.Properties();
-            props.load(reader);
-            String fileVal = props.getProperty("binlog.file");
-            String posVal = props.getProperty("binlog.position");
-            if (fileVal != null && posVal != null && !fileVal.isEmpty() && !posVal.isEmpty()) {
-                binlog.put("file", fileVal);
-                binlog.put("position", Long.parseLong(posVal.trim()));
-                binlog.put("available", true);
-                binlog.put("raw", fileVal + ":" + posVal);
+            String line = reader.readLine();
+            if (line != null && !line.isEmpty()) {
+                // 格式: binlog.000032:1623048 或 binlog.000032|1623048
+                String[] parts = line.split("[:|]");
+                if (parts.length >= 2) {
+                    binlog.put("file", parts[0]);
+                    binlog.put("position", Long.parseLong(parts[1].trim()));
+                    binlog.put("available", true);
+                    binlog.put("raw", line);
+                }
             }
         } catch (Exception e) {
             logger.warn("读取 binlog 位点文件失败: {}", e.getMessage());
@@ -145,11 +143,11 @@ public class CheckpointVisualizationService {
                      "SELECT seqno, binlog_file, binlog_position, event_id, updated_at FROM checkpoint WHERE id = 1")) {
                 if (rs.next()) {
                     checkpoint.put("seqno", rs.getLong("seqno"));
-                    checkpoint.put("binlog_file", rs.getString("binlog_file"));
-                    checkpoint.put("binlog_position", rs.getLong("binlog_position"));
-                    checkpoint.put("event_id", rs.getString("event_id"));
-                    java.sql.Timestamp ts = rs.getTimestamp("updated_at");
-                    checkpoint.put("updated_at", ts != null ? ts.toString() : "-");
+                    checkpoint.put("binlogFile", rs.getString("binlog_file"));
+                    checkpoint.put("binlogPosition", rs.getLong("binlog_position"));
+                    checkpoint.put("eventId", rs.getString("event_id"));
+                    checkpoint.put("updatedAt", rs.getTimestamp("updated_at") != null
+                            ? rs.getTimestamp("updated_at").getTime() : null);
                     checkpoint.put("available", true);
                 }
             }
@@ -163,33 +161,30 @@ public class CheckpointVisualizationService {
     private Map<String, Object> calculateGaps(Map<String, Object> binlog, Map<String, Object> thl, Map<String, Object> checkpoint) {
         Map<String, Object> gaps = new LinkedHashMap<>();
 
-        // extract vs checkpoint：未应用的 THL 事件数（前端字段 pending_events）
+        // extract vs checkpoint：未应用的 THL 事件数
         boolean thlAvailable = (boolean) thl.getOrDefault("available", false);
         boolean ckptAvailable = (boolean) checkpoint.getOrDefault("available", false);
         if (thlAvailable && ckptAvailable) {
             long thlSeqno = (long) thl.get("seqno");
             long ckptSeqno = (long) checkpoint.get("seqno");
             long pendingApply = thlSeqno - ckptSeqno;
-            gaps.put("pending_events", pendingApply);
-            gaps.put("pending_apply", pendingApply);
-            gaps.put("pendingApplyStatus", pendingApply > 1000 ? "CRITICAL" : pendingApply > 100 ? "WARNING" : "OK");
+            gaps.put("pendingApply", pendingApply);
+            gaps.put("pendingApplyStatus", pendingApply > 100 ? "WARNING" : pendingApply > 1000 ? "CRITICAL" : "OK");
         } else {
-            gaps.put("pending_events", null);
-            gaps.put("pending_apply", null);
+            gaps.put("pendingApply", null);
             gaps.put("pendingApplyStatus", "UNKNOWN");
         }
 
-        // binlog vs checkpoint：未同步的 binlog 位点差距（前端字段 binlog_gap）
+        // binlog vs checkpoint：未同步的 binlog 位点差距
         boolean binlogAvailable = (boolean) binlog.getOrDefault("available", false);
         if (binlogAvailable && ckptAvailable) {
             String captureFile = (String) binlog.get("file");
             long capturePos = (long) binlog.get("position");
-            String ckptFile = (String) checkpoint.get("binlog_file");
-            long ckptPos = (long) checkpoint.get("binlog_position");
+            String ckptFile = (String) checkpoint.get("binlogFile");
+            long ckptPos = (long) checkpoint.get("binlogPosition");
 
             if (captureFile != null && captureFile.equals(ckptFile)) {
                 long posGap = capturePos - ckptPos;
-                gaps.put("binlog_gap", posGap);
                 gaps.put("binlogPositionGap", posGap);
                 gaps.put("binlogFileGap", 0);
                 gaps.put("binlogGapStatus", posGap > 1_000_000 ? "WARNING" : "OK");
@@ -197,16 +192,11 @@ public class CheckpointVisualizationService {
                 // 不同文件，计算文件号差距
                 int captureFileNum = extractBinlogFileNum(captureFile);
                 int ckptFileNum = extractBinlogFileNum(ckptFile);
-                int fileGap = captureFileNum - ckptFileNum;
-                gaps.put("binlog_gap", fileGap);
-                gaps.put("binlogFileGap", fileGap);
+                gaps.put("binlogFileGap", captureFileNum - ckptFileNum);
                 gaps.put("binlogPositionGap", null);
-                gaps.put("binlogGapStatus", fileGap > 5 ? "WARNING" : "OK");
-            } else {
-                gaps.put("binlog_gap", null);
+                gaps.put("binlogGapStatus", captureFileNum - ckptFileNum > 5 ? "WARNING" : "OK");
             }
         } else {
-            gaps.put("binlog_gap", null);
             gaps.put("binlogPositionGap", null);
             gaps.put("binlogGapStatus", "UNKNOWN");
         }

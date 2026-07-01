@@ -335,8 +335,8 @@ public class AgentHttpServer {
             String path = exchange.getRequestURI().getPath();
             String[] parts = path.split("/");
             // /api/checkpoint/{taskId}
-            if (parts.length >= 4 && !parts[3].isEmpty()) {
-                String taskId = parts[3];
+            if (parts.length >= 3 && !parts[2].isEmpty()) {
+                String taskId = parts[2];
                 Map<String, Object> visualization = checkpointVisualizationService.getCheckpointVisualization(taskId);
                 sendResponse(exchange, 200, visualization);
             } else {
@@ -360,8 +360,8 @@ public class AgentHttpServer {
             String path = exchange.getRequestURI().getPath();
             String[] parts = path.split("/");
             // /api/table-latency/{taskId}
-            if (parts.length >= 4 && !parts[3].isEmpty()) {
-                String taskId = parts[3];
+            if (parts.length >= 3 && !parts[2].isEmpty()) {
+                String taskId = parts[2];
                 Map<String, Object> heatmap = tableLatencyService.getTableLatencyHeatmap(taskId);
                 sendResponse(exchange, 200, heatmap);
             } else {
@@ -385,8 +385,8 @@ public class AgentHttpServer {
             String path = exchange.getRequestURI().getPath();
             String[] parts = path.split("/");
             // /api/fanout/{taskId}
-            if (parts.length >= 4 && !parts[3].isEmpty()) {
-                String taskId = parts[3];
+            if (parts.length >= 3 && !parts[2].isEmpty()) {
+                String taskId = parts[2];
                 FanoutDispatcherService fanoutService = fanoutServices.get(taskId);
                 if (fanoutService == null) {
                     sendResponse(exchange, 404, Map.of("success", false, "message", "No fan-out service for task: " + taskId));
