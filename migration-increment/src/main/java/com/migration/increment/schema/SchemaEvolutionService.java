@@ -168,7 +168,6 @@ public class SchemaEvolutionService {
     /**
      * 在目标库执行 DDL，使用事务确保原子性。
      * 注意：多数数据库的 DDL 隐式提交，事务保护有限。
-     * 对于幂等性DDL错误（如Duplicate column、Can't DROP等）跳过而非失败。
      */
     private void executeDdl(String sql, String sourceDb) throws SQLException {
         boolean originalAutoCommit = targetConnection.getAutoCommit();
@@ -181,17 +180,7 @@ public class SchemaEvolutionService {
                     String trimmed = part.trim();
                     if (!trimmed.isEmpty()) {
                         logger.debug("执行 DDL: {}", trimmed);
-                        try {
-                            stmt.execute(trimmed);
-                        } catch (SQLException e) {
-                            // 幂等性DDL错误容错：列已存在、索引已存在、列不存在等
-                            String msg = e.getMessage();
-                            if (isIdempotentDdlError(msg)) {
-                                logger.warn("DDL 幂等性错误，跳过: sql={} | error={}", truncate(trimmed), msg);
-                            } else {
-                                throw e;
-                            }
-                        }
+                        stmt.execute(trimmed);
                     }
                 }
             }
@@ -210,23 +199,6 @@ public class SchemaEvolutionService {
                 logger.warn("恢复 autoCommit 状态失败: {}", e.getMessage());
             }
         }
-    }
-
-    /**
-     * 判断DDL错误是否为幂等性错误（可安全跳过）。
-     * 包括：列已存在、索引已存在、列不存在、表已存在等。
-     */
-    private boolean isIdempotentDdlError(String message) {
-        if (message == null) return false;
-        String lower = message.toLowerCase();
-        return lower.contains("duplicate column name")
-                || lower.contains("already exists")
-                || lower.contains("can't drop")
-                || lower.contains("check that column")
-                || lower.contains("key column")
-                || lower.contains("duplicate key name")
-                || lower.contains("cannot drop index")
-                || lower.contains("unknown column");
     }
 
     /** 记录需人工处理的 DDL */

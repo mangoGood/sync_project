@@ -151,10 +151,10 @@ public class FanoutDispatcherService {
     /** 获取分发统计 */
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("total_dispatched", totalDispatched.get());
-        stats.put("total_success", totalSuccess.get());
-        stats.put("total_failure", totalFailure.get());
-        stats.put("target_count", targetConnections.size());
+        stats.put("totalDispatched", totalDispatched.get());
+        stats.put("totalSuccess", totalSuccess.get());
+        stats.put("totalFailure", totalFailure.get());
+        stats.put("targetCount", targetConnections.size());
         stats.put("parallelism", parallelism);
 
         List<Map<String, Object>> targets = new ArrayList<>();
@@ -164,9 +164,9 @@ public class FanoutDispatcherService {
             t.put("host", config.getHost());
             t.put("port", config.getPort());
             t.put("database", config.getDatabase());
-            t.put("success_count", perTargetSuccess.get(config.getName()).get());
-            t.put("failure_count", perTargetFailure.get(config.getName()).get());
-            t.put("avg_latency_ms", perTargetLastLatency.getOrDefault(config.getName(), 0L));
+            t.put("successCount", perTargetSuccess.get(config.getName()).get());
+            t.put("failureCount", perTargetFailure.get(config.getName()).get());
+            t.put("lastLatencyMs", perTargetLastLatency.getOrDefault(config.getName(), 0L));
             targets.add(t);
         }
         stats.put("targets", targets);

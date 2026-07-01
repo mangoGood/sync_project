@@ -40,7 +40,7 @@ public class DdlTranslator {
             "\\b(tinyint|smallint|mediumint|int|integer|bigint|float|double|decimal|numeric|" +
             "char|varchar|binary|varbinary|tinyblob|blob|mediumblob|longblob|" +
             "tinytext|text|mediumtext|longtext|date|time|datetime|timestamp|year|" +
-            "boolean|bool|bit|enum|set|json)\\b(\\([^)]*\\))?",
+            "boolean|bool|bit|enum|set|json)\\b\\s*(\\([^)]*\\))?",
             Pattern.CASE_INSENSITIVE);
 
     /** PG 类型 → MySQL 类型 */
@@ -51,7 +51,7 @@ public class DdlTranslator {
             "boolean|bool|date|time without time zone|time|timetz|" +
             "timestamp without time zone|timestamp|timestamptz|" +
             "interval|uuid|json|jsonb|bytea|bit varying|varbit|bit|" +
-            "macaddr|macaddr8|inet|cidr|xml|name|tsvector|tsquery|hstore|ltree)\\b(\\([^)]*\\))?",
+            "macaddr|macaddr8|inet|cidr|xml|name|tsvector|tsquery|hstore|ltree)\\b\\s*(\\([^)]*\\))?",
             Pattern.CASE_INSENSITIVE);
 
     /** AUTO_INCREMENT 关键字 */
@@ -153,9 +153,7 @@ public class DdlTranslator {
             result = stripMysqlTableOptions(result);
             // 5. UNSIGNED 关键字移除（PG 不支持）
             result = result.replaceAll("\\s+UNSIGNED", "");
-            // 6. 移除 ON UPDATE CURRENT_TIMESTAMP（PG 不支持，需要用触发器实现）
-            result = result.replaceAll("(?i)\\s+ON\\s+UPDATE\\s+CURRENT_TIMESTAMP", "");
-            // 7. ENGINE/MEMORY 等表选项已在 stripMysqlTableOptions 处理
+            // 6. ENGINE/MEMORY 等表选项已在 stripMysqlTableOptions 处理
         } else if (direction == Direction.POSTGRES_TO_MYSQL) {
             // 1. 双引号 → 反引号
             result = convertDoubleQuoteToBacktick(result);
@@ -316,8 +314,7 @@ public class DdlTranslator {
         // 处理带括号的类型，如 varchar(255)、decimal(10,2)
         switch (mysqlType) {
             case "tinyint":
-                // tinyint(1) 在 MySQL 中是 BOOL 的别名，映射为 BOOLEAN
-                return "(1)".equals(sizeSpec) ? "BOOLEAN" : "SMALLINT";
+                return "SMALLINT";
             case "smallint":
                 return "SMALLINT";
             case "mediumint":

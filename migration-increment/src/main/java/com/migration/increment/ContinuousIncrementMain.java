@@ -131,9 +131,6 @@ public class ContinuousIncrementMain {
         connectToTargetDatabase();
 
         sqlConverter = new THLToSqlConverter(props);
-        // 注入 SchemaEvolutionService，启用 DDL 自动应用和在线 DDL 影子表过滤
-        sqlConverter.setSchemaEvolutionService(
-                new com.migration.increment.schema.SchemaEvolutionService(props, targetConnection));
 
         progressFile = "./files/" + taskId + "/checkpoint/.increment_progress";
         tableLatencyDir = "./files/" + taskId + "/binlog_output/table_latency";

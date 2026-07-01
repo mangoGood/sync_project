@@ -32,8 +32,8 @@ import java.util.regex.Pattern;
 public class OnlineDdlService {
     private static final Logger logger = LoggerFactory.getLogger(OnlineDdlService.class);
 
-    // gh-ost 影子表命名：_tbl_ghost_ 或 _tbl_gho 或 _tbl_ghc
-    private static final Pattern GHOST_SHADOW_PATTERN = Pattern.compile("_([a-zA-Z0-9_]+)_(?:ghost_|gho|ghc)$", Pattern.CASE_INSENSITIVE);
+    // gh-ost 影子表命名：_tbl_ghost_
+    private static final Pattern GHOST_SHADOW_PATTERN = Pattern.compile("_([a-zA-Z0-9_]+)_ghost_", Pattern.CASE_INSENSITIVE);
     // pt-osc 影子表命名：_tbl_new
     private static final Pattern PT_OSC_SHADOW_PATTERN = Pattern.compile("_([a-zA-Z0-9_]+)_new$", Pattern.CASE_INSENSITIVE);
     // RENAME 语句模式：RENAME TABLE `_tbl_ghost_` TO `tbl`

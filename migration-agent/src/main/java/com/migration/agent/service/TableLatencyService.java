@@ -74,12 +74,7 @@ public class TableLatencyService {
         if (tableMap == null || tableMap.isEmpty()) {
             result.put("available", false);
             result.put("tables", Collections.emptyList());
-            Map<String, Object> emptySummary = new LinkedHashMap<>();
-            emptySummary.put("total_tables", 0);
-            emptySummary.put("avg_latency_ms", 0);
-            emptySummary.put("max_latency_ms", 0);
-            emptySummary.put("bottleneck_table", "");
-            result.put("summary", emptySummary);
+            result.put("summary", Map.of("totalTables", 0, "avgLatency", 0, "maxLatency", 0, "bottleneckTable", null));
             return result;
         }
 
@@ -98,7 +93,7 @@ public class TableLatencyService {
             Map<String, Object> tableData = buildTableLatencyData(tableName, records);
             tables.add(tableData);
 
-            long avgLatency = ((Number) tableData.get("avg_ms")).longValue();
+            long avgLatency = (long) tableData.get("avgLatencyMs");
             totalLatency += avgLatency;
             if (avgLatency > maxLatency) {
                 maxLatency = avgLatency;
@@ -107,13 +102,13 @@ public class TableLatencyService {
         }
 
         // 按平均延迟降序排序（瓶颈表在前）
-        tables.sort((a, b) -> Long.compare(((Number) b.get("avg_ms")).longValue(), ((Number) a.get("avg_ms")).longValue()));
+        tables.sort((a, b) -> Long.compare((long) b.get("avgLatencyMs"), (long) a.get("avgLatencyMs")));
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("total_tables", tableCount);
-        summary.put("avg_latency_ms", tableCount > 0 ? totalLatency / tableCount : 0);
-        summary.put("max_latency_ms", maxLatency);
-        summary.put("bottleneck_table", bottleneckTable == null ? "" : bottleneckTable);
+        summary.put("totalTables", tableCount);
+        summary.put("avgLatency", tableCount > 0 ? totalLatency / tableCount : 0);
+        summary.put("maxLatency", maxLatency);
+        summary.put("bottleneckTable", bottleneckTable);
 
         result.put("available", true);
         result.put("tables", tables);
@@ -123,12 +118,12 @@ public class TableLatencyService {
 
     private Map<String, Object> buildTableLatencyData(String tableName, List<LatencyRecord> records) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("table", tableName);
+        data.put("tableName", tableName);
 
         LatencyRecord latest = records.get(records.size() - 1);
-        data.put("latest_ms", latest.latencyMs);
-        data.put("latest_op", latest.opType);
-        data.put("latest_applied_ts", latest.appliedTs);
+        data.put("latestLatencyMs", latest.latencyMs);
+        data.put("latestOpType", latest.opType);
+        data.put("latestAppliedTs", latest.appliedTs);
 
         // 统计
         long sum = 0, max = 0;
@@ -140,12 +135,12 @@ public class TableLatencyService {
         }
         long avg = records.isEmpty() ? 0 : sum / records.size();
 
-        data.put("avg_ms", avg);
-        data.put("max_ms", max);
-        data.put("p50_ms", percentile(latencies, 50));
-        data.put("p95_ms", percentile(latencies, 95));
-        data.put("p99_ms", percentile(latencies, 99));
-        data.put("sample_count", records.size());
+        data.put("avgLatencyMs", avg);
+        data.put("maxLatencyMs", max);
+        data.put("p50LatencyMs", percentile(latencies, 50));
+        data.put("p95LatencyMs", percentile(latencies, 95));
+        data.put("p99LatencyMs", percentile(latencies, 99));
+        data.put("sampleCount", records.size());
 
         // 热力图数据点（最近20个）
         List<Map<String, Object>> heatmap = new ArrayList<>();
@@ -161,7 +156,7 @@ public class TableLatencyService {
         data.put("heatmap", heatmap);
 
         // 延迟等级（用于热力图着色）
-        data.put("latency_level", classifyLatency(avg));
+        data.put("latencyLevel", classifyLatency(avg));
         return data;
     }
 

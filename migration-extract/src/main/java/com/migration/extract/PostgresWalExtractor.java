@@ -298,20 +298,20 @@ public class PostgresWalExtractor extends AbstractExtractor<byte[], THLEvent> {
 
         resolveTableSchema(rowData);
 
-        String newTupleContent = extractBracedContent(eventData, "new-tuple:");
-        if (newTupleContent != null) {
-            rowData.newValues = parseTupleData(newTupleContent, rowData.columnNames);
+        java.util.regex.Matcher newTupleMatcher = java.util.regex.Pattern.compile("new-tuple:\\s*\\{([^}]+)\\}").matcher(eventData);
+        if (newTupleMatcher.find()) {
+            rowData.newValues = parseTupleData(newTupleMatcher.group(1), rowData.columnNames);
         }
 
-        String oldTupleContent = extractBracedContent(eventData, "old-tuple:");
-        if (oldTupleContent != null) {
-            rowData.oldValues = parseTupleData(oldTupleContent, rowData.columnNames);
+        java.util.regex.Matcher oldTupleMatcher = java.util.regex.Pattern.compile("old-tuple:\\s*\\{([^}]+)\\}").matcher(eventData);
+        if (oldTupleMatcher.find()) {
+            rowData.oldValues = parseTupleData(oldTupleMatcher.group(1), rowData.columnNames);
         }
 
         if (rowData.newValues == null && !eventData.contains("old-tuple")) {
-            String tupleContent = extractBracedContent(eventData, "tuple:");
-            if (tupleContent != null) {
-                rowData.newValues = parseTupleData(tupleContent, rowData.columnNames);
+            java.util.regex.Matcher tupleMatcher = java.util.regex.Pattern.compile("tuple:\\s*\\{([^}]+)\\}").matcher(eventData);
+            if (tupleMatcher.find()) {
+                rowData.newValues = parseTupleData(tupleMatcher.group(1), rowData.columnNames);
             }
         }
 
@@ -320,56 +320,6 @@ public class PostgresWalExtractor extends AbstractExtractor<byte[], THLEvent> {
         }
 
         return rowData;
-    }
-
-    /**
-     * 从事件数据中提取指定前缀后的花括号内容，正确处理嵌套大括号和引号。
-     * 例如：对于 "new-tuple:{id:1,col_json:'{"k":"v"}'}"，
-     * 返回 "id:1,col_json:'{"k":"v"}'"
-     */
-    private String extractBracedContent(String eventData, String prefix) {
-        int prefixIdx = eventData.indexOf(prefix);
-        if (prefixIdx < 0) return null;
-
-        int start = prefixIdx + prefix.length();
-        // 跳过空白
-        while (start < eventData.length() && Character.isWhitespace(eventData.charAt(start))) {
-            start++;
-        }
-        if (start >= eventData.length() || eventData.charAt(start) != '{') {
-            return null;
-        }
-        start++; // 跳过 '{'
-
-        int depth = 1;
-        boolean inQuote = false;
-        int i = start;
-
-        while (i < eventData.length()) {
-            char c = eventData.charAt(i);
-            if (inQuote) {
-                if (c == '\\' && i + 1 < eventData.length()) {
-                    i += 2; // 跳过转义字符
-                    continue;
-                }
-                if (c == '\'') {
-                    inQuote = false;
-                }
-            } else {
-                if (c == '\'') {
-                    inQuote = true;
-                } else if (c == '{') {
-                    depth++;
-                } else if (c == '}') {
-                    depth--;
-                    if (depth == 0) {
-                        return eventData.substring(start, i);
-                    }
-                }
-            }
-            i++;
-        }
-        return null; // 未找到匹配的 '}'
     }
 
     private List<String> parseTupleData(String tupleStr, List<String> columnNames) {
